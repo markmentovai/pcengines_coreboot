@@ -12,44 +12,32 @@
 #include <cpu/x86/cache.h>
 #include <acpi/acpi.h>
 #include <northbridge/amd/agesa/agesa_helper.h>
+#include <smp/node.h>
 
 static void model_14_init(struct device *dev)
 {
 	msr_t msr;
-	int msrno;
-#if CONFIG(LOGICAL_CPUS)
 	u32 siblings;
-#endif
 	printk(BIOS_DEBUG, "Model 14 Init.\n");
 
-	disable_cache();
-	/*
-	 * AGESA sets the MTRRs main MTRRs. The shadow area needs to be set
-	 * by coreboot.
-	 */
 
-	/* Enable access to AMD RdDram and WrDram extension bits */
-	msr = rdmsr(SYSCFG_MSR);
-	msr.lo |= SYSCFG_MSR_MtrrFixDramModEn;
-	msr.lo &= ~SYSCFG_MSR_MtrrFixDramEn;
-	wrmsr(SYSCFG_MSR, msr);
-
-	/* Set shadow WB, RdMEM, WrMEM */
-	msr.lo = msr.hi = 0;
-	wrmsr(MTRR_FIX_16K_A0000, msr);
-	msr.lo = msr.hi = 0x1e1e1e1e;
-	wrmsr(MTRR_FIX_64K_00000, msr);
-	wrmsr(MTRR_FIX_16K_80000, msr);
-	for (msrno = MTRR_FIX_4K_C0000; msrno <= MTRR_FIX_4K_F8000; msrno++)
-		wrmsr(msrno, msr);
-
-	msr = rdmsr(SYSCFG_MSR);
-	msr.lo &= ~SYSCFG_MSR_MtrrFixDramModEn;
-	msr.lo |= SYSCFG_MSR_MtrrFixDramEn;
-	wrmsr(SYSCFG_MSR, msr);
-
-	if (acpi_is_wakeup_s3())
+	if (acpi_is_wakeup_s3()) {
 		restore_mtrr();
+	} else {
+		/*
+		 * All cores are initialized sequentially, so the solution for APs will be
+		 * created before they start.
+		 */
+		x86_setup_mtrrs_with_detect();
+		/*
+		 * Enable ROM caching on BSP we just lost when creating MTRR solution, for
+		 * faster execution
+		 */
+		if (boot_cpu()) {
+			mtrr_use_temp_range(OPTIMAL_CACHE_ROM_BASE, OPTIMAL_CACHE_ROM_SIZE,
+					    MTRR_TYPE_WRPROT);
+		}
+	}
 
 	x86_mtrr_check();
 	enable_cache();
@@ -60,20 +48,20 @@ static void model_14_init(struct device *dev)
 	/* Enable the local CPU APICs */
 	setup_lapic();
 
-#if CONFIG(LOGICAL_CPUS)
-	siblings = cpuid_ecx(0x80000008) & 0xff;
+	if (CONFIG(LOGICAL_CPUS)) {
+		siblings = cpuid_ecx(0x80000008) & 0xff;
 
-	if (siblings > 0) {
-		msr = rdmsr_amd(CPU_ID_FEATURES_MSR);
-		msr.lo |= 1 << 28;
-		wrmsr_amd(CPU_ID_FEATURES_MSR, msr);
+		if (siblings > 0) {
+			msr = rdmsr_amd(CPU_ID_FEATURES_MSR);
+			msr.lo |= 1 << 28;
+			wrmsr_amd(CPU_ID_FEATURES_MSR, msr);
 
-		msr = rdmsr_amd(CPU_ID_EXT_FEATURES_MSR);
-		msr.hi |= 1 << (33 - 32);
-		wrmsr_amd(CPU_ID_EXT_FEATURES_MSR, msr);
+			msr = rdmsr_amd(CPU_ID_EXT_FEATURES_MSR);
+			msr.hi |= 1 << (33 - 32);
+			wrmsr_amd(CPU_ID_EXT_FEATURES_MSR, msr);
+		}
+		printk(BIOS_DEBUG, "siblings = %02d, ", siblings);
 	}
-	printk(BIOS_DEBUG, "siblings = %02d, ", siblings);
-#endif
 
 	/* DisableCf8ExtCfg */
 	msr = rdmsr(NB_CFG_MSR);
@@ -84,6 +72,8 @@ static void model_14_init(struct device *dev)
 	msr = rdmsr(HWCR_MSR);
 	msr.lo |= (1 << 0);
 	wrmsr(HWCR_MSR, msr);
+
+	display_mtrrs();
 }
 
 static struct device_operations cpu_dev_ops = {
