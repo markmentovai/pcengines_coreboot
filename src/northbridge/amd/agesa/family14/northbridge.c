@@ -109,19 +109,6 @@ static void set_vga_enable_reg(u32 nodeid, u32 linkn)
 
 }
 
-static u32 my_find_pci_tolm(struct bus *bus, u32 tolm)
-{
-	struct resource *min;
-	unsigned long mask_match = IORESOURCE_MEM | IORESOURCE_ASSIGNED;
-	min = 0;
-	search_bus_resources(bus, mask_match, mask_match, tolm_test,
-			     &min);
-	if (min && tolm > min->base) {
-		tolm = min->base;
-	}
-	return tolm;
-}
-
 #if CONFIG_HW_MEM_HOLE_SIZEK != 0
 
 struct hw_mem_hole_info {
@@ -150,6 +137,35 @@ static struct hw_mem_hole_info get_hw_mem_hole_info(void)
 }
 #endif
 
+static void add_fixed_resources(struct device *dev, int index)
+{
+	/* Reserve everything between A segment and 1MB:
+	 *
+	 * 0xa0000 - 0xbffff: legacy VGA
+	 * 0xc0000 - 0xfffff: option ROMs and SeaBIOS (if used)
+	 */
+	mmio_resource(dev, index++, 0xa0000 >> 10, (0xc0000 - 0xa0000) >> 10);
+	reserved_ram_resource(dev, index++, 0xc0000 >> 10, (0x100000 - 0xc0000) >> 10);
+
+	if (fx_devs == 0)
+		get_fx_devs();
+
+	/*
+	 * Check if CC6 is enabled (bits [11:0] C6Base). If CC6 is not enabled, the base
+	 * must be zero according to BKDG.
+	 */
+	if (pci_read_config32(__f4_dev[0], 0x12C) & 0xfff) {
+		unsigned long c6basek;
+		c6basek = pci_read_config32(__f4_dev[0], 0x12C) & 0xfff; // [35:24] at [11:0]
+		/*
+		 * Shift left by 24 bits for physical address and the convert to KiB by
+		 * shifting 10 bits left. The C6Base is shifted 14 bits left thus no overflow.
+		 */
+		c6basek = c6basek << (24 - 10);
+		mmio_resource(dev, index++, c6basek, 16*1024);
+	}
+}
+
 static void nb_read_resources(struct device *dev)
 {
 	printk(BIOS_DEBUG, "\nFam14h - %s\n", __func__);
@@ -160,6 +176,8 @@ static void nb_read_resources(struct device *dev)
 	 * the CPU_CLUSTER.
 	 */
 	mmconf_resource(dev, MMIO_CONF_BASE);
+
+	add_fixed_resources(dev, 0);
 }
 
 #if CONFIG(CONSOLE_VGA_MULTI)
@@ -220,9 +238,8 @@ static void domain_read_resources(struct device *dev)
 	printk(BIOS_DEBUG, "  amsr - incoming dev = %p\n", dev);
 
 	unsigned long mmio_basek;
-	u32 pci_tolm;
+	resource_t basek, limitk, sizek;
 	int idx;
-	struct bus *link;
 #if CONFIG_HW_MEM_HOLE_SIZEK != 0
 	struct hw_mem_hole_info mem_hole;
 	u32 reset_memhole = 1;
@@ -230,21 +247,11 @@ static void domain_read_resources(struct device *dev)
 
 	pci_domain_read_resources(dev);
 
-	pci_tolm = 0xffffffffUL;
-	for (link = dev->link_list; link; link = link->next) {
-		pci_tolm = my_find_pci_tolm(link, pci_tolm);
-	}
+	/* TOP_MEM MSR is our boundary between DRAM and MMIO under 4G */
+	mmio_basek = amd_topmem() >> 10;
 
-	// FIXME handle interleaved nodes. If you fix this here, please fix
-	// amdk8, too.
-	mmio_basek = pci_tolm >> 10;
-	/* Round mmio_basek to something the processor can support */
-	mmio_basek &= ~((1 << 6) - 1);
-
-	// FIXME improve mtrr.c so we don't use up all of the mtrrs with a 64M
-	// MMIO hole. If you fix this here, please fix amdk8, too.
-	/* Round the mmio hole to 64M */
-	mmio_basek &= ~((64 * 1024) - 1);
+	if (fx_devs == 0)
+		get_fx_devs();
 
 #if CONFIG_HW_MEM_HOLE_SIZEK != 0
 /* if the hw mem hole is already set in raminit stage, here we will compare
@@ -263,7 +270,6 @@ static void domain_read_resources(struct device *dev)
 #endif
 
 	idx = 0x10;
-	resource_t basek, limitk, sizek;	// 4 1T
 
 	if (get_dram_base_limit(0, &basek, &limitk)) {
 		sizek = limitk - basek;
@@ -271,18 +277,16 @@ static void domain_read_resources(struct device *dev)
 		printk(BIOS_DEBUG, "adsr: basek = %llx, limitk = %llx, sizek = %llx.\n",
 				   basek, limitk, sizek);
 
-		/* see if we need a hole from 0xa0000 to 0xbffff */
-		if ((basek < 640) && (sizek > 768)) {
-			printk(BIOS_DEBUG,"adsr - 0xa0000 to 0xbffff resource.\n");
-			ram_resource(dev, (idx | 0), basek, 640 - basek);
+		/* see if we need a hole from 0xa0000 to 0xfffff */
+		if ((basek < (0xa0000 >> 10) && (sizek > (0x100000 >> 10)))) {
+			ram_resource(dev, idx, basek, (0xa0000 >> 10) - basek);
 			idx += 0x10;
-			basek = 768;
-			sizek = limitk - 768;
+			basek = 0x100000 >> 10;
+			sizek = limitk - basek;
 		}
 
-		printk(BIOS_DEBUG,
-			"adsr: mmio_basek=%08lx, basek=%08llx, limitk=%08llx\n",
-			 mmio_basek, basek, limitk);
+		printk(BIOS_DEBUG, "adsr: mmio_basek=%08lx, basek=%08llx, limitk=%08llx\n",
+				   mmio_basek, basek, limitk);
 
 		/* split the region to accommodate pci memory space */
 		if ((basek < 4 * 1024 * 1024) && (limitk > mmio_basek)) {
@@ -300,16 +304,16 @@ static void domain_read_resources(struct device *dev)
 			if ((basek + sizek) <= 4 * 1024 * 1024) {
 				sizek = 0;
 			} else {
+				uint64_t topmem2 = amd_topmem2();
 				basek = 4 * 1024 * 1024;
-				sizek -= (4 * 1024 * 1024 - mmio_basek);
+				sizek = topmem2 / 1024 - basek;
 			}
 		}
 
-		ram_resource(dev, (idx | 0), basek, sizek);
+		ram_resource(dev, idx, basek, sizek);
 		idx += 0x10;
-		printk(BIOS_DEBUG,
-			"%d: mmio_basek=%08lx, basek=%08llx, limitk=%08llx\n", 0,
-			 mmio_basek, basek, limitk);
+		printk(BIOS_DEBUG, "%d: mmio_basek=%08lx, basek=%08llx, limitk=%08llx\n", 0,
+				   mmio_basek, basek, limitk);
 	}
 	printk(BIOS_DEBUG, "  adsr - mmio_basek = %lx.\n", mmio_basek);
 
