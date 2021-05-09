@@ -26,42 +26,6 @@ static struct device *__f2_dev[FX_DEVS];
 static struct device *__f4_dev[FX_DEVS];
 static unsigned int fx_devs = 0;
 
-static u32 get_io_addr_index(u32 nodeid, u32 linkn)
-{
-	return 0;
-}
-
-static u32 get_mmio_addr_index(u32 nodeid, u32 linkn)
-{
-	return 0;
-}
-
-static void set_io_addr_reg(struct device *dev, u32 nodeid, u32 linkn, u32 reg,
-			    u32 io_min, u32 io_max)
-{
-
-	u32 tempreg;
-	/* io range allocation */
-	tempreg = (nodeid & 0xf) | ((nodeid & 0x30) << (8 - 4)) | (linkn << 4) |
-		  ((io_max & 0xf0) << (12 - 4)); //limit
-	pci_write_config32(__f1_dev[0], reg+4, tempreg);
-
-	tempreg = 3 | ((io_min & 0xf0) << (12 - 4)); //base :ISA and VGA ?
-	pci_write_config32(__f1_dev[0], reg, tempreg);
-}
-
-static void set_mmio_addr_reg(u32 nodeid, u32 linkn, u32 reg, u32 index,
-			      u32 mmio_min, u32 mmio_max, u32 nodes)
-{
-
-	u32 tempreg;
-	/* io range allocation */
-	tempreg = (nodeid & 0xf) | (linkn << 4) | (mmio_max & 0xffffff00);
-	pci_write_config32(__f1_dev[0], reg + 4, tempreg);
-	tempreg = 3 | (nodeid & 0x30) | (mmio_min & 0xffffff00);
-	pci_write_config32(__f1_dev[0], reg, tempreg);
-}
-
 static struct device *get_node_pci(u32 nodeid, u32 fn)
 {
 	return pcidev_on_root(DEV_CDB + nodeid, fn);
@@ -152,136 +116,6 @@ static void set_vga_enable_reg(u32 nodeid, u32 linkn)
 
 }
 
-static int reg_useable(unsigned int reg, struct device *goal_dev,
-		       unsigned int goal_nodeid, unsigned int goal_link)
-{
-	struct resource *res;
-	unsigned int nodeid, link = 0;
-	int result;
-	res = 0;
-	for (nodeid = 0; !res && (nodeid < fx_devs); nodeid++) {
-		struct device *dev;
-		dev = __f0_dev[nodeid];
-		if (!dev)
-			continue;
-		for (link = 0; !res && (link < 8); link++) {
-			res = probe_resource(dev, IOINDEX(0x1000 + reg, link));
-		}
-	}
-	result = 2;
-	if (res) {
-		result = 0;
-		if ((goal_link == (link - 1)) &&
-		    (goal_nodeid == (nodeid - 1)) && (res->flags <= 1)) {
-			result = 1;
-		}
-	}
-	return result;
-}
-
-static struct resource *amdfam14_find_iopair(struct device *dev,
-			unsigned int nodeid, unsigned int link)
-{
-	struct resource *resource;
-	u32 result, reg;
-	resource = 0;
-	reg = 0;
-	result = reg_useable(0xc0, dev, nodeid, link);
-	if (result >= 1) {
-		/* I have been allocated this one */
-		reg = 0xc0;
-	}
-	/* Ext conf space */
-	if (!reg) {
-		/* Because of Extend conf space, we will never run out of reg,
-		 * but we need one index to differ them. So,same node and same
-		 *  link can have multi range
-		 */
-		u32 index = get_io_addr_index(nodeid, link);
-		reg = 0x110 + (index << 24) + (4 << 20);	// index could be 0, 255
-	}
-
-	resource = new_resource(dev, IOINDEX(0x1000 + reg, link));
-
-	return resource;
-}
-
-static struct resource *amdfam14_find_mempair(struct device *dev, u32 nodeid,
-					      u32 link)
-{
-	struct resource *resource;
-	u32 free_reg, reg;
-	resource = 0;
-	free_reg = 0;
-	for (reg = 0x80; reg <= 0xb8; reg += 0x8) {
-		int result;
-		result = reg_useable(reg, dev, nodeid, link);
-		if (result == 1) {
-			/* I have been allocated this one */
-			break;
-		} else if (result > 1) {
-			/* I have a free register pair */
-			free_reg = reg;
-		}
-	}
-	if (reg > 0xb8) {
-		reg = free_reg;
-	}
-	/* Ext conf space */
-	if (!reg) {
-		/* Because of Extend conf space, we will never run out of reg,
-		 * but we need one index to differ them. So,same node and same
-		 *  link can have multi range
-		 */
-		u32 index = get_mmio_addr_index(nodeid, link);
-		reg = 0x110 + (index << 24) + (6 << 20);	// index could be 0, 63
-
-	}
-	resource = new_resource(dev, IOINDEX(0x1000 + reg, link));
-	return resource;
-}
-
-static void amdfam14_link_read_bases(struct device *dev, u32 nodeid, u32 link)
-{
-	struct resource *resource;
-
-	/* Initialize the io space constraints on the current bus */
-	resource = amdfam14_find_iopair(dev, nodeid, link);
-	if (resource) {
-		u32 align;
-		align = log2(HT_IO_HOST_ALIGN);
-		resource->base = 0;
-		resource->size = 0;
-		resource->align = align;
-		resource->gran = align;
-		resource->limit = 0xffffUL;
-		resource->flags = IORESOURCE_IO | IORESOURCE_BRIDGE;
-	}
-
-	/* Initialize the prefetchable memory constraints on the current bus */
-	resource = amdfam14_find_mempair(dev, nodeid, link);
-	if (resource) {
-		resource->base = 0;
-		resource->size = 0;
-		resource->align = log2(HT_MEM_HOST_ALIGN);
-		resource->gran = log2(HT_MEM_HOST_ALIGN);
-		resource->limit = 0xffffffffffULL;
-		resource->flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
-		resource->flags |= IORESOURCE_BRIDGE;
-	}
-
-	/* Initialize the memory constraints on the current bus */
-	resource = amdfam14_find_mempair(dev, nodeid, link);
-	if (resource) {
-		resource->base = 0;
-		resource->size = 0;
-		resource->align = log2(HT_MEM_HOST_ALIGN);
-		resource->gran = log2(HT_MEM_HOST_ALIGN);
-		resource->limit = 0xffffffffffULL;
-		resource->flags = IORESOURCE_MEM | IORESOURCE_BRIDGE;
-	}
-}
-
 static u32 my_find_pci_tolm(struct bus *bus, u32 tolm)
 {
 	struct resource *min;
@@ -325,17 +159,7 @@ static struct hw_mem_hole_info get_hw_mem_hole_info(void)
 
 static void nb_read_resources(struct device *dev)
 {
-	u32 nodeid;
-	struct bus *link;
-
 	printk(BIOS_DEBUG, "\nFam14h - %s\n", __func__);
-
-	nodeid = amdfam14_nodeid(dev);
-	for (link = dev->link_list; link; link = link->next) {
-		if (link->children) {
-			amdfam14_link_read_bases(dev, nodeid, link->link_num);
-		}
-	}
 
 	/*
 	 * This MMCONF resource must be reserved in the PCI domain.
@@ -343,55 +167,6 @@ static void nb_read_resources(struct device *dev)
 	 * the CPU_CLUSTER.
 	 */
 	mmconf_resource(dev, MMIO_CONF_BASE);
-}
-
-static void set_resource(struct device *dev, struct resource *resource,
-			 u32 nodeid)
-{
-	resource_t rbase, rend;
-	unsigned int reg, link_num;
-	char buf[50];
-
-	printk(BIOS_DEBUG, "\nFam14h - %s\n", __func__);
-
-	/* Make certain the resource has actually been set */
-	if (!(resource->flags & IORESOURCE_ASSIGNED)) {
-		return;
-	}
-
-	/* If I have already stored this resource don't worry about it */
-	if (resource->flags & IORESOURCE_STORED) {
-		return;
-	}
-
-	/* Only handle PCI memory and IO resources */
-	if (!(resource->flags & (IORESOURCE_MEM | IORESOURCE_IO)))
-		return;
-
-	/* Ensure I am actually looking at a resource of function 1 */
-	if ((resource->index & 0xffff) < 0x1000) {
-		return;
-	}
-	/* Get the base address */
-	rbase = resource->base;
-
-	/* Get the limit (rounded up) */
-	rend = resource_end(resource);
-
-	/* Get the register and link */
-	reg = resource->index & 0xfff;	// 4k
-	link_num = IOINDEX_LINK(resource->index);
-
-	if (resource->flags & IORESOURCE_IO) {
-		set_io_addr_reg(dev, nodeid, link_num, reg, rbase >> 8,
-				rend >> 8);
-	} else if (resource->flags & IORESOURCE_MEM) {
-		set_mmio_addr_reg(nodeid, link_num, reg, (resource->index >> 24),
-				rbase >> 8, rend >> 8, 1);	// [39:8]
-	}
-	resource->flags |= IORESOURCE_STORED;
-	snprintf(buf, sizeof(buf), " <node %x link %x>", nodeid, link_num);
-	report_resource_stored(dev, resource, buf);
 }
 
 #if CONFIG(CONSOLE_VGA_MULTI)
@@ -433,8 +208,6 @@ static void create_vga_resource(struct device *dev, unsigned int nodeid)
 static void nb_set_resources(struct device *dev)
 {
 	unsigned int nodeid;
-	struct bus *bus;
-	struct resource *res;
 
 	printk(BIOS_DEBUG, "\nFam14h - %s\n", __func__);
 
@@ -443,16 +216,7 @@ static void nb_set_resources(struct device *dev)
 
 	create_vga_resource(dev, nodeid);
 
-	/* Set each resource we have found */
-	for (res = dev->resource_list; res; res = res->next) {
-		set_resource(dev, res, nodeid);
-	}
-
-	for (bus = dev->link_list; bus; bus = bus->next) {
-		if (bus->children) {
-			assign_resources(bus);
-		}
-	}
+	pci_dev_set_resources(dev);
 }
 
 /* Domain/Root Complex related code */
@@ -780,13 +544,13 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 }
 
 static struct device_operations northbridge_operations = {
-	.read_resources = nb_read_resources,
-	.set_resources = nb_set_resources,
-	.enable_resources = pci_dev_enable_resources,
-	.acpi_fill_ssdt = northbridge_fill_ssdt_generator,
+	.read_resources    = nb_read_resources,
+	.set_resources     = nb_set_resources,
+	.enable_resources  = pci_dev_enable_resources,
+	.init              = northbridge_init,
+	.ops_pci           = &pci_dev_ops_pci,
+	.acpi_fill_ssdt    = northbridge_fill_ssdt_generator,
 	.write_acpi_tables = agesa_write_acpi_tables,
-	.init = northbridge_init,
-	.enable = 0,.ops_pci = 0,
 };
 
 static const struct pci_driver northbridge_driver __pci_driver = {
