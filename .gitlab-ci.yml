@@ -25,7 +25,7 @@ check_dependencies:
     PLATFORM:
   stage: build_rom
   tags:
-    - docker
+    - local
   script:
     - git clone https://github.com/pcengines/pce-fw-builder.git /home/coreboot/pce-fw-builder
     - cd /home/coreboot/pce-fw-builder
@@ -56,7 +56,7 @@ check_dependencies:
     PLATFORM:
   stage: sign_rom
   tags:
-    - docker
+    - local
   script:
     - cd ${RELEASE_DIR}
     - sha256sum ${PLATFORM}_${CI_COMMIT_REF_NAME}.rom > ${PLATFORM}_${CI_COMMIT_REF_NAME}.SHA256
@@ -74,7 +74,7 @@ check_dependencies:
     PLATFORM:
   stage: publish_rom
   tags:
-    - docker
+    - local
   before_script:
     - apt-get update
     - apt-get install curl
@@ -140,6 +140,8 @@ regression:apu2:
     PLATFORM: apu2
     CONFIG: apu2
     RTE_IP: $RTE_IP_APU2
+  tags:
+    - apu2
 
 
 build:apu3:
@@ -168,6 +170,8 @@ regression:apu3:
     PLATFORM: apu3
     CONFIG: apu3
     RTE_IP: $RTE_IP_APU3
+  tags:
+    - apu3
 
 
 build:apu4:
@@ -196,6 +200,8 @@ regression:apu4:
     PLATFORM: apu4
     CONFIG: apu4
     RTE_IP: $RTE_IP_APU4
+  tags:
+    - apu4
 
 
 build:apu5:
@@ -224,3 +230,5 @@ regression:apu5:
     PLATFORM: apu5
     CONFIG: apu5
     RTE_IP: $RTE_IP_APU5
+  tags:
+    - apu5
