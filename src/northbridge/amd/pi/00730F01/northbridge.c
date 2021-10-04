@@ -759,6 +759,7 @@ static void fam16_finalize(void *chip_info)
 {
 	struct device *dev;
 	u32 value;
+	msr_t msr;
 	dev = pcidev_on_root(0, 0); /* clear IoapicSbFeatureEn */
 	pci_write_config32(dev, 0xF8, 0);
 	pci_write_config32(dev, 0xFC, 5); /* TODO: move it to dsdt.asl */
@@ -798,6 +799,19 @@ static void fam16_finalize(void *chip_info)
 		value = pci_read_config32(dev, 0x60);
 		value &= ~(1 << 11);
 		pci_write_config32(dev, 0x60, value);
+	}
+
+	msr.lo = 5;
+	msr.hi = 0;
+	wrmsr(OSVW_ID_Length, msr);
+
+	/* Errata: DRAM Scrubbing May Overwrite CC6 CoreSaveStateData, check if CC6 enabled */
+	if (pci_read_config32(__f2_dev[0], 0x118) & (1 << 18)) {
+		dev = pcidev_on_root(0x18, 3);
+		/* Disable sequential DRAM scrubbing */
+		pci_write_config8(dev, 0x58, pci_read_config8(dev, 0x58) & 0xF0);
+		/* Disable re-direct DRAM scrubbing */
+		pci_write_config8(dev, 0x5C, pci_read_config8(dev, 0x5C) & 0xFE);
 	}
 }
 
