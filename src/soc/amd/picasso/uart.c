@@ -4,7 +4,7 @@
 #include <commonlib/helpers.h>
 #include <device/device.h>
 #include <device/mmio.h>
-#include <amdblocks/gpio_banks.h>
+#include <amdblocks/gpio.h>
 #include <amdblocks/aoac.h>
 #include <amdblocks/uart.h>
 #include <soc/aoac_defs.h>
@@ -53,7 +53,7 @@ void set_uart_config(unsigned int idx)
 	if (idx >= ARRAY_SIZE(uart_info))
 		return;
 
-	program_gpios(uart_info[idx].mux, 2);
+	gpio_configure_pads(uart_info[idx].mux, 2);
 }
 
 static const char *uart_acpi_name(const struct device *dev)

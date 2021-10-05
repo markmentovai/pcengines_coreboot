@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <cbfs.h>
 #include <console/console.h>
+#include <cpu/intel/microcode.h>
 #include <device/device.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
@@ -12,9 +13,11 @@
 #include <option.h>
 #include <intelblocks/irq.h>
 #include <intelblocks/lpss.h>
+#include <intelblocks/pmclib.h>
 #include <intelblocks/xdci.h>
 #include <intelpch/lockdown.h>
 #include <intelblocks/tcss.h>
+#include <soc/cpu.h>
 #include <soc/gpio_soc_defs.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/pci_devs.h>
@@ -38,6 +41,7 @@
 #define MILLIAMPS_TO_AMPS         1000
 #define ICC_MAX_ID_ADL_P_3_MA     34250
 #define ICC_MAX_ID_ADL_P_5_MA     32000
+#define ICC_MAX_ID_ADL_P_6_MA     32000
 #define ICC_MAX_ID_ADL_P_7_MA     32000
 
 /*
@@ -302,6 +306,8 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 		return ICC_MAX_ID_ADL_P_3_MA;
 	case PCI_DEVICE_ID_INTEL_ADL_P_ID_5:
 		return ICC_MAX_ID_ADL_P_5_MA;
+	case PCI_DEVICE_ID_INTEL_ADL_P_ID_6:
+		return ICC_MAX_ID_ADL_P_6_MA;
 	case PCI_DEVICE_ID_INTEL_ADL_P_ID_7:
 		return ICC_MAX_ID_ADL_P_7_MA;
 	default:
@@ -339,11 +345,12 @@ static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
 	size_t microcode_len;
 
 	/* Locate microcode and pass to FSP-S for 2nd microcode loading */
-	microcode_file = cbfs_map("cpu_microcode_blob.bin", &microcode_len);
+	microcode_file = intel_microcode_find();
+	microcode_len = get_microcode_size(microcode_file);
 
 	if ((microcode_file != NULL) && (microcode_len != 0)) {
 		/* Update CPU Microcode patch base address/size */
-		s_cfg->MicrocodeRegionBase = (uint32_t)microcode_file;
+		s_cfg->MicrocodeRegionBase = (uint32_t)(uintptr_t)microcode_file;
 		s_cfg->MicrocodeRegionSize = (uint32_t)microcode_len;
 	}
 
@@ -366,6 +373,13 @@ static void fill_fsps_igd_params(FSP_S_CONFIG *s_cfg,
 static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
+	const struct device *tcss_port_arr[] = {
+		DEV_PTR(tcss_usb3_port1),
+		DEV_PTR(tcss_usb3_port2),
+		DEV_PTR(tcss_usb3_port3),
+		DEV_PTR(tcss_usb3_port4),
+	};
+
 	s_cfg->TcssAuxOri = config->TcssAuxOri;
 
 	/* Explicitly clear this field to avoid using defaults */
@@ -384,15 +398,7 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 
 	s_cfg->UsbTcPortEn = 0;
 	for (int i = 0; i < MAX_TYPE_C_PORTS; i++) {
-		/* TCSS xHCI --> Root Hub --> Type-C Port */
-		const struct device_path port_path[] = {
-			{.type = DEVICE_PATH_PCI, .pci.devfn = SA_DEVFN_TCSS_XHCI},
-			{.type = DEVICE_PATH_USB, .usb.port_type = 0, .usb.port_id = 0},
-			{.type = DEVICE_PATH_USB, .usb.port_type = 3, .usb.port_id = i} };
-		const struct device *port = find_dev_nested_path(pci_root_bus(), port_path,
-					ARRAY_SIZE(port_path));
-
-		if (is_dev_enabled(port))
+		if (is_dev_enabled(tcss_port_arr[i]))
 			s_cfg->UsbTcPortEn |= BIT(i);
 	}
 }
@@ -614,6 +620,45 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	/* VrConfig Settings for IA and GT domains */
 	for (size_t i = 0; i < ARRAY_SIZE(config->domain_vr_config); i++)
 		fill_vr_domain_config(s_cfg, i, &config->domain_vr_config[i]);
+
+	s_cfg->LpmStateEnableMask = get_supported_lpm_mask();
+
+	/* Apply minimum assertion width settings */
+	if (config->pch_slp_s3_min_assertion_width == SLP_S3_ASSERTION_DEFAULT)
+		s_cfg->PchPmSlpS3MinAssert = SLP_S3_ASSERTION_50_MS;
+	else
+		s_cfg->PchPmSlpS3MinAssert = config->pch_slp_s3_min_assertion_width;
+
+	if (config->pch_slp_s4_min_assertion_width == SLP_S4_ASSERTION_DEFAULT)
+		s_cfg->PchPmSlpS4MinAssert = SLP_S4_ASSERTION_1S;
+	else
+		s_cfg->PchPmSlpS4MinAssert = config->pch_slp_s4_min_assertion_width;
+
+	if (config->pch_slp_sus_min_assertion_width == SLP_SUS_ASSERTION_DEFAULT)
+		s_cfg->PchPmSlpSusMinAssert = SLP_SUS_ASSERTION_4_S;
+	else
+		s_cfg->PchPmSlpSusMinAssert = config->pch_slp_sus_min_assertion_width;
+
+	if (config->pch_slp_a_min_assertion_width == SLP_A_ASSERTION_DEFAULT)
+		s_cfg->PchPmSlpAMinAssert = SLP_A_ASSERTION_2_S;
+	else
+		s_cfg->PchPmSlpAMinAssert = config->pch_slp_a_min_assertion_width;
+
+	unsigned int power_cycle_duration = config->pch_reset_power_cycle_duration;
+	if (power_cycle_duration == POWER_CYCLE_DURATION_DEFAULT)
+		power_cycle_duration = POWER_CYCLE_DURATION_4S;
+
+	s_cfg->PchPmPwrCycDur = get_pm_pwr_cyc_dur(s_cfg->PchPmSlpS4MinAssert,
+						   s_cfg->PchPmSlpS3MinAssert,
+						   s_cfg->PchPmSlpAMinAssert,
+						   power_cycle_duration);
+
+	/* Set PsysPmax if it is available from DT */
+	if (config->PsysPmax) {
+		printk(BIOS_DEBUG, "PsysPmax = %dW\n", config->PsysPmax);
+		/* PsysPmax is in unit of 1/8 Watt */
+		s_cfg->PsysPmax = config->PsysPmax * 8;
+	}
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,
@@ -669,12 +714,6 @@ static void fill_fsps_fivr_params(FSP_S_CONFIG *s_cfg,
 			config->ext_fivr_settings.vnn_icc_max_ma;
 }
 
-static void arch_silicon_init_params(FSPS_ARCH_UPD *s_arch_cfg)
-{
-	/* EnableMultiPhaseSiliconInit for running MultiPhaseSiInit */
-	s_arch_cfg->EnableMultiPhaseSiliconInit = 1;
-}
-
 static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		struct soc_intel_alderlake_config *config)
 {
@@ -715,10 +754,8 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 {
 	struct soc_intel_alderlake_config *config;
 	FSP_S_CONFIG *s_cfg = &supd->FspsConfig;
-	FSPS_ARCH_UPD *s_arch_cfg = &supd->FspsArchUpd;
 
 	config = config_of_soc();
-	arch_silicon_init_params(s_arch_cfg);
 	soc_silicon_init_params(s_cfg, config);
 	mainboard_silicon_init_params(s_cfg);
 }

@@ -1088,8 +1088,16 @@ static void pass0(FILE *fil, FILE *head, struct device *ptr, struct device *next
 		return;
 	}
 
-	char *name = S_ALLOC(10);
-	sprintf(name, "_dev%d", dev_id++);
+	char *name;
+
+	if (ptr->alias) {
+		name = S_ALLOC(6 + strlen(ptr->alias));
+		sprintf(name, "_dev_%s", ptr->alias);
+	} else {
+		name = S_ALLOC(11);
+		sprintf(name, "_dev_%d", dev_id++);
+	}
+
 	ptr->name = name;
 
 	fprintf(fil, "STORAGE struct device %s;\n", ptr->name);
@@ -1106,6 +1114,29 @@ static void pass0(FILE *fil, FILE *head, struct device *ptr, struct device *next
 	fprintf(fil,
 		"DEVTREE_CONST struct device * DEVTREE_CONST last_dev = &%s;\n",
 		ptr->name);
+}
+
+static void emit_smbios_data(FILE *fil, struct device *ptr)
+{
+	fprintf(fil, "#if !DEVTREE_EARLY\n");
+	fprintf(fil, "#if CONFIG(GENERATE_SMBIOS_TABLES)\n");
+
+	/* SMBIOS types start at 1, if zero it hasn't been set */
+	if (ptr->smbios_slot_type)
+		fprintf(fil, "\t.smbios_slot_type = %s,\n",
+			ptr->smbios_slot_type);
+	if (ptr->smbios_slot_data_width)
+		fprintf(fil, "\t.smbios_slot_data_width = %s,\n",
+			ptr->smbios_slot_data_width);
+	if (ptr->smbios_slot_designation)
+		fprintf(fil, "\t.smbios_slot_designation = \"%s\",\n",
+			ptr->smbios_slot_designation);
+	if (ptr->smbios_slot_length)
+		fprintf(fil, "\t.smbios_slot_length = %s,\n",
+			ptr->smbios_slot_length);
+
+	fprintf(fil, "#endif\n");
+	fprintf(fil, "#endif\n");
 }
 
 static void emit_resources(FILE *fil, struct device *ptr)
@@ -1266,29 +1297,9 @@ static void pass1(FILE *fil, FILE *head, struct device *ptr, struct device *next
 			chip_ins->chip->name_underscore, chip_ins->id);
 	if (next)
 		fprintf(fil, "\t.next=&%s,\n", next->name);
-	if (ptr->smbios_slot_type || ptr->smbios_slot_data_width ||
-	    ptr->smbios_slot_designation || ptr->smbios_slot_length) {
-		fprintf(fil, "#if !DEVTREE_EARLY\n");
-		fprintf(fil, "#if CONFIG(GENERATE_SMBIOS_TABLES)\n");
-	}
-	/* SMBIOS types start at 1, if zero it hasn't been set */
-	if (ptr->smbios_slot_type)
-		fprintf(fil, "\t.smbios_slot_type = %s,\n",
-			ptr->smbios_slot_type);
-	if (ptr->smbios_slot_data_width)
-		fprintf(fil, "\t.smbios_slot_data_width = %s,\n",
-			ptr->smbios_slot_data_width);
-	if (ptr->smbios_slot_designation)
-		fprintf(fil, "\t.smbios_slot_designation = \"%s\",\n",
-			ptr->smbios_slot_designation);
-	if (ptr->smbios_slot_length)
-		fprintf(fil, "\t.smbios_slot_length = %s,\n",
-			ptr->smbios_slot_length);
-	if (ptr->smbios_slot_type || ptr->smbios_slot_data_width ||
-	    ptr->smbios_slot_designation || ptr->smbios_slot_length) {
-		fprintf(fil, "#endif\n");
-		fprintf(fil, "#endif\n");
-	}
+
+	emit_smbios_data(fil, ptr);
+
 	fprintf(fil, "};\n");
 
 	emit_resources(fil, ptr);
@@ -1321,6 +1332,12 @@ static void expose_device_names(FILE *fil, FILE *head, struct device *ptr, struc
 			ptr->path_a, ptr->path_b);
 		fprintf(fil, "DEVTREE_CONST struct device *const __pnp_%04x_%02x = &%s;\n",
 			ptr->path_a, ptr->path_b, ptr->name);
+	}
+
+	if (ptr->alias) {
+		fprintf(head, "extern DEVTREE_CONST struct device *const %s_ptr;\n", ptr->name);
+		fprintf(fil, "DEVTREE_CONST struct device *const %s_ptr = &%s;\n",
+			ptr->name, ptr->name);
 	}
 }
 
@@ -1920,6 +1937,7 @@ static void generate_outputh(FILE *f, const char *fw_conf_header, const char *de
 
 static void generate_outputc(FILE *f, const char *static_header)
 {
+	fprintf(f, "#include <boot/coreboot_tables.h>\n");
 	fprintf(f, "#include <device/device.h>\n");
 	fprintf(f, "#include <device/pci.h>\n");
 	fprintf(f, "#include <fw_config.h>\n");

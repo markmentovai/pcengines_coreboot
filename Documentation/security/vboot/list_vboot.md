@@ -170,11 +170,13 @@
 - Bubs
 - Coachz
 - Homestar
+- Kingoftown
 - Lazor
 - Marzipan
 - Mrbland
 - Pazquel
 - Pompom
+- Quackingstick
 - Trogdor
 - Wormdingler
 - Veyron_Jaq (Haier Chromebook 11)

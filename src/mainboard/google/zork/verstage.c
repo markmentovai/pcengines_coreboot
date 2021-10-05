@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <amdblocks/gpio_banks.h>
+#include <amdblocks/gpio.h>
 #include <baseboard/variants.h>
 #include <security/vboot/vboot_common.h>
 
@@ -11,7 +11,7 @@ static void setup_gpio(void)
 
 	printk(BIOS_DEBUG, "Setting GPIOs\n");
 	gpios = variant_early_gpio_table(&num_gpios);
-	program_gpios(gpios, num_gpios);
+	gpio_configure_pads(gpios, num_gpios);
 	printk(BIOS_DEBUG, "GPIOs setup\n");
 }
 

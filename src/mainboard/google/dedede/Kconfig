@@ -88,14 +88,11 @@ config MAINBOARD_FAMILY
 
 config MAINBOARD_PART_NUMBER
 	default "Boten" if BOARD_GOOGLE_BOTEN
-	default "Boten" if BOARD_GOOGLE_BOTEN_LEGACY
 	default "Dedede" if BOARD_GOOGLE_DEDEDE
 	default "Drawcia" if BOARD_GOOGLE_DRAWCIA
-	default "Drawcia" if BOARD_GOOGLE_DRAWCIA_LEGACY
 	default "Madoo" if BOARD_GOOGLE_MADOO
 	default "Waddledoo" if BOARD_GOOGLE_WADDLEDOO
 	default "Waddledee" if BOARD_GOOGLE_WADDLEDEE
-	default "Wheelie" if BOARD_GOOGLE_WHEELIE
 	default "Lalala" if BOARD_GOOGLE_LALALA
 	default "Magolor" if BOARD_GOOGLE_MAGOLOR
 	default "Metaknight" if BOARD_GOOGLE_METAKNIGHT
@@ -109,7 +106,6 @@ config MAINBOARD_PART_NUMBER
 	default "Cret" if BOARD_GOOGLE_CRET
 	default "Pirika" if BOARD_GOOGLE_PIRIKA
 	default "Haboki" if BOARD_GOOGLE_HABOKI
-	default "Cappy" if BOARD_GOOGLE_CAPPY
 	default "Cappy2" if BOARD_GOOGLE_CAPPY2
 	default "Bugzzy" if BOARD_GOOGLE_BUGZZY
 	default "Corori" if BOARD_GOOGLE_CORORI
@@ -129,14 +125,11 @@ config UART_FOR_CONSOLE
 
 config VARIANT_DIR
 	default "boten" if BOARD_GOOGLE_BOTEN
-	default "boten" if BOARD_GOOGLE_BOTEN_LEGACY
 	default "dedede" if BOARD_GOOGLE_DEDEDE
 	default "drawcia" if BOARD_GOOGLE_DRAWCIA
-	default "drawcia" if BOARD_GOOGLE_DRAWCIA_LEGACY
 	default "madoo" if BOARD_GOOGLE_MADOO
 	default "waddledoo" if BOARD_GOOGLE_WADDLEDOO
 	default "waddledee" if BOARD_GOOGLE_WADDLEDEE
-	default "wheelie" if BOARD_GOOGLE_WHEELIE
 	default "lalala" if BOARD_GOOGLE_LALALA
 	default "magolor" if BOARD_GOOGLE_MAGOLOR
 	default "metaknight" if BOARD_GOOGLE_METAKNIGHT
@@ -150,7 +143,6 @@ config VARIANT_DIR
 	default "cret" if BOARD_GOOGLE_CRET
 	default "pirika" if BOARD_GOOGLE_PIRIKA
 	default "haboki" if BOARD_GOOGLE_HABOKI
-	default "cappy" if BOARD_GOOGLE_CAPPY
 	default "cappy2" if BOARD_GOOGLE_CAPPY2
 	default "bugzzy" if BOARD_GOOGLE_BUGZZY
 	default "corori" if BOARD_GOOGLE_CORORI

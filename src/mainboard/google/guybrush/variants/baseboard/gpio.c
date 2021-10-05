@@ -193,6 +193,12 @@ static const struct soc_amd_gpio early_gpio_table[] = {
 	/* EN_PWR_WWAN_X */
 	PAD_GPO(GPIO_8, HIGH),
 
+/* Put WWAN into reset */
+	/* WWAN_RST_L */
+	PAD_GPO(GPIO_24, LOW),
+	/* WWAN_DISABLE */
+	PAD_GPO(GPIO_85, HIGH),
+
 /* Enable ESPI, GSC Interrupt & I2C Communication */
 	/* GSC_SOC_INT_L */
 	PAD_INT(GPIO_3, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
@@ -246,13 +252,13 @@ static const struct soc_amd_gpio early_gpio_table[] = {
  */
 
 static const struct soc_amd_gpio bootblock_gpio_table[] = {
-	/* Enable WWAN & WLAN power, Deassert WWAN reset */
-	/* EN_PWR_WWAN_X */
-	PAD_GPO(GPIO_8, HIGH),
+	/* Enable WWAN, Deassert WWAN reset, keep WWAN PCIe Aux reset asserted */
 	/* WWAN_RST_L */
 	PAD_GPO(GPIO_24, HIGH),
 	/* WWAN_DISABLE */
 	PAD_GPO(GPIO_85, LOW),
+
+	/* Enable WLAN */
 	/* WLAN_DISABLE */
 	PAD_GPO(GPIO_130, LOW),
 };
@@ -264,14 +270,6 @@ static const struct soc_amd_gpio sleep_gpio_table[] = {
 
 /* PCIE_RST needs to be brought high before FSP-M runs */
 static const struct soc_amd_gpio pcie_gpio_table[] = {
-	/* Allow WWAN power to be overridden by platform */
-	/* EN_PWR_WWAN_X */
-	PAD_GPO(GPIO_8, HIGH),
-	/* WWAN_RST_L */
-	PAD_GPO(GPIO_24, HIGH),
-	/* WWAN_DISABLE */
-	PAD_GPO(GPIO_85, LOW),
-
 	/* Deassert all AUX_RESET lines & PCIE_RST */
 	/* WWAN_AUX_RESET_L */
 	PAD_GPO(GPIO_18, HIGH),
@@ -319,6 +317,7 @@ const struct soc_amd_gpio *__weak variant_override_gpio_table(size_t *size)
 
 const struct soc_amd_gpio * __weak variant_early_override_gpio_table(size_t *size)
 {
+	/* Note that when overriding this, board ID & CBI is not available */
 	*size = 0;
 	return NULL;
 }
@@ -363,7 +362,7 @@ __weak void variant_fpmcu_reset(void)
 		/* EN_PWR_FP */
 		PAD_GPO(GPIO_32, LOW),
 	};
-	program_gpios(fpmcu_bootblock_table, ARRAY_SIZE(fpmcu_bootblock_table));
+	gpio_configure_pads(fpmcu_bootblock_table, ARRAY_SIZE(fpmcu_bootblock_table));
 }
 
 __weak void variant_finalize_gpios(void)
@@ -381,6 +380,6 @@ __weak void variant_finalize_gpios(void)
 		/* Deassert the FPMCU reset to enable the FPMCU */
 		gpio_set(GPIO_11, 1); /* FPMCU_RST_L */
 	} else {
-		program_gpios(disable_fpmcu_table, ARRAY_SIZE(disable_fpmcu_table));
+		gpio_configure_pads(disable_fpmcu_table, ARRAY_SIZE(disable_fpmcu_table));
 	}
 }

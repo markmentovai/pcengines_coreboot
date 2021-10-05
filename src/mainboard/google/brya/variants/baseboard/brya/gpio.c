@@ -158,8 +158,7 @@ static const struct pad_config gpio_table[] = {
 	/* D19 : I2S_MCLK1_OUT ==> I2S_MCLK_R */
 	PAD_CFG_NF(GPP_D19, NONE, DEEP, NF1),
 
-	/* E0  : SATAXPCIE0 ==> WWAN_PERST_L */
-	PAD_CFG_GPO(GPP_E0, 1, PLTRST),
+	/* E0  : see end of E group */
 	/* E1  : THC0_SPI1_IO2 ==> MEM_STRAP_2 */
 	PAD_CFG_GPI(GPP_E1, NONE, DEEP),
 	/* E2  : THC0_SPI1_IO3 ==> MEM_STRAP_1 */
@@ -167,7 +166,7 @@ static const struct pad_config gpio_table[] = {
 	/* E3  : PROC_GP0 ==> HPS_INT_ODL */
 	PAD_CFG_GPI_IRQ_WAKE(GPP_E3, NONE, PLTRST, LEVEL, NONE),
 	/* E4  : SATA_DEVSLP0 ==> USB4_BB_RT_FORCE_PWR */
-	PAD_CFG_GPO(GPP_E4, 1, DEEP),
+	PAD_CFG_GPO(GPP_E4, 0, DEEP),
 	/* E5  : SATA_DEVSLP1 ==> USB_A0_RT_RST_ODL */
 	PAD_CFG_GPO(GPP_E5, 1, DEEP),
 	/* E6  : THC0_SPI1_RST# ==> GPPE6_STRAP */
@@ -206,6 +205,11 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_NF(GPP_E22, NONE, DEEP, NF6),
 	/* E23 : DDPA_CTRLDATA ==> USB_C0_AUX_DC_N */
 	PAD_CFG_NF(GPP_E23, NONE, DEEP, NF6),
+	/* E0 : SATAXPCIE0 ==> WWAN_PERST_L
+	   NB. Driven high here so that it is sequenced after WWAN_RST_L; a
+	   PERST# signal would normally be reset by PLRST#, but here it will be
+	   explicitly programmed during a power-down sequence. */
+	PAD_CFG_GPO(GPP_E0, 1, DEEP),
 
 	/* F0  : CNV_BRI_DT ==> CNV_BRI_DT_STRAP */
 	PAD_CFG_NF(GPP_F0, NONE, DEEP, NF1),
@@ -384,6 +388,8 @@ static const struct pad_config early_gpio_table[] = {
 	PAD_CFG_GPO(GPP_A12, 1, DEEP),
 	/* A13 : PMC_I2C_SCL ==> GSC_PCH_INT_ODL */
 	PAD_CFG_GPI_APIC(GPP_A13, NONE, PLTRST, LEVEL, INVERT),
+	/* B4  : PROC_GP3 ==> SSD_PERST_L */
+	PAD_CFG_GPO(GPP_B4, 0, DEEP),
 	/* B7  : ISH_12C1_SDA ==> PCH_I2C_TPM_SDA */
 	PAD_CFG_NF(GPP_B7, NONE, DEEP, NF2),
 	/* B8  : ISH_12C1_SCL ==> PCH_I2C_TPM_SCL */
@@ -443,4 +449,10 @@ const struct cros_gpio *__weak variant_cros_gpios(size_t *num)
 {
 	*num = ARRAY_SIZE(cros_gpios);
 	return cros_gpios;
+}
+
+const struct pad_config *__weak variant_romstage_gpio_table(size_t *num)
+{
+	*num = 0;
+	return NULL;
 }

@@ -180,8 +180,15 @@ The boards in this section are not real mainboards, but emulators.
 
 ## System76
 
+- [Adder Workstation 1](system76/addw1.md)
+- [Adder Workstation 2](system76/addw2.md)
+- [Darter Pro 6](system76/darp6.md)
+- [Darter Pro 7](system76/darp7.md)
+- [Galago Pro 4](system76/galp4.md)
+- [Galago Pro 5](system76/galp5.md)
 - [Gazelle 15](system76/gaze15.md)
-- [Lemur Pro](system76/lemp9.md)
+- [Lemur Pro 9](system76/lemp9.md)
+- [Lemur Pro 10](system76/lemp10.md)
 - [Oryx Pro 5](system76/oryp5.md)
 - [Oryx Pro 6](system76/oryp6.md)
 

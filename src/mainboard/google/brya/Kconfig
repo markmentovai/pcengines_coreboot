@@ -1,10 +1,12 @@
 config BOARD_GOOGLE_BASEBOARD_BRYA
 	def_bool n
-	select ROMSTAGE_SPD_CBFS
+	select CHROMEOS_DRAM_PART_NUMBER_IN_CBI if CHROMEOS
+	select HAVE_SPD_IN_CBFS
 	select SYSTEM_TYPE_LAPTOP
 
 config BOARD_GOOGLE_BASEBOARD_BRASK
 	def_bool n
+	select SPD_CACHE_IN_FMAP
 
 if BOARD_GOOGLE_BASEBOARD_BRYA || BOARD_GOOGLE_BASEBOARD_BRASK
 
@@ -43,7 +45,6 @@ config BOARD_GOOGLE_BRYA_COMMON
 	select SOC_INTEL_COMMON_BLOCK_PCIE_RTD3
 	select SOC_INTEL_CSE_LITE_SKU
 	select INTEL_CAR_NEM #TODO - Enable INTEL_CAR_NEM_ENHANCED
-	select SOC_INTEL_COMMON_BLOCK_TCSS
 
 config BASEBOARD_DIR
 	string
@@ -51,10 +52,17 @@ config BASEBOARD_DIR
 	default "brask" if BOARD_GOOGLE_BASEBOARD_BRASK
 
 config CHROMEOS
-	select CHROMEOS_DRAM_PART_NUMBER_IN_CBI
 	select EC_GOOGLE_CHROMEEC_SWITCHES
 	select HAS_RECOVERY_MRC_CACHE
 	select VBOOT_LID_SWITCH
+
+config CHROMEOS_WIFI_SAR
+	bool "Enable SAR options for Chrome OS build"
+	depends on CHROMEOS
+	select DSAR_ENABLE
+	select GEO_SAR_ENABLE
+	select SAR_ENABLE
+	select USE_SAR
 
 config DEVICETREE
 	default "variants/baseboard/\$(CONFIG_BASEBOARD_DIR)/devicetree.cb"
@@ -111,8 +119,12 @@ config UART_FOR_CONSOLE
 	int
 	default 0
 
-config ROMSTAGE_SPD_CBFS
+config HAVE_WWAN_POWER_SEQUENCE
 	def_bool n
-	select HAVE_SPD_IN_CBFS
+	help
+	  Select this if the variant has a WWAN module and requires the poweroff sequence
+	  to be performed on shutdown. Must define WWAN_FCPO, WWAN_RST and WWAN_PERST GPIOs
+	  in variant.h, as well as T1_OFF_MS (time between PERST & RST) and T2_OFF_MS (time
+	  between RST and FCPO).
 
 endif # BOARD_GOOGLE_BASEBOARD_BRYA || BOARD_GOOGLE_BASEBOARD_BRASK

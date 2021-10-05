@@ -174,16 +174,18 @@ static struct device_operations pci_domain_ops = {
 	.read_resources   = &pci_domain_read_resources,
 	.set_resources    = &pci_domain_set_resources,
 	.scan_bus         = &pci_domain_scan_bus,
-	#if CONFIG(HAVE_ACPI_TABLES)
+#if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name        = &soc_acpi_name,
-	#endif
+#endif
 };
 
 static struct device_operations cpu_bus_ops = {
 	.read_resources   = noop_read_resources,
 	.set_resources    = noop_set_resources,
 	.enable_resources = cpu_set_north_irqs,
+#if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_fill_ssdt   = cpu_fill_ssdt,
+#endif
 };
 
 static void soc_enable(struct device *dev)
@@ -195,6 +197,9 @@ static void soc_enable(struct device *dev)
 		dev->ops = &cpu_bus_ops;
 	else if (dev->path.type == DEVICE_PATH_GPIO)
 		block_gpio_enable(dev);
+	else if (dev->path.type == DEVICE_PATH_PCI &&
+		 dev->path.pci.devfn == PCH_DEVFN_PMC)
+		dev->ops = &pmc_ops;
 }
 
 struct chip_operations soc_intel_cannonlake_ops = {

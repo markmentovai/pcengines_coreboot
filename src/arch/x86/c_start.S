@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <cpu/x86/cpu_info.S.inc>
 #include <cpu/x86/post_code.h>
 #include <arch/ram_segs.h>
 
@@ -38,8 +39,9 @@ _start:
 	movl	%eax, %ds
 	movl	%eax, %es
 	movl	%eax, %ss
+	xor	%eax, %eax /* zero out the gs and fs segment index */
 	movl	%eax, %fs
-	movl	%eax, %gs
+	movl	%eax, %gs /* Will be used for cpu_info */
 #if ENV_X86_64
 	mov	$RAM_CODE_SEG64, %ecx
 	call	SetCodeSelector
@@ -76,13 +78,7 @@ _start:
 	movl	$_estack, %esp
 	andl	$(~(CONFIG_STACK_SIZE-1)), %esp
 
-#if CONFIG(COOP_MULTITASKING)
-	/* Push the thread pointer. */
-	push	$0
-#endif
-	/* Push the CPU index and struct CPU */
-	push	$0
-	push	$0
+	push_cpu_info
 
 	/*
 	 *	Now we are finished. Memory is up, data is copied and

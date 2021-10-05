@@ -253,6 +253,7 @@ static void add_cbmem_pointers(struct lb_header *header)
 		{CBMEM_ID_DRTM_LOG, LB_TAG_PLATFORM_BLOB_VERSION},
 		{CBMEM_ID_FMAP, LB_TAG_FMAP},
 		{CBMEM_ID_VBOOT_WORKBUF, LB_TAG_VBOOT_WORKBUF},
+		{CBMEM_ID_TYPE_C_INFO, LB_TAG_TYPE_C_INFO},
 	};
 	int i;
 

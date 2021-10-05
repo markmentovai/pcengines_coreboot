@@ -35,6 +35,9 @@ int smbios_write_type41(unsigned long *current, int *handle,
 			const char *name, u8 instance, u16 segment,
 			u8 bus, u8 device, u8 function, u8 device_type);
 
+struct device;
+int get_smbios_data(struct device *dev, int *handle, unsigned long *current);
+
 const char *smbios_system_manufacturer(void);
 const char *smbios_system_product_name(void);
 const char *smbios_system_serial_number(void);
@@ -825,7 +828,7 @@ enum {
 	SMBIOS_EVENTLOG_STATUS_FULL  = 2, /* Bit 1 */
 };
 
-#define SMBIOS_USE_EXTENDED_MAX_CAPACITY	(1 << 31)
+#define SMBIOS_USE_EXTENDED_MAX_CAPACITY	(1ULL << 31)
 
 struct smbios_type16 {
 	struct smbios_header header;

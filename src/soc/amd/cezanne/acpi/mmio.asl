@@ -88,8 +88,7 @@ Device (FUR0)
 		}
 	}
 
-	// TODO(b/183983959): Enable the AOAC register access later.
-	// AOAC_DEVICE(FCH_AOAC_DEV_UART0, 0)
+	AOAC_DEVICE(FCH_AOAC_DEV_UART0, 0)
 }
 
 Device (FUR1) {
@@ -120,8 +119,7 @@ Device (FUR1) {
 		}
 	}
 
-	// TODO(b/183983959): Enable the AOAC register access later.
-	// AOAC_DEVICE(FCH_AOAC_DEV_UART1, 0)
+	AOAC_DEVICE(FCH_AOAC_DEV_UART1, 0)
 }
 
 Device (I2C0) {
@@ -157,8 +155,7 @@ Device (I2C0) {
 		Return (0x0F)
 	}
 
-	// TODO(b/183983959): Enable the AOAC register access later.
-	// AOAC_DEVICE(FCH_AOAC_DEV_I2C0, 0)
+	AOAC_DEVICE(FCH_AOAC_DEV_I2C0, 0)
 }
 
 Device (I2C1) {
@@ -194,8 +191,7 @@ Device (I2C1) {
 		Return (0x0F)
 	}
 
-	// TODO(b/183983959): Enable the AOAC register access later.
-	// AOAC_DEVICE(FCH_AOAC_DEV_I2C1, 0)
+	AOAC_DEVICE(FCH_AOAC_DEV_I2C1, 0)
 }
 
 Device (I2C2) {
@@ -231,8 +227,7 @@ Device (I2C2) {
 		Return (0x0F)
 	}
 
-	// TODO(b/183983959): Enable the AOAC register access later.
-	// AOAC_DEVICE(FCH_AOAC_DEV_I2C2, 0)
+	AOAC_DEVICE(FCH_AOAC_DEV_I2C2, 0)
 }
 
 Device (I2C3)
@@ -268,8 +263,7 @@ Device (I2C3)
 		Return (0x0F)
 	}
 
-	// TODO(b/183983959): Enable the AOAC register access later.
-	// AOAC_DEVICE(FCH_AOAC_DEV_I2C3, 0)
+	AOAC_DEVICE(FCH_AOAC_DEV_I2C3, 0)
 }
 
 Device (MISC)
