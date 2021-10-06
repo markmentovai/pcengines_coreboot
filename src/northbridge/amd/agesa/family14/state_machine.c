@@ -94,6 +94,7 @@ void platform_BeforeInitMid(struct sysinfo *cb, AMD_MID_PARAMS *Mid)
 
 void platform_BeforeInitLate(struct sysinfo *cb, AMD_LATE_PARAMS *Late)
 {
+	Late->PlatformConfig.ProcessorScopeInSb = 1;
 }
 
 void platform_AfterInitLate(struct sysinfo *cb, AMD_LATE_PARAMS *Late)
