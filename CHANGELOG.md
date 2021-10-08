@@ -12,6 +12,12 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
+## [v4.14.0.5] - 2021-10-08
+### Changed
+- rebased with official coreboot repository commit d4c55353
+- Updated CPU declarations in ACPI to comply with newer ACPI standard
+- Removed GPIO bindings to fix conflict with OS drivers
+
 ## [v4.14.0.4] - 2021-09-06
 ### Changed
 - rebased with official coreboot repository commit d9f5d90
