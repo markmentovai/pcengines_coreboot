@@ -45,10 +45,11 @@ chip soc/amd/cezanne
 	register "sustained_power_limit_mW"  = "15000"
 	register "thermctl_limit_degreeC"    = "100"
 
-	register "telemetry_vddcrvddfull_scale_current_mA" = "92165" #mA
-	register "telemetry_vddcrvddoffset" =  "412"
-	register "telemetry_vddcrsocfull_scale_current_mA" = "30233" #mA
-	register "telemetry_vddcrsocoffset" =  "457"
+	#Update values based on final stardust SDLE test report.
+	register "telemetry_vddcrvddfull_scale_current_mA" = "94648" #mA
+	register "telemetry_vddcrvddoffset" =  "785"
+	register "telemetry_vddcrsocfull_scale_current_mA" = "30314" #mA
+	register "telemetry_vddcrsocoffset" =  "560"
 
 	# I2C Config
 	#+-------------------+---------------------------+
@@ -162,13 +163,10 @@ chip soc/amd/cezanne
 			register "irq_gpio" = "ACPI_GPIO_IRQ_LEVEL_LOW(GPIO_21)"
 			register "wake" = "GEVENT_5"
 			register "uart" = "ACPI_UART_RAW_DEVICE(3000000, 64)"
-			device generic 0 on
+			device generic 0 alias fpmcu on
 				probe FP FP_PRESENT
 			end
 		end
 	end
-
-	# TODO(b/198596430): Disable in-band alerts after majority boards are reworked
-	register "common_config.espi_config.alert_pin" = "ESPI_ALERT_PIN_IN_BAND"
 
 end	# chip soc/amd/cezanne

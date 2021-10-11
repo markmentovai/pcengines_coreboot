@@ -455,7 +455,7 @@ static int start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
 		mdelay(10);
 	}
 
-	/* Send 1st SIPI */
+	/* Send 1st Startup IPI (SIPI) */
 	if (lapic_busy()) {
 		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...");
 		if (apic_wait_timeout(1000 /* 1 ms */, 50)) {
@@ -714,6 +714,11 @@ static void smm_enable(void)
 		mp_state.do_smm = 1;
 }
 
+/*
+ * This code is built as part of ramstage, but it actually runs in SMM. This
+ * means that ENV_SMM is 0, but we are actually executing in the environment
+ * setup by the smm_stub.
+ */
 static void asmlinkage smm_do_relocation(void *arg)
 {
 	const struct smm_module_params *p;

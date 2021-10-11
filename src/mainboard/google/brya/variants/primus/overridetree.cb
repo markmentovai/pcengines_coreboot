@@ -24,6 +24,8 @@ end
 chip soc/intel/alderlake
 
 	register "SaGv" = "SaGv_Enabled"
+	register "MaxDramSpeed" = "3733"
+
 	# Intel Common SoC Config
 	#+-------------------+---------------------------+
 	#| Field             |  Value                    |
@@ -107,7 +109,7 @@ chip soc/intel/alderlake
 					[2] = {  16, 1000 },
 					[3] = {   8,  500 }
 				}"
-				device generic 0 on end
+				device generic 0 alias dptf_policy on end
 			end
 		end
 		device ref cnvi_wifi on
@@ -134,7 +136,7 @@ chip soc/intel/alderlake
 		device ref tcss_dma1 on
 			chip drivers/intel/usb4/retimer
 				register "dfp[0].power_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_E4)"
-                                use tcss_usb3_port3 as dfp[0].typec_port
+				use tcss_usb3_port3 as dfp[0].typec_port
 				device generic 0 on end
 			end
 		end
@@ -228,7 +230,7 @@ chip soc/intel/alderlake
 		end
 		device ref hda on
 			chip drivers/generic/max98357a
-				register "hid" = ""MX98357A""
+				register "hid" = ""MX98360A""
 				register "sdmode_gpio" =
 						"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_A11)"
 				register "sdmode_delay" = "5"

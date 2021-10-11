@@ -61,10 +61,10 @@ static const struct pad_config gpio_table[] = {
 	PAD_NC(GPP_B3, NONE),
 	/* B4  : PROC_GP3 ==> SSD_PERST_L */
 	PAD_CFG_GPO(GPP_B4, 1, DEEP),
-	/* B5  : ISH_I2C0_SDA ==> NC */
-	PAD_NC(GPP_B5, NONE),
-	/* B6  : ISH_I2C0_SCL ==> NC */
-	PAD_NC(GPP_B6, NONE),
+	/* B5  : ISH_I2C0_SDA ==> PCH_I2C_MISC_SDA */
+	PAD_CFG_NF(GPP_B5, NONE, DEEP, NF2),
+	/* B6  : ISH_I2C0_SCL ==> PCH_I2C_MISC_SCL */
+	PAD_CFG_NF(GPP_B6, NONE, DEEP, NF2),
 	/* B7  : ISH_12C1_SDA ==> PCH_I2C_TPM_SDA */
 	PAD_CFG_NF(GPP_B7, NONE, DEEP, NF2),
 	/* B8  : ISH_I2C1_SCL ==> PCH_I2C_TPM_SCL */
@@ -167,7 +167,7 @@ static const struct pad_config gpio_table[] = {
 	/* E3  : PROC_GP0 ==> TP94644 */
 	PAD_NC(GPP_E3, NONE),
 	/* E4  : SATA_DEVSLP0 ==> USB4_BB_RT_FORCE_PWR */
-	PAD_CFG_GPO(GPP_E4, 1, DEEP),
+	PAD_CFG_GPO(GPP_E4, 0, DEEP),
 	/* E5  : SATA_DEVSLP1 ==> NC */
 	PAD_NC(GPP_E5, NONE),
 	/* E6  : THC0_SPI1_RST# ==> GPPE6_STRAP */
@@ -369,6 +369,8 @@ static const struct pad_config gpio_table[] = {
 static const struct pad_config early_gpio_table[] = {
 	/* A13 : PMC_I2C_SCL ==> GSC_PCH_INT_ODL */
 	PAD_CFG_GPI_APIC(GPP_A13, NONE, PLTRST, LEVEL, INVERT),
+	/* B4  : PROC_GP3 ==> SSD_PERST_L */
+	PAD_CFG_GPO(GPP_B4, 0, DEEP),
 	/* B7  : ISH_12C1_SDA ==> PCH_I2C_TPM_SDA */
 	PAD_CFG_NF(GPP_B7, NONE, DEEP, NF2),
 	/* B8  : ISH_12C1_SCL ==> PCH_I2C_TPM_SCL */
@@ -384,6 +386,8 @@ static const struct pad_config early_gpio_table[] = {
 	PAD_CFG_GPO(GPP_D1, 0, DEEP),
 	/* D2  : ISH_GP2 ==> EN_FP_PWR */
 	PAD_CFG_GPO(GPP_D2, 1, DEEP),
+	/* D11 : ISH_SPI_MISO ==> EN_PP3300_SSD */
+	PAD_CFG_GPO(GPP_D11, 1, DEEP),
 	/* E15 : RSVD_TP ==> PCH_WP_OD */
 	PAD_CFG_GPI_GPIO_DRIVER(GPP_E15, NONE, DEEP),
 	/* H10 : UART0_RXD ==> UART_PCH_RX_DBG_TX */
@@ -392,6 +396,11 @@ static const struct pad_config early_gpio_table[] = {
 	PAD_CFG_NF(GPP_H11, NONE, DEEP, NF2),
 	/* H13 : I2C7_SCL ==> EN_PP3300_SD */
 	PAD_CFG_GPO(GPP_H13, 1, DEEP),
+};
+
+static const struct pad_config romstage_gpio_table[] = {
+	/* B4  : PROC_GP3 ==> SSD_PERST_L */
+	PAD_CFG_GPO(GPP_B4, 1, DEEP),
 };
 
 const struct pad_config *__weak variant_gpio_table(size_t *num)
@@ -421,4 +430,10 @@ const struct cros_gpio *__weak variant_cros_gpios(size_t *num)
 {
 	*num = ARRAY_SIZE(cros_gpios);
 	return cros_gpios;
+}
+
+const struct pad_config *__weak variant_romstage_gpio_table(size_t *num)
+{
+	*num = ARRAY_SIZE(romstage_gpio_table);
+	return romstage_gpio_table;
 }

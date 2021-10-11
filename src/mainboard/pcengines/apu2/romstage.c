@@ -7,7 +7,7 @@
 #include <arch/io.h>
 #include <arch/mmio.h>
 #include <amdblocks/acpimmio.h>
-#include <amdblocks/gpio_banks.h>
+#include <amdblocks/gpio.h>
 #include <amdblocks/gpio_defs.h>
 #include <device/pci_def.h>
 #include <device/pci_ops.h>
@@ -77,16 +77,16 @@ const struct soc_amd_gpio gpio_apu5[] = {
 
 static void early_lpc_init(void)
 {
-	program_gpios(gpio_common, ARRAY_SIZE(gpio_common));
+	gpio_configure_pads(gpio_common, ARRAY_SIZE(gpio_common));
 
 	if (CONFIG(BOARD_PCENGINES_APU2))
-		program_gpios(gpio_apu2, ARRAY_SIZE(gpio_apu2));
+		gpio_configure_pads(gpio_apu2, ARRAY_SIZE(gpio_apu2));
 
 	if (CONFIG(BOARD_PCENGINES_APU3) || CONFIG(BOARD_PCENGINES_APU4))
-		program_gpios(gpio_apu34, ARRAY_SIZE(gpio_apu34));
+		gpio_configure_pads(gpio_apu34, ARRAY_SIZE(gpio_apu34));
 
 	if (CONFIG(BOARD_PCENGINES_APU5))
-		program_gpios(gpio_apu5, ARRAY_SIZE(gpio_apu5));
+		gpio_configure_pads(gpio_apu5, ARRAY_SIZE(gpio_apu5));
 }
 
 static const char *mainboard_bios_version(void)

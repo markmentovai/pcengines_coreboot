@@ -5,7 +5,6 @@ subdirs-y += ../../../cpu/intel/microcode
 subdirs-y += ../../../cpu/intel/turbo
 subdirs-y += ../../../cpu/x86/lapic
 subdirs-y += ../../../cpu/x86/mtrr
-subdirs-y += ../../../cpu/x86/tsc
 subdirs-y += ../../../cpu/x86/cache
 
 bootblock-y += bootblock/bootblock.c
@@ -93,11 +92,13 @@ bootblock-y += gpio_glk.c
 romstage-y += gpio_glk.c
 smm-y += gpio_glk.c
 ramstage-y += gpio_glk.c
+verstage-y += gpio_glk.c
 else
 bootblock-y += gpio_apl.c
 romstage-y += gpio_apl.c
 smm-y += gpio_apl.c
 ramstage-y += gpio_apl.c
+verstage-y += gpio_apl.c
 endif
 
 CPPFLAGS_common += -I$(src)/soc/intel/apollolake/include

@@ -4,7 +4,6 @@ subdirs-y += ../../../cpu/intel/microcode
 subdirs-y += ../../../cpu/intel/turbo
 subdirs-y += ../../../cpu/x86/lapic
 subdirs-y += ../../../cpu/x86/mtrr
-subdirs-y += ../../../cpu/x86/tsc
 
 # all (bootblock, verstage, romstage, postcar, ramstage)
 all-y += gspi.c
@@ -46,6 +45,8 @@ ramstage-y += systemagent.c
 ramstage-y += vr_config.c
 ramstage-y += xhci.c
 ramstage-$(CONFIG_SOC_INTEL_CRASHLOG) += crashlog.c
+
+verstage-y += gpio.c
 
 smm-y += elog.c
 smm-y += gpio.c

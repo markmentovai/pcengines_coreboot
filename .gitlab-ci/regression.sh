@@ -2,6 +2,7 @@
 
 git clone https://$GITLAB_ROBOT_USERNAME:$GITLAB_ROBOT_TOKEN@$TESTS_REPO_GIT
 cd $TESTS_REPO_DIR
+git checkout a20523022bdd6ecdb419bc952f866babce77a179
 
 sed -i 's+git@gitlab.com:3mdeb/rte/rtectrl-rest-api.git+https://'$GITLAB_ROBOT_USERNAME':'$GITLAB_ROBOT_TOKEN'@gitlab.com/3mdeb/rte/rtectrl-rest-api.git+' .gitmodules
 sed -i 's+git@gitlab.com:3mdeb/rte/snipeit-rest-api.git+https://'$GITLAB_ROBOT_USERNAME':'$GITLAB_ROBOT_TOKEN'@gitlab.com/3mdeb/rte/snipeit-rest-api.git+' .gitmodules

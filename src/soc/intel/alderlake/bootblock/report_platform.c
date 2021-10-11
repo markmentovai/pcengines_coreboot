@@ -26,6 +26,7 @@ static struct {
 	{ CPUID_ALDERLAKE_A0, "Alderlake Platform" },
 	{ CPUID_ALDERLAKE_A1, "Alderlake Platform" },
 	{ CPUID_ALDERLAKE_A2, "Alderlake Platform" },
+	{ CPUID_ALDERLAKE_A3, "Alderlake Platform" },
 };
 
 static struct {
@@ -109,6 +110,7 @@ static struct {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_6, "Alderlake P GT2" },
 	{ PCI_DEVICE_ID_INTEL_ADL_M_GT1, "Alderlake M GT1" },
 	{ PCI_DEVICE_ID_INTEL_ADL_M_GT2, "Alderlake M GT2" },
+	{ PCI_DEVICE_ID_INTEL_ADL_M_GT3, "Alderlake M GT3" },
 };
 
 static inline uint8_t get_dev_revision(pci_devfn_t dev)

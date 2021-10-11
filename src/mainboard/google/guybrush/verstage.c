@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <amdblocks/acpimmio.h>
-#include <amdblocks/gpio_banks.h>
+#include <amdblocks/gpio.h>
 #include <arch/io.h>
 #include <baseboard/variants.h>
 #include <security/vboot/vboot_common.h>
@@ -13,7 +13,7 @@ static void setup_gpio(void)
 
 	if (CONFIG(VBOOT_STARTS_BEFORE_BOOTBLOCK)) {
 		gpios = variant_early_gpio_table(&num_gpios);
-		program_gpios(gpios, num_gpios);
+		gpio_configure_pads(gpios, num_gpios);
 	}
 }
 

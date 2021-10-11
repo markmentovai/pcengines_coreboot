@@ -16,8 +16,10 @@ const struct pad_config *variant_gpio_table(size_t *num);
 const struct pad_config *variant_gpio_override_table(size_t *num);
 const struct pad_config *variant_early_gpio_table(size_t *num);
 const struct cros_gpio *variant_cros_gpios(size_t *num);
+const struct pad_config *variant_romstage_gpio_table(size_t *num);
 
 const struct mb_cfg *variant_memory_params(void);
+void variant_get_spd_info(struct mem_spd *spd_info);
 int variant_memory_sku(void);
 bool variant_is_half_populated(void);
 void variant_update_soc_chip_config(struct soc_intel_alderlake_config *config);
@@ -37,6 +39,6 @@ struct cpu_power_limits {
 
 /* Modify Power Limit devictree settings during ramstage */
 void variant_update_power_limits(const struct cpu_power_limits *limits,
-									size_t num_entries);
+				 size_t num_entries);
 
 #endif /*__BASEBOARD_VARIANTS_H__ */

@@ -7,11 +7,15 @@ config BOARD_GOOGLE_BUBS
 	select BOARD_GOOGLE_TROGDOR_COMMON
 
 config BOARD_GOOGLE_COACHZ
-	bool "-> Coachz"
+	bool "->  Coachz"
 	select BOARD_GOOGLE_TROGDOR_COMMON
 
 config BOARD_GOOGLE_HOMESTAR
 	bool "->  Homestar"
+	select BOARD_GOOGLE_TROGDOR_COMMON
+
+config BOARD_GOOGLE_KINGOFTOWN
+	bool "->  Kingoftown"
 	select BOARD_GOOGLE_TROGDOR_COMMON
 
 config BOARD_GOOGLE_LAZOR
@@ -32,6 +36,10 @@ config BOARD_GOOGLE_PAZQUEL
 
 config BOARD_GOOGLE_POMPOM
 	bool "->  Pompom"
+	select BOARD_GOOGLE_TROGDOR_COMMON
+
+config BOARD_GOOGLE_QUACKINGSTICK
+	bool "->  Quackingstick"
 	select BOARD_GOOGLE_TROGDOR_COMMON
 
 config BOARD_GOOGLE_WORMDINGLER

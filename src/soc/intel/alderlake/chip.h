@@ -25,14 +25,17 @@ enum soc_intel_alderlake_power_limits {
 	ADL_P_482_CORE,
 	ADL_P_682_28W_CORE,
 	ADL_P_682_45W_CORE,
-	ADL_M_282_CORE,
+	ADL_M_282_12W_CORE,
+	ADL_M_282_15W_CORE,
 	ADL_M_242_CORE,
+	ADL_P_242_CORE,
 	ADL_POWER_LIMITS_COUNT
 };
 
 /* TDP values for different SKUs */
 enum soc_intel_alderlake_cpu_tdps {
 	TDP_9W  = 9,
+	TDP_12W = 12,
 	TDP_15W = 15,
 	TDP_28W = 28,
 	TDP_45W = 45
@@ -45,10 +48,12 @@ static const struct {
 	enum soc_intel_alderlake_cpu_tdps cpu_tdp;
 } cpuid_to_adl[] = {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_7, ADL_P_282_CORE, TDP_15W },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_6, ADL_P_242_CORE, TDP_15W },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_5, ADL_P_482_CORE, TDP_28W },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_3, ADL_P_682_28W_CORE, TDP_28W },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_3, ADL_P_682_45W_CORE, TDP_45W },
-	{ PCI_DEVICE_ID_INTEL_ADL_M_ID_1, ADL_M_282_CORE, TDP_15W },
+	{ PCI_DEVICE_ID_INTEL_ADL_M_ID_1, ADL_M_282_12W_CORE, TDP_12W },
+	{ PCI_DEVICE_ID_INTEL_ADL_M_ID_1, ADL_M_282_15W_CORE, TDP_15W },
 	{ PCI_DEVICE_ID_INTEL_ADL_M_ID_2, ADL_M_242_CORE, TDP_9W },
 };
 
@@ -114,6 +119,20 @@ enum pkgcstate_limit {
 	LIMIT_C10        = 8,
 	LIMIT_CPUDEFAULT = 254,
 	LIMIT_AUTO       = 255,
+};
+
+/* Bit values for use in LpmStateEnableMask. */
+enum lpm_state_mask {
+	LPM_S0i2_0 = BIT(0),
+	LPM_S0i2_1 = BIT(1),
+	LPM_S0i2_2 = BIT(2),
+	LPM_S0i3_0 = BIT(3),
+	LPM_S0i3_1 = BIT(4),
+	LPM_S0i3_2 = BIT(5),
+	LPM_S0i3_3 = BIT(6),
+	LPM_S0i3_4 = BIT(7),
+	LPM_S0iX_ALL = LPM_S0i2_0 | LPM_S0i2_1 | LPM_S0i2_2
+		     | LPM_S0i3_0 | LPM_S0i3_1 | LPM_S0i3_2 | LPM_S0i3_3 | LPM_S0i3_4,
 };
 
 struct soc_intel_alderlake_config {
@@ -422,6 +441,60 @@ struct soc_intel_alderlake_config {
 	* 0 = VR_DOMAIN_IA Core 1 = VR_DOMAIN_GT.
 	*/
 	struct vr_config domain_vr_config[NUM_VR_DOMAINS];
+
+	uint16_t MaxDramSpeed;
+
+	enum {
+		SLP_S3_ASSERTION_DEFAULT,
+		SLP_S3_ASSERTION_60_US,
+		SLP_S3_ASSERTION_1_MS,
+		SLP_S3_ASSERTION_50_MS,
+		SLP_S3_ASSERTION_2_S,
+	} pch_slp_s3_min_assertion_width;
+
+	enum {
+		SLP_S4_ASSERTION_DEFAULT,
+		SLP_S4_ASSERTION_1S,
+		SLP_S4_ASSERTION_2S,
+		SLP_S4_ASSERTION_3S,
+		SLP_S4_ASSERTION_4S,
+	} pch_slp_s4_min_assertion_width;
+
+	enum {
+		SLP_SUS_ASSERTION_DEFAULT,
+		SLP_SUS_ASSERTION_0_MS,
+		SLP_SUS_ASSERTION_500_MS,
+		SLP_SUS_ASSERTION_1_S,
+		SLP_SUS_ASSERTION_4_S,
+	} pch_slp_sus_min_assertion_width;
+
+	enum {
+		SLP_A_ASSERTION_DEFAULT,
+		SLP_A_ASSERTION_0_MS,
+		SLP_A_ASSERTION_4_S,
+		SLP_A_ASSERTION_98_MS,
+		SLP_A_ASSERTION_2_S,
+	} pch_slp_a_min_assertion_width;
+
+	/*
+	 * PCH PM Reset Power Cycle Duration
+	 * NOTE: Duration programmed in the PchPmPwrCycDur should never be smaller than the
+	 * stretch duration programmed in the following registers:
+	 *  - GEN_PMCON_A.SLP_S3_MIN_ASST_WDTH (PchPmSlpS3MinAssert)
+	 *  - GEN_PMCON_A.S4MAW (PchPmSlpS4MinAssert)
+	 *  - PM_CFG.SLP_A_MIN_ASST_WDTH (PchPmSlpAMinAssert)
+	 *  - PM_CFG.SLP_LAN_MIN_ASST_WDTH
+	 */
+	enum {
+		POWER_CYCLE_DURATION_DEFAULT,
+		POWER_CYCLE_DURATION_1S,
+		POWER_CYCLE_DURATION_2S,
+		POWER_CYCLE_DURATION_3S,
+		POWER_CYCLE_DURATION_4S,
+	} pch_reset_power_cycle_duration;
+
+	/* Platform Power Pmax */
+	uint16_t PsysPmax;
 };
 
 typedef struct soc_intel_alderlake_config config_t;

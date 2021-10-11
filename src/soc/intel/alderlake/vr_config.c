@@ -50,24 +50,28 @@ static uint32_t load_table(const struct vr_lookup *tbl, const int tbl_entries, c
 static const struct vr_lookup vr_config_ll[] = {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_3, VR_CFG_ALL_DOMAINS_LOADLINE(2.3, 3.2) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_5, VR_CFG_ALL_DOMAINS_LOADLINE(2.3, 3.2) },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_6, VR_CFG_ALL_DOMAINS_LOADLINE(2.8, 3.2) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_7, VR_CFG_ALL_DOMAINS_LOADLINE(2.8, 3.2) },
 };
 
 static const struct vr_lookup vr_config_icc[] = {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_3, VR_CFG_ALL_DOMAINS_ICC(160, 50) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_5, VR_CFG_ALL_DOMAINS_ICC(109, 50) },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_6, VR_CFG_ALL_DOMAINS_ICC(80, 40) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_7, VR_CFG_ALL_DOMAINS_ICC(80, 40) },
 };
 
 static const struct vr_lookup vr_config_tdc_timewindow[] = {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_3, VR_CFG_ALL_DOMAINS_TDC(28000, 28000) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_5, VR_CFG_ALL_DOMAINS_TDC(28000, 28000) },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_6, VR_CFG_ALL_DOMAINS_TDC(28000, 28000) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_7, VR_CFG_ALL_DOMAINS_TDC(28000, 28000) },
 };
 
 static const struct vr_lookup vr_config_tdc_currentlimit[] = {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_3, VR_CFG_ALL_DOMAINS_TDC_CURRENT(57, 57) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_5, VR_CFG_ALL_DOMAINS_TDC_CURRENT(40, 40) },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_6, VR_CFG_ALL_DOMAINS_TDC_CURRENT(20, 20) },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_ID_7, VR_CFG_ALL_DOMAINS_TDC_CURRENT(20, 20) },
 };
 
@@ -88,8 +92,6 @@ void fill_vr_domain_config(FSP_S_CONFIG *s_cfg,
 		s_cfg->IccMax[domain] = cfg->icc_max;
 		s_cfg->TdcTimeWindow[domain] = cfg->tdc_timewindow;
 		s_cfg->TdcCurrentLimit[domain] = cfg->tdc_currentlimit;
-		if (cfg->tdc_timewindow != 0 && cfg->tdc_currentlimit != 0)
-			s_cfg->TdcEnable[domain] = 1;
 	} else {
 		uint16_t mch_id = 0;
 
@@ -110,7 +112,12 @@ void fill_vr_domain_config(FSP_S_CONFIG *s_cfg,
 		s_cfg->TdcCurrentLimit[domain] = load_table(vr_config_tdc_currentlimit,
 							ARRAY_SIZE(vr_config_tdc_currentlimit),
 							domain, mch_id);
-		if (s_cfg->TdcTimeWindow[domain] != 0 && s_cfg->TdcCurrentLimit[domain] != 0)
-			s_cfg->TdcEnable[domain] = 1;
+	}
+
+	/* Check TdcTimeWindow and TdcCurrentLimit,
+	   Set TdcEnable and Set VR TDC Input current to root mean square */
+	if (s_cfg->TdcTimeWindow[domain] != 0 && s_cfg->TdcCurrentLimit[domain] != 0) {
+		s_cfg->TdcEnable[domain] = 1;
+		s_cfg->Irms[domain] = 1;
 	}
 }
