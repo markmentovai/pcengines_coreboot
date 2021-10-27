@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <amdblocks/spi.h>
 #include <baseboard/gpio.h>
 #include <boardid.h>
 #include <boot/coreboot_tables.h>
@@ -26,13 +27,10 @@ void mainboard_chromeos_acpi_generate(void)
 	chromeos_acpi_gpio_generate(cros_gpios, ARRAY_SIZE(cros_gpios));
 }
 
-int get_ec_is_trusted(void)
+void mainboard_spi_fast_speed_override(uint8_t *fast_speed)
 {
-	/* Board versions 1 & 2 support H1 DB, but the EC_IN_RW signal is not
-	   routed. So emulate EC is trusted. */
-	if (CONFIG(BOARD_GOOGLE_GUYBRUSH) &&
-	    (board_id() == UNDEFINED_STRAPPING_ID || board_id() < 3))
-		return 1;
-	/* EC is trusted if not in RW. */
-	return !gpio_get(GPIO_EC_IN_RW);
+	uint32_t board_ver = board_id();
+
+	if (board_ver >= CONFIG_OVERRIDE_EFS_SPI_SPEED_MIN_BOARD)
+		*fast_speed = CONFIG_OVERRIDE_EFS_SPI_SPEED;
 }

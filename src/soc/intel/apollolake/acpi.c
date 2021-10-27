@@ -30,7 +30,7 @@
 	.addrl = address,						\
 	}
 
-static acpi_cstate_t cstate_map[] = {
+static const acpi_cstate_t cstate_map[] = {
 	{
 		/* C1 */
 		.ctype = 1,		/* ACPI C1 */
@@ -62,7 +62,7 @@ void soc_write_sci_irq_select(uint32_t scis)
 	write32p(soc_read_pmc_base() + IRQ_REG, scis);
 }
 
-acpi_cstate_t *soc_get_cstate_map(size_t *entries)
+const acpi_cstate_t *soc_get_cstate_map(size_t *entries)
 {
 	*entries = ARRAY_SIZE(cstate_map);
 	return cstate_map;
@@ -88,26 +88,11 @@ void soc_fill_gnvs(struct global_nvs *gnvs)
 		gnvs->scdo = gpio_acpi_pin(cfg->sdcard_cd_gpio);
 	}
 
-	if (CONFIG(SOC_INTEL_COMMON_BLOCK_SGX))
+	if (CONFIG(SOC_INTEL_COMMON_BLOCK_SGX_ENABLE))
 		sgx_fill_gnvs(gnvs);
 
 	/* Fill in Above 4GB MMIO resource */
 	sa_fill_gnvs(gnvs);
-}
-
-uint32_t acpi_fill_soc_wake(uint32_t generic_pm1_en,
-			    const struct chipset_power_state *ps)
-{
-	/*
-	 * WAK_STS bit is set when the system is in one of the sleep states
-	 * (via the SLP_EN bit) and an enabled wake event occurs. Upon setting
-	 * this bit, the PMC will transition the system to the ON state and
-	 * can only be set by hardware and can only be cleared by writing a one
-	 * to this bit position.
-	 */
-
-	generic_pm1_en |= WAK_STS | RTC_EN | PWRBTN_EN;
-	return generic_pm1_en;
 }
 
 int soc_madt_sci_irq_polarity(int sci)
@@ -122,11 +107,7 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 
 	fadt->pm_tmr_blk = ACPI_BASE_ADDRESS + PM1_TMR;
 
-	fadt->p_lvl2_lat = ACPI_FADT_C2_NOT_SUPPORTED;
-	fadt->p_lvl3_lat = ACPI_FADT_C3_NOT_SUPPORTED;
-
 	fadt->pm_tmr_len = 4;
-	fadt->duty_width = 3;
 
 	fadt->iapc_boot_arch = ACPI_FADT_LEGACY_DEVICES | ACPI_FADT_8042;
 

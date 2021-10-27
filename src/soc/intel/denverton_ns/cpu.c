@@ -20,6 +20,7 @@
 #include <soc/iomap.h>
 #include <soc/smm.h>
 #include <soc/soc_util.h>
+#include <types.h>
 
 static struct smm_relocation_attrs relo_attrs;
 
@@ -90,12 +91,12 @@ static void denverton_core_init(struct device *cpu)
 	/* Enable Turbo */
 	enable_turbo();
 
-	/* Enable speed step. */
-	if (get_turbo_state() == TURBO_ENABLED) {
-		msr = rdmsr(IA32_MISC_ENABLE);
-		msr.lo |= SPEED_STEP_ENABLE_BIT;
-		wrmsr(IA32_MISC_ENABLE, msr);
-	}
+	/* Enable speed step. Always ON.*/
+	msr = rdmsr(IA32_MISC_ENABLE);
+	msr.lo |= SPEED_STEP_ENABLE_BIT;
+	wrmsr(IA32_MISC_ENABLE, msr);
+
+	enable_pm_timer_emulation();
 }
 
 static struct device_operations cpu_dev_ops = {
@@ -285,17 +286,9 @@ static const struct mp_ops mp_ops = {
 	.post_mp_init = post_mp_init,
 };
 
-void denverton_init_cpus(struct device *dev)
+void mp_init_cpus(struct bus *cpu_bus)
 {
-	/*
-	 * Ensure there is at least one bus downstream to the CPU device. If not, then create a
-	 * new link. This can occur if the mainboard does not add any APIC device in the device
-	 * tree.
-	 */
-	if (!dev->link_list)
-		add_more_links(dev, 1);
-
 	/* Clear for take-off */
-	if (mp_init_with_smm(dev->link_list, &mp_ops) < 0)
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
 }

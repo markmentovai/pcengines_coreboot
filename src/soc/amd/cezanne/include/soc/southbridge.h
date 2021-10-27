@@ -6,6 +6,8 @@
 #include <soc/iomap.h>
 
 /* Power management registers:  0xfed80300 or index/data at IO 0xcd6/cd7 */
+#define PM_ISACONTROL			0x04
+#define   ABCLKGATEEN			BIT(16)
 #define PM_PCI_CTRL			0x08
 #define   FORCE_SLPSTATE_RETRY		BIT(25)
 #define PWR_RESET_CFG			0x10
@@ -47,11 +49,15 @@
 #define   PM_ACPI_BIOS_RLS		BIT(7)
 #define   PM_ACPI_PWRBTNEN_EN		BIT(8)
 #define   PM_ACPI_REDUCED_HW_EN		BIT(9)
+#define   PM_ACPI_S5_LPC_PIN_MODE_SEL	BIT(10)
+#define   PM_ACPI_S5_LPC_PIN_MODE	BIT(11)
 #define   PM_ACPI_BLOCK_PCIE_PME	BIT(24)
 #define   PM_ACPI_PCIE_WAK_MASK		BIT(25)
 #define   PM_ACPI_WAKE_AS_GEVENT	BIT(27)
 #define   PM_ACPI_NB_PME_GEVENT		BIT(28)
 #define   PM_ACPI_RTC_WAKE_EN		BIT(29)
+#define PM_SPI_PAD_PU_PD		0x90
+#define   PM_ESPI_CS_USE_DATA2		BIT(16)
 #define PM_LPC_GATING			0xec
 #define   PM_LPC_AB_NO_BYPASS_EN	BIT(2)
 #define   PM_LPC_A20_EN			BIT(1)
@@ -78,6 +84,15 @@
 #define   GPP_CLK_REQ_EXT(clk_shift)	(0x1 << (clk_shift))
 #define   GPP_CLK_REQ_OFF(clk_shift)	(0x0 << (clk_shift))
 
+#define MISC_CLKGATEDCNTL		0x2c
+#define   ALINKCLK_GATEOFFEN		BIT(16)
+#define   BLINKCLK_GATEOFFEN		BIT(17)
+#define   XTAL_PAD_S3_TURNOFF_EN	BIT(20)
+#define   XTAL_PAD_S5_TURNOFF_EN	BIT(21)
+#define MISC_CGPLL_CONFIGURATION0	0x30
+#define   USB_PHY_CMCLK_S3_DIS		BIT(8)
+#define   USB_PHY_CMCLK_S0I3_DIS	BIT(9)
+#define   USB_PHY_CMCLK_S5_DIS		BIT(10)
 #define MISC_CLK_CNTL0			0x40 /* named MISC_CLK_CNTL1 on Picasso */
 #define   BP_X48M0_OUTPUT_EN		BIT(2) /* 1=En, unlike Hudson, Kern */
 #define MISC_I2C0_PAD_CTRL		0xd8
@@ -107,7 +122,6 @@
 #define   I2C_PAD_CTRL_SPARE0		BIT(17)
 #define   I2C_PAD_CTRL_SPARE1		BIT(18)
 
-void configure_port80_routing_early(void);
 void fch_pre_init(void);
 void fch_early_init(void);
 void fch_init(void *chip_info);

@@ -33,6 +33,7 @@ export KERNELVERSION      := 0.2.0
 ARCHDIR-$(CONFIG_LP_ARCH_ARM)     := arm
 ARCHDIR-$(CONFIG_LP_ARCH_ARM64)   := arm64
 ARCHDIR-$(CONFIG_LP_ARCH_X86)     := x86
+ARCHDIR-$(CONFIG_LP_ARCH_MOCK)    := mock
 DESTDIR ?= install
 
 real-target: lib
@@ -134,7 +135,7 @@ prepare:
 
 junit.xml:
 	echo '<?xml version="1.0" encoding="utf-8"?><testsuite>' > $@.tmp
-	for i in $(filter-out %.old,$(wildcard configs/*)); do \
+	for i in $(filter-out %.old %.unit-tests,$(wildcard configs/*)); do \
 		$(MAKE) clean; \
 		echo "Building libpayload for $$i"; \
 		cp "$$i" junit_config; \
@@ -157,7 +158,7 @@ junit.xml:
 	mv $@.tmp $@
 
 test-configs:
-	for config in $(filter-out %.old,$(wildcard configs/*)); do \
+	for config in $(filter-out %.old %.unit-tests,$(wildcard configs/*)); do \
 		$(MAKE) clean; \
 		cp "$$config" test_config; \
 		echo "*** Making libpayload config $$config ***"; \

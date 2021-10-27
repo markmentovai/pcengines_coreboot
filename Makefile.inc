@@ -60,7 +60,7 @@ COREBOOT_EXPORTS += CCACHE_EXTRAFILES
 #######################################################################
 # root rule to resolve if in build mode (ie. configuration exists)
 real-target: $(obj)/config.h coreboot files_added
-coreboot: $(obj)/coreboot.rom $(obj)/cbfstool $(obj)/rmodtool $(obj)/ifwitool
+coreboot: $(obj)/coreboot.rom $(obj)/cbfstool $(obj)/rmodtool $(obj)/ifwitool $(obj)/cse_fpt $(obj)/cse_serger
 
 # This target can be used in site local to run scripts or additional
 # targets after the build completes by creating a Makefile.inc in the
@@ -81,7 +81,7 @@ PHONY+= clean-abuild coreboot check-style build_complete
 # root source directories of coreboot
 subdirs-y := src/lib src/commonlib/ src/console src/device src/acpi src/superio/common
 subdirs-y += src/ec/acpi $(wildcard src/ec/*/*) $(wildcard src/southbridge/*/*)
-subdirs-y += $(wildcard src/soc/*/*) $(wildcard src/northbridge/*/*)
+subdirs-y += $(wildcard src/soc/*) $(wildcard src/soc/*/*) $(wildcard src/northbridge/*/*)
 subdirs-y += $(wildcard src/superio/*) $(wildcard src/superio/*/*)
 subdirs-y += $(wildcard src/drivers/*) $(wildcard src/drivers/*/*) $(wildcard src/drivers/*/*/*)
 subdirs-y += src/cpu src/vendorcode
@@ -544,6 +544,8 @@ RMODTOOL:=$(objutil)/cbfstool/rmodtool
 IFWITOOL:=$(objutil)/cbfstool/ifwitool
 IFITTOOL:=$(objutil)/cbfstool/ifittool
 AMDCOMPRESS:=$(objutil)/cbfstool/amdcompress
+CSE_FPT:=$(objutil)/cbfstool/cse_fpt
+CSE_SERGER:=$(objutil)/cbfstool/cse_serger
 
 $(obj)/cbfstool: $(CBFSTOOL)
 	cp $< $@
@@ -561,6 +563,12 @@ $(obj)/ifittool: $(IFITTOOL)
 	cp $< $@
 
 $(obj)/amdcompress: $(AMDCOMPRESS)
+	cp $< $@
+
+$(obj)/cse_fpt: $(CSE_FPT)
+	cp $< $@
+
+$(obj)/cse_serger: $(CSE_SERGER)
 	cp $< $@
 
 _WINCHECK=$(shell uname -o 2> /dev/null)
@@ -689,7 +697,7 @@ install-git-commit-clangfmt:
 include util/crossgcc/Makefile.inc
 
 .PHONY: tools
-tools: $(objutil)/kconfig/conf $(objutil)/kconfig/toada $(CBFSTOOL) $(objutil)/cbfstool/cbfs-compression-tool $(FMAPTOOL) $(RMODTOOL) $(IFWITOOL) $(objutil)/nvramtool/nvramtool $(objutil)/sconfig/sconfig $(IFDTOOL) $(CBOOTIMAGE) $(AMDFWTOOL) $(AMDCOMPRESS) $(FUTILITY) $(BINCFG) $(IFITTOOL) $(objutil)/supermicro/smcbiosinfo
+tools: $(objutil)/kconfig/conf $(objutil)/kconfig/toada $(CBFSTOOL) $(objutil)/cbfstool/cbfs-compression-tool $(FMAPTOOL) $(RMODTOOL) $(IFWITOOL) $(objutil)/nvramtool/nvramtool $(objutil)/sconfig/sconfig $(IFDTOOL) $(CBOOTIMAGE) $(AMDFWTOOL) $(AMDCOMPRESS) $(FUTILITY) $(BINCFG) $(IFITTOOL) $(objutil)/supermicro/smcbiosinfo $(CSE_FPT) $(CSE_SERGER)
 
 ###########################################################################
 # Common recipes for all stages

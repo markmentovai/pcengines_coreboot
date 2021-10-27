@@ -110,7 +110,7 @@ static int cstate_set_s0ix[] = {
 	C_STATE_C10
 };
 
-acpi_cstate_t *soc_get_cstate_map(size_t *entries)
+const acpi_cstate_t *soc_get_cstate_map(size_t *entries)
 {
 	static acpi_cstate_t map[MAX(ARRAY_SIZE(cstate_set_s0ix),
 				ARRAY_SIZE(cstate_set_non_s0ix))];
@@ -130,7 +130,7 @@ acpi_cstate_t *soc_get_cstate_map(size_t *entries)
 	}
 
 	for (i = 0; i < *entries; i++) {
-		memcpy(&map[i], &cstate_map[set[i]], sizeof(acpi_cstate_t));
+		map[i] = cstate_map[set[i]];
 		map[i].ctype = i + 1;
 	}
 	return map;
@@ -160,9 +160,6 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->x_pm_tmr_blk.addrl = pmbase + PM1_TMR;
 	fadt->x_pm_tmr_blk.addrh = 0x0;
 	fadt->preferred_pm_profile = PM_MOBILE;
-	fadt->p_lvl2_lat = ACPI_FADT_C2_NOT_SUPPORTED;
-	fadt->p_lvl3_lat = ACPI_FADT_C3_NOT_SUPPORTED;
-	fadt->duty_width = 0x3;	/* CLK_VAL bits 3:1 */
 
 	if (config->s0ix_enable)
 		fadt->flags |= ACPI_FADT_LOW_PWR_IDLE_S0;
@@ -250,21 +247,6 @@ void soc_fill_gnvs(struct global_nvs *gnvs)
 
 	/* Fill in Above 4GB MMIO resource */
 	sa_fill_gnvs(gnvs);
-}
-
-uint32_t acpi_fill_soc_wake(uint32_t generic_pm1_en,
-			    const struct chipset_power_state *ps)
-{
-	/*
-	 * WAK_STS bit is set when the system is in one of the sleep states
-	 * (via the SLP_EN bit) and an enabled wake event occurs. Upon setting
-	 * this bit, the PMC will transition the system to the ON state and
-	 * can only be set by hardware and can only be cleared by writing a one
-	 * to this bit position.
-	 */
-
-	generic_pm1_en |= WAK_STS | RTC_EN | PWRBTN_EN;
-	return generic_pm1_en;
 }
 
 int soc_madt_sci_irq_polarity(int sci)

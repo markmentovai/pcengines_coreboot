@@ -42,13 +42,21 @@ static void reset_i2c_peripherals(void)
 /* Before console init */
 void fch_pre_init(void)
 {
+	/* Enable_acpimmio_decode_pm04 to enable the ACPIMMIO decode which is needed to access
+	   the GPIO registers. */
+	enable_acpimmio_decode_pm04();
+	/* Setup SPI base by calling lpc_early_init before setting up eSPI. */
 	lpc_early_init();
+
+	/* Setup eSPI to enable port80 routing if the board is using eSPI and the eSPI
+	   interface hasn't already been set up in verstage on PSP */
+	if (CONFIG(SOC_AMD_COMMON_BLOCK_USE_ESPI) && !CONFIG(VBOOT_STARTS_BEFORE_BOOTBLOCK))
+		configure_espi_with_mb_hook();
 
 	if (!CONFIG(SOC_AMD_COMMON_BLOCK_USE_ESPI))
 		lpc_configure_decodes();
 
 	fch_spi_early_init();
-	enable_acpimmio_decode_pm04();
 	fch_smbus_init();
 	fch_enable_cf9_io();
 	fch_enable_legacy_io();
@@ -79,7 +87,4 @@ void fch_early_init(void)
 
 	if (CONFIG(DISABLE_SPI_FLASH_ROM_SHARING))
 		lpc_disable_spi_rom_sharing();
-
-	if (CONFIG(SOC_AMD_COMMON_BLOCK_USE_ESPI))
-		espi_setup();
 }

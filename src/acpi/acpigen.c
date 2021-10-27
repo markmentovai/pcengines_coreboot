@@ -994,7 +994,7 @@ void acpigen_write_PSD_package(u32 domain, u32 numprocs, PSD_coord coordtype)
 	acpigen_pop_len();
 }
 
-void acpigen_write_CST_package_entry(acpi_cstate_t *cstate)
+void acpigen_write_CST_package_entry(const acpi_cstate_t *cstate)
 {
 	acpigen_write_package(4);
 	acpigen_write_register_resource(&cstate->resource);
@@ -1004,7 +1004,7 @@ void acpigen_write_CST_package_entry(acpi_cstate_t *cstate)
 	acpigen_pop_len();
 }
 
-void acpigen_write_CST_package(acpi_cstate_t *cstate, int nentries)
+void acpigen_write_CST_package(const acpi_cstate_t *cstate, int nentries)
 {
 	int i;
 	acpigen_write_name("_CST");
@@ -1798,13 +1798,11 @@ void acpigen_write_CPPC_package(const struct cppc_config *config)
 	acpigen_write_byte(config->version);
 
 	for (i = 0; i < max; ++i) {
-		const acpi_addr_t *reg = &(config->regs[i]);
-		if (reg->space_id == ACPI_ADDRESS_SPACE_MEMORY &&
-		    reg->bit_width == 32 && reg->access_size == ACPI_ACCESS_SIZE_UNDEFINED) {
-			acpigen_write_dword(reg->addrl);
-		} else {
-			acpigen_write_register_resource(reg);
-		}
+		const cppc_entry_t *entry = &config->entries[i];
+		if (entry->type == CPPC_TYPE_DWORD)
+			acpigen_write_dword(entry->dword);
+		else
+			acpigen_write_register_resource(&entry->reg);
 	}
 	acpigen_pop_len();
 }

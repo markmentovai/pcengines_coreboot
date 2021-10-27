@@ -31,23 +31,20 @@
 typedef struct southbridge_intel_bd82x6x_config config_t;
 
 /**
- * Set miscellanous static southbridge features.
+ * Set miscellaneous static southbridge features.
  *
  * @param dev PCI device with I/O APIC control registers
  */
 static void pch_enable_ioapic(struct device *dev)
 {
-	u32 reg32;
-
 	/* Assign unique bus/dev/fn for I/O APIC */
 	pci_write_config16(dev, LPC_IBDF,
 		PCH_IOAPIC_PCI_BUS << 8 | PCH_IOAPIC_PCI_SLOT << 3);
 
-	set_ioapic_id(VIO_APIC_VADDR, 0x02);
-
 	/* affirm full set of redirection table entries ("write once") */
-	reg32 = io_apic_read(VIO_APIC_VADDR, 0x01);
-	io_apic_write(VIO_APIC_VADDR, 0x01, reg32);
+	ioapic_lock_max_vectors(VIO_APIC_VADDR);
+
+	setup_ioapic(VIO_APIC_VADDR, 0x02);
 }
 
 static void pch_enable_serial_irqs(struct device *dev)

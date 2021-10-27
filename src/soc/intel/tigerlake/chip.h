@@ -4,6 +4,7 @@
 #define _SOC_CHIP_H_
 
 #include <drivers/i2c/designware/dw_i2c.h>
+#include <drivers/intel/gma/gma.h>
 #include <intelblocks/cfg.h>
 #include <intelblocks/gpio.h>
 #include <intelblocks/gspi.h>
@@ -288,7 +289,7 @@ struct soc_intel_tigerlake_config {
 
 	/* Enable C6 DRAM */
 	uint8_t enable_c6dram;
-	uint8_t PmTimerDisabled;
+
 	/*
 	 * SerialIO device mode selection:
 	 * PchSerialIoDisabled,
@@ -532,6 +533,9 @@ struct soc_intel_tigerlake_config {
 	 *
 	 */
 	bool external_bypass;
+
+	/* i915 struct for GMA backlight control */
+	struct i915_gpu_controller_info gfx;
 };
 
 typedef struct soc_intel_tigerlake_config config_t;

@@ -29,7 +29,6 @@ config BOARD_SPECIFIC_OPTIONS
 	select FW_CONFIG
 	select FW_CONFIG_SOURCE_CHROMEEC_CBI
 	select GOOGLE_SMBIOS_MAINBOARD_VERSION
-	select HAVE_ACPI_RESUME
 	select HAVE_EM100_SUPPORT
 	select HAVE_SPD_IN_CBFS
 	select MAINBOARD_HAS_CHROMEOS
@@ -112,6 +111,22 @@ config ALT_SPI_SPEED
 	default 0	# 66MHz
 
 endif # !EM100
+
+config OVERRIDE_EFS_SPI_SPEED
+	int
+	default 3 if EM100
+	default 4	# 100MHz
+	help
+	  Override EFS SPI Speed Configuration to be applied based on certain
+	  board version.
+
+config OVERRIDE_EFS_SPI_SPEED_MIN_BOARD
+	hex
+	default 0x4 if BOARD_GOOGLE_GUYBRUSH
+	default 0xffffffff
+	help
+	  Minimum board version starting which the Override EFS SPI Speed
+	  configuration has to be applied.
 
 config VARIANT_DIR
 	default "guybrush" if BOARD_GOOGLE_GUYBRUSH

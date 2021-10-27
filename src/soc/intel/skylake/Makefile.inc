@@ -5,8 +5,6 @@ subdirs-y += romstage
 subdirs-y += ../../../cpu/intel/common
 subdirs-y += ../../../cpu/intel/microcode
 subdirs-y += ../../../cpu/intel/turbo
-subdirs-y += ../../../cpu/x86/lapic
-subdirs-y += ../../../cpu/x86/mtrr
 
 bootblock-y += bootblock/bootblock.c
 bootblock-y += i2c.c
@@ -20,7 +18,6 @@ bootblock-y += spi.c
 bootblock-y += lpc.c
 bootblock-y += uart.c
 
-verstage-y += gpio.c
 verstage-y += gspi.c
 verstage-y += pmutil.c
 verstage-y += i2c.c

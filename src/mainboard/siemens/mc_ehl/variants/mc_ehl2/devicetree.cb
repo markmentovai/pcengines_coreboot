@@ -27,21 +27,21 @@ chip soc/intel/elkhartlake
 	}"
 
 	# USB related UPDs
-	register "usb2_ports[0]" = "USB2_PORT_SHORT(OC_SKIP)"	# USB3/2 Type A port 1
-	register "usb2_ports[1]" = "USB2_PORT_SHORT(OC_SKIP)"	# USB3/2 Type A Port 2
-	register "usb2_ports[2]" = "USB2_PORT_MID(OC_SKIP)"	# Onboard USB
-	register "usb2_ports[3]" = "USB2_PORT_EMPTY"		# Port is unused
-	register "usb2_ports[4]" = "USB2_PORT_EMPTY"		# Port is unused
-	register "usb2_ports[5]" = "USB2_PORT_EMPTY"		# Port is unused
-	register "usb2_ports[6]" = "USB2_PORT_EMPTY"		# Port is unused
-	register "usb2_ports[7]" = "USB2_PORT_EMPTY"		# Port is unused
-	register "usb2_ports[8]" = "USB2_PORT_EMPTY"		# Port is unused
-	register "usb2_ports[9]" = "USB2_PORT_EMPTY"		# Port is unused
+	register "usb2_ports[0]" = "USB2_PORT_MID(OC2)"	# X125/X135
+	register "usb2_ports[1]" = "USB2_PORT_MID(OC2)"	# X125/X135
+	register "usb2_ports[2]" = "USB2_PORT_MID(OC0)"	# X145/X155
+	register "usb2_ports[3]" = "USB2_PORT_MID(OC0)"	# X145/X155
+	register "usb2_ports[4]" = "USB2_PORT_MID(OC3)"	# USB Panel
+	register "usb2_ports[5]" = "USB2_PORT_MID(OC3)"	# USB Panel
+	register "usb2_ports[6]" = "USB2_PORT_EMPTY"
+	register "usb2_ports[7]" = "USB2_PORT_EMPTY"
+	register "usb2_ports[8]" = "USB2_PORT_EMPTY"
+	register "usb2_ports[9]" = "USB2_PORT_EMPTY"
 
 	register "usb3_ports[0]" = "USB3_PORT_DEFAULT(OC_SKIP)"	# USB3/2 Type A port1
 	register "usb3_ports[1]" = "USB3_PORT_DEFAULT(OC_SKIP)"	# USB3/2 Type A port2
-	register "usb3_ports[2]" = "USB3_PORT_EMPTY"		# Port is not used
-	register "usb3_ports[3]" = "USB3_PORT_EMPTY"		# Port is not used
+	register "usb3_ports[2]" = "USB3_PORT_EMPTY"	# UNUSED
+	register "usb3_ports[3]" = "USB3_PORT_EMPTY"	# UNUSED
 
 	# Skip the CPU repalcement check
 	register "SkipCpuReplacementCheck" = "1"
@@ -87,7 +87,7 @@ chip soc/intel/elkhartlake
 
 	# Storage (SATA/SDCARD/EMMC) related UPDs
 	register "SataSalpSupport" = "0"
-	register "SataPortsEnable[0]" = "1"
+	register "SataPortsEnable[0]" = "0"
 	register "SataPortsEnable[1]" = "1"
 	register "SataPortsDevSlp[0]" = "0"
 	register "SataPortsDevSlp[1]" = "0"
@@ -98,30 +98,19 @@ chip soc/intel/elkhartlake
 
 	# LPSS Serial IO (I2C/UART/GSPI) related UPDs
 	register "SerialIoI2cMode" = "{
-		[PchSerialIoIndexI2C0] = PchSerialIoDisabled,
-		[PchSerialIoIndexI2C1] = PchSerialIoPci,
-		[PchSerialIoIndexI2C2] = PchSerialIoDisabled,
-		[PchSerialIoIndexI2C3] = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C0] = PchSerialIoPci,
+		[PchSerialIoIndexI2C1] = PchSerialIoDisabled,
+		[PchSerialIoIndexI2C2] = PchSerialIoPci,
+		[PchSerialIoIndexI2C3] = PchSerialIoPci,
 		[PchSerialIoIndexI2C4] = PchSerialIoPci,
 		[PchSerialIoIndexI2C5] = PchSerialIoDisabled,
 		[PchSerialIoIndexI2C6] = PchSerialIoDisabled,
 		[PchSerialIoIndexI2C7] = PchSerialIoDisabled,
 	}"
 
-	register "SerialIoI2cPadsTermination" = "{
-		[PchSerialIoIndexI2C0] = 1,
-		[PchSerialIoIndexI2C1] = 1,
-		[PchSerialIoIndexI2C2] = 1,
-		[PchSerialIoIndexI2C3] = 1,
-		[PchSerialIoIndexI2C4] = 1,
-		[PchSerialIoIndexI2C5] = 1,
-		[PchSerialIoIndexI2C6] = 1,
-		[PchSerialIoIndexI2C7] = 1,
-	}"
-
 	register "SerialIoUartMode" = "{
-		[PchSerialIoIndexUART0] = PchSerialIoDisabled,
-		[PchSerialIoIndexUART1] = PchSerialIoDisabled,
+		[PchSerialIoIndexUART0] = PchSerialIoPci,
+		[PchSerialIoIndexUART1] = PchSerialIoPci,
 		[PchSerialIoIndexUART2] = PchSerialIoSkipInit,
 	}"
 
@@ -134,6 +123,12 @@ chip soc/intel/elkhartlake
 	# TSN GBE related UPDs
 	register "PchTsnGbeLinkSpeed" = "Tsn_2_5_Gbps"
 	register "PchTsnGbeSgmiiEnable" = "1"
+
+	register "common_soc_config" = "{
+		.i2c[2] = {
+			.speed = I2C_SPEED_STANDARD,
+		},
+	}"
 
 	device domain 0 on
 		device pci 00.0 on	end # Host Bridge
@@ -155,7 +150,7 @@ chip soc/intel/elkhartlake
 		device pci 11.6 off	end # Intel PSE IS20
 		device pci 11.7 off	end # Intel PSE IS21
 
-		device pci 12.0 off	end # GSPI2
+		device pci 12.0 on	end # GSPI2
 		device pci 12.3 on	end # Management Engine UMA Access
 		device pci 12.4 on	end # Management Engine PTT DMA Controller
 		device pci 12.5 off	end # UFS0
@@ -171,10 +166,25 @@ chip soc/intel/elkhartlake
 		device pci 14.0 on	end # USB3.1 xHCI
 		device pci 14.1 off	end # USB3.1 xDCI (OTG)
 
-		device pci 15.0 off	end # I2C0
+		device pci 15.0 on	end # I2C0
 		device pci 15.1 on	end # I2C1
-		device pci 15.2 off	end # I2C2
-		device pci 15.3 off	end # I2C3
+		device pci 15.2 on	    # I2C2
+			# Enable external RTC chip
+			chip drivers/i2c/rx6110sa
+				register "bus_speed" = "I2C_SPEED_STANDARD"
+				register "pmon_sampling" = "PMON_SAMPL_256_MS"
+				register "bks_on" = "0"
+				register "bks_off" = "1"
+				register "iocut_en" = "1"
+				register "set_user_date" = "1"
+				register "user_year" = "04"
+				register "user_month" = "07"
+				register "user_day" = "01"
+				register "user_weekday" = "4"
+				device i2c 0x32 on end  # RTC RX6110 SA
+			end
+		end
+		device pci 15.3 on	end # I2C3
 
 		device pci 16.0 on	end # Management Engine Interface 1
 		device pci 16.1 on	end # Management Engine Interface 2
@@ -192,11 +202,11 @@ chip soc/intel/elkhartlake
 		device pci 18.6 off	end # Intel PSE QEP3
 
 		device pci 19.0 on	end # I2C4
-		device pci 19.1 off	end # I2C5
+		device pci 19.1 on	end # I2C5
 		device pci 19.2 on	end # UART2
 
 		device pci 1a.0 on	end # eMMC
-		device pci 1a.1 off	end # SD
+		device pci 1a.1 on	end # SD
 		device pci 1a.3 off	end # Intel Safety Island
 
 		device pci 1b.0 off	end # Intel PSE I2C0
@@ -240,22 +250,7 @@ chip soc/intel/elkhartlake
 		device pci 1f.1 on	end # P2SB
 		device pci 1f.2 hidden	end # Power Management Controller
 		device pci 1f.3 off	end # Intel cAVS/HDA
-		device pci 1f.4	on	    # SMBus
-			# Enable external RTC chip
-			chip drivers/i2c/rx6110sa
-				register "bus_speed" = "I2C_SPEED_STANDARD"
-				register "pmon_sampling" = "PMON_SAMPL_256_MS"
-				register "bks_on" = "0"
-				register "bks_off" = "1"
-				register "iocut_en" = "1"
-				register "set_user_date" = "1"
-				register "user_year" = "04"
-				register "user_month" = "07"
-				register "user_day" = "01"
-				register "user_weekday" = "4"
-				device i2c 0x32 on end  # RTC RX6110 SA
-			end
-		end
+		device pci 1f.4	on	end # SMBus
 		device pci 1f.5 on	end # PCH SPI (flash & TPM)
 		device pci 1f.7 off	end # PCH Intel Trace Hub
 	end

@@ -128,7 +128,7 @@ static int lapic_start_cpu(unsigned long apicid)
 		printk(BIOS_ERR, "ESR is 0x%x\n", lapic_read(LAPIC_ESR));
 		if (lapic_read(LAPIC_ESR)) {
 			printk(BIOS_ERR, "Try to reset ESR\n");
-			xapic_write_atomic(LAPIC_ESR, 0);
+			lapic_write(LAPIC_ESR, 0);
 			printk(BIOS_ERR, "ESR is 0x%x\n",
 				lapic_read(LAPIC_ESR));
 		}
@@ -253,7 +253,6 @@ static int start_cpu(struct device *cpu)
 	info->index = index;
 	info->cpu   = cpu;
 	cpu_add_map_entry(info->index);
-	thread_init_cpu_info_non_bsp(info);
 
 	/* Advertise the new stack and index to start_cpu */
 	secondary_stack = stack_top;

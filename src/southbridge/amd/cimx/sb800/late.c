@@ -121,14 +121,6 @@ static void lpc_init(struct device *dev)
 	printk(BIOS_DEBUG, "SB800 - Late.c - %s - End.\n", __func__);
 }
 
-unsigned long acpi_fill_mcfg(unsigned long current)
-{
-	current += acpi_create_mcfg_mmconfig((acpi_mcfg_mmconfig_t *)current,
-			CONFIG_MMCONF_BASE_ADDRESS, 0, 0, CONFIG_MMCONF_BUS_NUMBER - 1);
-
-	return current;
-}
-
 static const char *lpc_acpi_name(const struct device *dev)
 {
 	if (dev->path.type != DEVICE_PATH_PCI)
@@ -340,7 +332,6 @@ static void sb800_enable(struct device *dev)
 		break;
 
 	case PCI_DEVFN(0x14, 0): /* 0:14:0 SMBUS */
-		clear_ioapic(VIO_APIC_VADDR);
 		/* Assign the ioapic ID the next available number after the processor core local APIC IDs */
 		setup_ioapic(VIO_APIC_VADDR, CONFIG_MAX_CPUS);
 		break;

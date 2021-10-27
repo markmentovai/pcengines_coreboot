@@ -17,6 +17,7 @@
 #include <northbridge/intel/haswell/haswell.h>
 #include <southbridge/intel/lynxpoint/pch.h>
 #include <cpu/intel/common/common.h>
+#include <types.h>
 #include "haswell.h"
 #include "chip.h"
 
@@ -395,6 +396,7 @@ static void configure_c_states(void)
 	msr.lo |= (1 << 27);	// C3 Auto Undemotion Enable
 	msr.lo |= (1 << 26);	// C1 Auto Demotion Enable
 	msr.lo |= (1 << 25);	// C3 Auto Demotion Enable
+	msr.lo |= (1 << 15);	// Lock bits 15:0
 	msr.lo &= ~(1 << 10);	// Disable IO MWAIT redirection
 
 	if (timed_mwait_capable)
@@ -640,8 +642,8 @@ static const struct mp_ops mp_ops = {
 
 void mp_init_cpus(struct bus *cpu_bus)
 {
-	if (mp_init_with_smm(cpu_bus, &mp_ops))
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
 }
 
 static struct device_operations cpu_dev_ops = {

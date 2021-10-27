@@ -374,7 +374,7 @@ sub check_defaults {
                 # Symbols created/used inside a choice must not have a default set. The default is set by the choice itself.
                 if ($symbols{$sym}{choice}) {
                     show_error("Defining a default for symbol '$sym' at $filename:$line_no, used inside choice at "
-                               . "$symbols{$sym}{choice_loc}, is not allowed.");
+                               . "$symbols{$sym}{choice}, is not allowed.");
                 }
 
                 # skip good defaults
@@ -614,7 +614,7 @@ sub build_and_parse_kconfig_tree {
 		$choice_symbol = $symbol;
             }
             $inside_config         = "";
-            $inside_choice         = "$filename $line_no";
+            $inside_choice         = "$filename:$line_no";
             $configs_inside_choice = 0;
 
             # Kconfig verifies that choice blocks have a prompt
@@ -802,28 +802,12 @@ sub add_symbol {
     #initialize the symbol or increment the use count.
     if ( ( !exists $symbols{$symbol} ) || ( !exists $symbols{$symbol}{count} ) ) {
         $symbols{$symbol}{count} = 0;
-        if ($inside_choice) {
-            $symbols{$symbol}{choice} = 1;
-
-            # remember the location of the choice
-            $symbols{$symbol}{choice_loc} = join(':', (split / /, $inside_choice));
-        }
-        else {
-            $symbols{$symbol}{choice} = 0;
-        }
+        # remember the location of the choice (or "")
+        $symbols{$symbol}{choice} = $inside_choice;
     }
     else {
         $symbols{$symbol}{count}++;
-
-        if ( $inside_choice && !$symbols{$symbol}{choice} ) {
-            show_error( "$symbol entry at $filename:$line_no has already been created inside a choice block "
-                  . "at $symbols{$symbol}{0}{file}:$symbols{$symbol}{0}{line_no}." );
-        }
-        elsif ( !$inside_choice && $symbols{$symbol}{choice} ) {
-            show_error( "$symbol entry at $filename:$line_no has already been created outside a choice block "
-                  . "at $symbols{$symbol}{0}{file}:$symbols{$symbol}{0}{line_no}." );
-        }
-        elsif ( $inside_choice && $symbols{$symbol}{choice} ) {
+        if ( $inside_choice && $symbols{$symbol}{choice} ) {
             show_error( "$symbol entry at $filename:$line_no has already been created inside another choice block "
                   . "at $symbols{$symbol}{0}{file}:$symbols{$symbol}{0}{line_no}." );
         }

@@ -10,6 +10,7 @@
 #include <fsp/util.h>
 #include <gpio.h>
 #include <option.h>
+#include <intelblocks/acpi.h>
 #include <intelblocks/cfg.h>
 #include <intelblocks/itss.h>
 #include <intelblocks/lpc_lib.h>
@@ -18,7 +19,6 @@
 #include <intelblocks/xdci.h>
 #include <intelblocks/p2sb.h>
 #include <intelpch/lockdown.h>
-#include <soc/acpi.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/interrupt.h>
 #include <soc/iomap.h>
@@ -191,7 +191,6 @@ static struct device_operations pci_domain_ops = {
 	.set_resources    = &pci_domain_set_resources,
 	.scan_bus         = &pci_domain_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
-	.write_acpi_tables	= &northbridge_write_acpi_tables,
 	.acpi_name		= &soc_acpi_name,
 #endif
 };
@@ -345,7 +344,14 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	bool use_8254 = get_uint_option("legacy_8254_timer", CONFIG(USE_LEGACY_8254_TIMER));
 	params->Early8254ClockGatingEnable = !use_8254;
 
-	params->EnableTcoTimer = CONFIG(USE_PM_ACPI_TIMER);
+	/*
+	 * Legacy PM ACPI Timer (and TCO Timer)
+	 * This *must* be 1 in any case to keep FSP from
+	 *  1) enabling PM ACPI Timer emulation in uCode.
+	 *  2) disabling the PM ACPI Timer.
+	 * We handle both by ourself!
+	 */
+	params->EnableTcoTimer = 1;
 
 	memcpy(params->SerialIoDevMode, config->SerialIoDevMode,
 	       sizeof(params->SerialIoDevMode));
@@ -503,7 +509,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	params->PchIoApicBdfValid = 0;
 
 	/* Enable VT-d and X2APIC */
-	if (soc_is_vtd_capable()) {
+	if (soc_vtd_enabled()) {
 		params->VtdBaseAddress[0] = GFXVT_BASE_ADDRESS;
 		params->VtdBaseAddress[1] = VTVC0_BASE_ADDRESS;
 		params->X2ApicOptOut = 0;

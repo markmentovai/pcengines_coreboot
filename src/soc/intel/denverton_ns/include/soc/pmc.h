@@ -11,7 +11,7 @@
 #define MASK_PMC_ACPI_BASE 0xfffc
 #define PMC_ACPI_CNT 0x44
 #define PMC_ACPI_CNT_PWRM_EN (1 << 8)			   /* PWRM enable */
-#define PMC_ACPI_CNT_ACPI_EN (1 << 7)			   /* ACPI eanble */
+#define PMC_ACPI_CNT_ACPI_EN (1 << 7)			   /* ACPI enable */
 #define PMC_ACPI_CNT_SCIS ((1 << 2) | (1 << 1) | (1 << 0)) /* SCI IRQ select \
 							      */
 #define PMC_ACPI_CNT_SCIS_MASK 0x07
@@ -240,6 +240,8 @@
 #define GPIO_GPE_CFG		0x120
 #define  GPE0_DWX_MASK		0x7
 #define GPE0_DW_SHIFT(x)	(4 + 4*(x))
+#define PCH_PWRM_ACPI_TMR_CTL	0xfc
+#define  ACPI_TIM_DIS		(1 << 1)
 
 /* I/O ports */
 #define RST_CNT 0xcf9

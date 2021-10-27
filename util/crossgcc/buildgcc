@@ -16,8 +16,9 @@
 
 cd "$(dirname "$0")" || exit 1
 
-CROSSGCC_VERSION="$(git log -n 1 --pretty=%cd --date=short .)_$(git log -n 1 --pretty=%h .)"
-CROSSGCC_COMMIT=$( git describe )
+if [ -z "$CROSSGCC_VERSION" ]; then
+	CROSSGCC_VERSION="$(git log -n 1 --pretty=%cd --date=short .)_$(git log -n 1 --pretty=%h .)"
+fi
 
 # default settings
 PACKAGE=GCC
@@ -558,6 +559,7 @@ myhelp()
 	printf "       $0 [-h|--help]\n\n"
 
 	printf "Options:\n"
+	printf "    [-W|--print-version           Print machine readable version\n"
 	printf "    [-V|--version]                print version number and exit\n"
 	printf "    [-h|--help]                   print this help and exit\n"
 	printf "    [-c|--clean]                  remove temporary files before build\n"
@@ -927,12 +929,12 @@ getopt - > /dev/null 2>/dev/null || gcc -o getopt getopt.c
 getoptbrand="$(getopt -V 2>/dev/null | sed -e '1!d' -e 's,^\(......\).*,\1,')"
 if [ "${getoptbrand}" = "getopt" ]; then
 	# Detected GNU getopt that supports long options.
-	args=$(getopt -l version,help,clean,directory:,bootstrap,bootstrap-only,platform:,languages:,package:,jobs:,destdir:,savetemps,scripting,ccache,supported:,urls,nocolor -o Vhcd:bBp:l:P:j:D:tSys:un -- "$@")
+	args=$(getopt -l print-version,version,help,clean,directory:,bootstrap,bootstrap-only,platform:,languages:,package:,jobs:,destdir:,savetemps,scripting,ccache,supported:,urls,nocolor -o WVhcd:bBp:l:P:j:D:tSys:un -- "$@")
 	getopt_ret=$?
 	eval set -- "$args"
 else
 	# Detected non-GNU getopt
-	args=$(getopt Vhcd:bBp:l:P:j:D:tSys:un $*)
+	args=$(getopt WVhcd:bBp:l:P:j:D:tSys:un $*)
 	getopt_ret=$?
 	# shellcheck disable=SC2086
 	set -- $args
@@ -945,6 +947,7 @@ fi
 
 while true ; do
         case "$1" in
+		-W|--print-version)	shift; echo $CROSSGCC_VERSION; exit 0;;
 		-V|--version)		shift; myversion; exit 0;;
 		-h|--help)		shift; myhelp; exit 0;;
 		-c|--clean)		shift; clean=1;;
@@ -1252,7 +1255,7 @@ printf "Packages built ... ${green}ok${NC}\n"
 # for reproducibility
 PROGNAME=$(basename "$0")
 rm -f "$DESTDIR$TARGETDIR/share/$PROGNAME-*"
-cp "$PROGNAME" "$DESTDIR$TARGETDIR/share/$PROGNAME-$CROSSGCC_VERSION-$CROSSGCC_COMMIT"
+cp "$PROGNAME" "$DESTDIR$TARGETDIR/share/$PROGNAME-$CROSSGCC_VERSION"
 
 # Adding edk2 tools template
 mkdir -p "$DESTDIR$TARGETDIR/share/edk2config"

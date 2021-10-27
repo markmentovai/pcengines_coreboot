@@ -6,6 +6,8 @@ fw_config
 	field DB_SD 2 3
 		option DB_SD_ABSENT			0
 		option DB_SD_OZ711LV2LN			1
+		option DB_SD_GL9750			2
+		option DB_SD_RTS5232S			3
 	end
 	field KB_BL 4
 		option KB_BL_ABSENT			0
@@ -14,6 +16,7 @@ fw_config
 	field AUDIO 5 7
 		option AUDIO_UNKNOWN			0
 		option AUDIO_MAX98357_ALC5682I_I2S	1
+		option AUDIO_MAX98357_ALC5682I_VS_I2S	2
 	end
 	field KB_LAYOUT 8 9
 		option KB_LAYOUT_DEFAULT		0
@@ -84,6 +87,123 @@ chip soc/intel/alderlake
 		[PchSerialIoIndexI2C5]  = PchSerialIoPci,
 	}"
 	device domain 0 on
+		device ref dtt on
+			chip drivers/intel/dptf
+				## sensor information
+				register "options.tsr[0].desc" = ""DRAM_SOC""
+				register "options.tsr[1].desc" = ""Ambient""
+				register "options.tsr[2].desc" = ""Charger""
+				register "options.tsr[3].desc" = ""WWAN""
+
+				# TODO: below values are initial reference values only
+				## Active Policy
+				register "policies.active" = "{
+					[0] = {
+						.target = DPTF_CPU,
+						.thresholds = {
+								TEMP_PCT(85, 90),
+								TEMP_PCT(80, 74),
+								TEMP_PCT(75, 74),
+								TEMP_PCT(70, 74),
+								TEMP_PCT(65, 74),
+						}
+					},
+					[1] = {
+						.target = DPTF_TEMP_SENSOR_1,
+						.thresholds = {
+								TEMP_PCT(51, 74),
+								TEMP_PCT(47, 60),
+								TEMP_PCT(45, 45),
+								TEMP_PCT(42, 45),
+								TEMP_PCT(37, 35),
+						}
+					},
+					[2] = {
+						.target = DPTF_TEMP_SENSOR_2,
+						.thresholds = {
+								TEMP_PCT(51, 74),
+								TEMP_PCT(47, 60),
+								TEMP_PCT(45, 45),
+								TEMP_PCT(42, 45),
+								TEMP_PCT(37, 35),
+						}
+					},
+					[3] = {
+						.target = DPTF_TEMP_SENSOR_3,
+						.thresholds = {
+								TEMP_PCT(51, 74),
+								TEMP_PCT(47, 60),
+								TEMP_PCT(45, 45),
+								TEMP_PCT(42, 45),
+								TEMP_PCT(37, 35),
+						}
+					}
+				}"
+
+				## Passive Policy
+				register "policies.passive" = "{
+					[0] = DPTF_PASSIVE(CPU,         CPU,           95, 5000),
+					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 90, 6000),
+					[2] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_1, 90, 6000),
+					[3] = DPTF_PASSIVE(CHARGER,	TEMP_SENSOR_2, 90, 6000),
+					[4] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_3, 90, 6000),
+				}"
+
+				## Critical Policy
+				register "policies.critical" = "{
+					[0] = DPTF_CRITICAL(CPU,               105, SHUTDOWN),
+					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,     100, SHUTDOWN),
+					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,     100, SHUTDOWN),
+					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,     100, SHUTDOWN),
+					[4] = DPTF_CRITICAL(TEMP_SENSOR_3,     100, SHUTDOWN),
+				}"
+
+				register "controls.power_limits" = "{
+					.pl1 = {
+							.min_power = 3000,
+							.max_power = 12000,
+							.time_window_min = 28 * MSECS_PER_SEC,
+							.time_window_max = 32 * MSECS_PER_SEC,
+							.granularity = 200,
+						},
+					.pl2 = {
+							.min_power = 55000,
+							.max_power = 55000,
+							.time_window_min = 28 * MSECS_PER_SEC,
+							.time_window_max = 32 * MSECS_PER_SEC,
+							.granularity = 1000,
+						}
+				}"
+
+				## Charger Performance Control (Control, mA)
+				register "controls.charger_perf" = "{
+					[0] = { 255, 1700 },
+					[1] = {  24, 1500 },
+					[2] = {  16, 1000 },
+					[3] = {   8,  500 }
+				}"
+
+				## Fan Performance Control (Percent, Speed, Noise, Power)
+				register "controls.fan_perf" = "{
+					[0] = { 100, 6000, 220, 2200, },
+					[1] = {  92, 5500, 180, 1800, },
+					[2] = {  85, 5000, 145, 1450, },
+					[3] = {  74, 4620, 115, 1150, },
+					[4] = {  60, 4290,  90,  900, },
+					[5] = {  45, 3980,  55,  550, },
+					[6] = {  35, 3170,  30,  300, },
+					[7] = {  30, 2640,  15,  150, },
+					[8] = {  10,  800,  10,  100, },
+					[9] = {   0,    0,   0,   50, }
+				}"
+
+				## Fan options
+				register "options.fan.fine_grained_control" = "1"
+				register "options.fan.step_size" = "2"
+
+				device generic 0 alias dptf_policy on end
+			end
+		end
 		device ref tbt_pcie_rp0 off end
 		device ref tbt_pcie_rp1 off end
 		device ref tbt_pcie_rp2 off end
@@ -100,6 +220,20 @@ chip soc/intel/alderlake
 				register "property_list[0].integer" = "1"
 				device i2c 1a on
 					probe AUDIO AUDIO_MAX98357_ALC5682I_I2S
+				end
+			end
+			chip drivers/i2c/generic
+				register "hid" = ""RTL5682""
+				register "name" = ""RT58""
+				register "desc" = ""Headset Codec""
+				register "irq_gpio" = "ACPI_GPIO_IRQ_EDGE_BOTH(GPP_A23)"
+				# Set the jd_src to RT5668_JD1 for jack detection
+				register "property_count" = "1"
+				register "property_list[0].type" = "ACPI_DP_TYPE_INTEGER"
+				register "property_list[0].name" = ""realtek,jd-src""
+				register "property_list[0].integer" = "1"
+				device i2c 1a on
+					probe AUDIO AUDIO_MAX98357_ALC5682I_VS_I2S
 				end
 			end
 		end
@@ -193,6 +327,8 @@ chip soc/intel/alderlake
 				register "srcclk_pin" = "3"
 				device generic 0 on
 					probe DB_SD DB_SD_OZ711LV2LN
+					probe DB_SD DB_SD_GL9750
+					probe DB_SD DB_SD_RTS5232S
 				end
 			end
 		end
