@@ -102,3 +102,12 @@ were derived from other projects, other (GPL-compatible) licenses may apply.
 Please check the individual source files for details.
 
 This makes the resulting coreboot images licensed under the GPL, version 2.
+
+
+Issues
+-----------
+
+If you have any trouble or find any bug, please report an issue in 
+[this location](https://github.com/pcengines/apu2-documentation/issues). To 
+create the issue, from the list of available templates select the one, that fits 
+best the nature of the issue (bug, feature, question or task) and fill it.
