@@ -75,5 +75,9 @@ DefinitionBlock (
 
 	/* Super IO devices (COM ports) */
 	#include "acpi/superio.asl"
+
+	/* GPIO buttons and leds */
+	#include "acpi/buttons.asl"
+	#include "acpi/leds.asl"
 }
 /* End of ASL file */
