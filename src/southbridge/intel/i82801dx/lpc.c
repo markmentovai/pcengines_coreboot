@@ -32,7 +32,7 @@ static void i82801dx_enable_acpi(struct device *dev)
 }
 
 /**
- * Set miscellanous static southbridge features.
+ * Set miscellaneous static southbridge features.
  *
  * @param dev PCI device with I/O APIC control registers
  */
@@ -48,7 +48,7 @@ static void i82801dx_enable_ioapic(struct device *dev)
 	pci_write_config32(dev, GEN_CNTL, reg32);
 	printk(BIOS_DEBUG, "IOAPIC Southbridge enabled %x\n", reg32);
 
-	set_ioapic_id(VIO_APIC_VADDR, 0x02);
+	setup_ioapic(VIO_APIC_VADDR, 0x02);
 
 	ioapic_set_boot_config(VIO_APIC_VADDR, true);
 }

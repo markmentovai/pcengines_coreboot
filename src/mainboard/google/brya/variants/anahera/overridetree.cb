@@ -74,19 +74,25 @@ chip soc/intel/alderlake
 			chip drivers/intel/dptf
 				## sensor information
 				register "options.tsr[0].desc" = ""DRAM""
-				register "options.tsr[1].desc" = ""Charger""
+				register "options.tsr[1].desc" = ""Soc""
+				register "options.tsr[2].desc" = ""Charger""
+				register "options.tsr[3].desc" = ""Regulator""
 				# TODO: below values are initial reference values only
 				## Passive Policy
 				register "policies.passive" = "{
 					[0] = DPTF_PASSIVE(CPU,         CPU,           95, 5000),
 					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 75, 5000),
-					[2] = DPTF_PASSIVE(CHARGER,     TEMP_SENSOR_1, 75, 5000),
+					[2] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_1, 75, 5000),
+					[3] = DPTF_PASSIVE(CHARGER,     TEMP_SENSOR_2, 75, 5000),
+					[4] = DPTF_PASSIVE(CPU,		TEMP_SENSOR_3, 75, 5000),
 				}"
 				## Critical Policy
 				register "policies.critical" = "{
 					[0] = DPTF_CRITICAL(CPU,               105, SHUTDOWN),
 					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,      85, SHUTDOWN),
 					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,      85, SHUTDOWN),
+					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,	85, SHUTDOWN),
+					[4] = DPTF_CRITICAL(TEMP_SENSOR_3,	85, SHUTDOWN),
 				}"
 				register "controls.power_limits" = "{
 					.pl1 = {
@@ -125,7 +131,7 @@ chip soc/intel/alderlake
 			# Enable PCIE eMMC bridge 7 using clk 6
 			register "pch_pcie_rp[PCH_RP(7)]" = "{
 				.clk_src = 6,
-				.clk_req = 2,
+				.clk_req = 6,
 				.flags = PCIE_RP_HOTPLUG | PCIE_RP_AER,
 			}"
 		end     #PCIE7 EMMC
@@ -228,7 +234,7 @@ chip soc/intel/alderlake
 		end
 		device ref hda on
 			chip drivers/generic/max98357a
-				register "hid" = ""MX98357A""
+				register "hid" = ""MX98360A""
 				register "sdmode_gpio" =  "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_A11)"
 				register "sdmode_delay" = "5"
 				device generic 0 on end

@@ -2,12 +2,15 @@
 
 #include <amdblocks/acpimmio.h>
 #include <amdblocks/espi.h>
+#include <amdblocks/lpc.h>
 #include <bootblock_common.h>
 #include <baseboard/variants.h>
 #include <console/console.h>
 #include <delay.h>
 #include <device/pci_ops.h>
+#include <soc/lpc.h>
 #include <soc/pci_devs.h>
+#include <soc/southbridge.h>
 #include <timer.h>
 
 #define FC350_PCIE_INIT_DELAY_US (20 * USECS_PER_MSEC)
@@ -31,12 +34,18 @@ void bootblock_mainboard_early_init(void)
 	size_t base_num_gpios, override_num_gpios;
 	const struct soc_amd_gpio *base_gpios, *override_gpios;
 
-	dword = pci_read_config32(SOC_LPC_DEV, 0x78);
-	dword &= 0xFFFFF9F3;
-	dword |= 0x200;
-	pci_write_config32(SOC_LPC_DEV, 0x78, dword);
-	pci_write_config32(SOC_LPC_DEV, 0x44, 0);
-	pci_write_config32(SOC_LPC_DEV, 0x48, 0);
+	/* Beware that the bit definitions for LPC_LDRQ0_PU_EN and LPC_LDRQ0_PD_EN are swapped
+	   on Picasso and older compared to Renoir/Cezanne and newer */
+	dword = pci_read_config32(SOC_LPC_DEV, LPC_MISC_CONTROL_BITS);
+	dword &= ~(LPC_LDRQ0_PU_EN | LPC_LDRQ1_EN | LPC_LDRQ0_EN);
+	dword |= LPC_LDRQ0_PD_EN;
+	pci_write_config32(SOC_LPC_DEV, LPC_MISC_CONTROL_BITS, dword);
+
+	/*
+	 * All LPC decodes need to be cleared before we can configure the LPC pads as secondary
+	 * eSPI interface that gets used for the EC communication. This is already done by
+	 * lpc_disable_decodes that gets called before this function.
+	 */
 
 	if (CONFIG(VBOOT_STARTS_BEFORE_BOOTBLOCK))
 		return;
@@ -51,15 +60,17 @@ void bootblock_mainboard_early_init(void)
 	 * the Fibocom 350 PCIe init
 	 */
 	stopwatch_init_usecs_expire(&pcie_init_timeout_sw, FC350_PCIE_INIT_DELAY_US);
-	printk(BIOS_DEBUG, "Bootblock configure eSPI\n");
 
-	dword = pm_read32(0x90);
-	dword |= 1 << 16;
-	pm_write32(0x90, dword);
+	/* Early eSPI interface configuration */
 
-	dword = pm_read32(0x74);
-	dword |= 3 << 10;
-	pm_write32(0x74, dword);
+	dword = pm_read32(PM_SPI_PAD_PU_PD);
+	dword |= PM_ESPI_CS_USE_DATA2;
+	pm_write32(PM_SPI_PAD_PU_PD, dword);
+
+	/* Switch the pads that can be used as either LPC or secondary eSPI to 1.8V mode */
+	dword = pm_read32(PM_ACPI_CONF);
+	dword |= PM_ACPI_S5_LPC_PIN_MODE | PM_ACPI_S5_LPC_PIN_MODE_SEL;
+	pm_write32(PM_ACPI_CONF, dword);
 }
 
 void bootblock_mainboard_init(void)

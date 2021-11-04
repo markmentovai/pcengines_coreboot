@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <smbios.h>
+#include <types.h>
 #include "memory.h"
 
 #include "fw_cfg.h"
@@ -250,8 +251,8 @@ void mp_init_cpus(struct bus *cpu_bus)
 {
 	const struct mp_ops *ops = CONFIG(SMM_TSEG) ? &mp_ops_with_smm : &mp_ops_no_smm;
 
-	if (mp_init_with_smm(cpu_bus, ops))
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, ops);
 }
 
 static void cpu_bus_init(struct device *dev)

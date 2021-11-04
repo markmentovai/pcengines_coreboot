@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <console/console.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 #include <rmodule.h>
 #include <arch/cpu.h>
@@ -25,6 +23,7 @@
 #include <symbols.h>
 #include <timer.h>
 #include <thread.h>
+#include <types.h>
 
 #include <security/intel/stm/SmmStm.h>
 
@@ -89,6 +88,8 @@ struct sipi_params {
 	uint32_t gdt;
 	uint16_t unused;
 	uint32_t idt_ptr;
+	uint32_t per_cpu_segment_descriptors;
+	uint32_t per_cpu_segment_selector;
 	uint32_t stack_top;
 	uint32_t stack_size;
 	uint32_t microcode_lock; /* 0xffffffff means parallel loading. */
@@ -139,22 +140,21 @@ static inline void release_barrier(atomic_t *b)
 	atomic_set(b, 1);
 }
 
-/* Returns 1 if timeout waiting for APs. 0 if target aps found. */
-static int wait_for_aps(atomic_t *val, int target, int total_delay,
+static enum cb_err wait_for_aps(atomic_t *val, int target, int total_delay,
 			int delay_step)
 {
-	int timeout = 0;
 	int delayed = 0;
 	while (atomic_read(val) != target) {
 		udelay(delay_step);
 		delayed += delay_step;
 		if (delayed >= total_delay) {
-			timeout = 1;
-			break;
+			/* Not all APs ready before timeout */
+			return CB_ERR;
 		}
 	}
 
-	return timeout;
+	/* APs ready before timeout */
+	return CB_SUCCESS;
 }
 
 static void ap_do_flight_plan(void)
@@ -179,28 +179,25 @@ static void park_this_cpu(void *unused)
 
 /* By the time APs call ap_init() caching has been setup, and microcode has
  * been loaded. */
-static void asmlinkage ap_init(unsigned int cpu)
+static void asmlinkage ap_init(void)
 {
-	struct cpu_info *info;
+	struct cpu_info *info = cpu_info();
 
 	/* Ensure the local APIC is enabled */
 	enable_lapic();
 
-	info = cpu_info();
-	info->index = cpu;
-	info->cpu = cpus_dev[cpu];
+	info->cpu = cpus_dev[info->index];
 
 	cpu_add_map_entry(info->index);
-	thread_init_cpu_info_non_bsp(info);
 
 	/* Fix up APIC id with reality. */
 	info->cpu->path.apic.apic_id = lapicid();
 
 	if (cpu_is_intel())
-		printk(BIOS_INFO, "AP: slot %d apic_id %x, MCU rev: 0x%08x\n", cpu,
+		printk(BIOS_INFO, "AP: slot %zu apic_id %x, MCU rev: 0x%08x\n", info->index,
 		       info->cpu->path.apic.apic_id, get_current_microcode_rev());
 	else
-		printk(BIOS_INFO, "AP: slot %d apic_id %x\n", cpu,
+		printk(BIOS_INFO, "AP: slot %zu apic_id %x\n", info->index,
 		       info->cpu->path.apic.apic_id);
 
 	/* Walk the flight plan */
@@ -215,10 +212,10 @@ static void setup_default_sipi_vector_params(struct sipi_params *sp)
 	sp->gdt = (uintptr_t)&gdt;
 	sp->gdtlimit = (uintptr_t)&gdt_end - (uintptr_t)&gdt - 1;
 	sp->idt_ptr = (uintptr_t)&idtarg;
+	sp->per_cpu_segment_descriptors = (uintptr_t)&per_cpu_segment_descriptors;
+	sp->per_cpu_segment_selector = per_cpu_segment_selector;
 	sp->stack_size = CONFIG_STACK_SIZE;
 	sp->stack_top = ALIGN_DOWN((uintptr_t)&_estack, CONFIG_STACK_SIZE);
-	/* Adjust the stack top to take into account cpu_info. */
-	sp->stack_top -= sizeof(struct cpu_info);
 }
 
 #define NUM_FIXED_MTRRS 11
@@ -397,32 +394,54 @@ static int allocate_cpu_devices(struct bus *cpu_bus, struct mp_params *p)
 	return max_cpus;
 }
 
-/* Returns 1 for timeout. 0 on success. */
-static int apic_wait_timeout(int total_delay, int delay_step)
+static enum cb_err apic_wait_timeout(int total_delay, int delay_step)
 {
 	int total = 0;
-	int timeout = 0;
 
 	while (lapic_busy()) {
 		udelay(delay_step);
 		total += delay_step;
 		if (total >= total_delay) {
-			timeout = 1;
-			break;
+			/* LAPIC not ready before the timeout */
+			return CB_ERR;
 		}
 	}
 
-	return timeout;
+	/* LAPIC ready before the timeout */
+	return CB_SUCCESS;
 }
 
-static int start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
+/* Send Startup IPI to APs */
+static enum cb_err send_sipi_to_aps(int ap_count, atomic_t *num_aps, int sipi_vector)
+{
+	if (lapic_busy()) {
+		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...\n");
+		if (apic_wait_timeout(1000 /* 1 ms */, 50) != CB_SUCCESS) {
+			printk(BIOS_ERR, "timed out. Aborting.\n");
+			return CB_ERR;
+		}
+		printk(BIOS_DEBUG, "done.\n");
+	}
+
+	lapic_send_ipi(LAPIC_DEST_ALLBUT | LAPIC_INT_ASSERT | LAPIC_DM_STARTUP | sipi_vector,
+		       0);
+	printk(BIOS_DEBUG, "Waiting for SIPI to complete...\n");
+	if (apic_wait_timeout(10000 /* 10 ms */, 50 /* us */) != CB_SUCCESS) {
+		printk(BIOS_ERR, "timed out.\n");
+		return CB_ERR;
+	}
+	printk(BIOS_DEBUG, "done.\n");
+	return CB_SUCCESS;
+}
+
+static enum cb_err start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
 {
 	int sipi_vector;
 	/* Max location is 4KiB below 1MiB */
 	const int max_vector_loc = ((1 << 20) - (1 << 12)) >> 12;
 
 	if (ap_count == 0)
-		return 0;
+		return CB_SUCCESS;
 
 	/* The vector is sent as a 4k aligned address in one byte. */
 	sipi_vector = sipi_vector_location >> 12;
@@ -430,7 +449,7 @@ static int start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
 	if (sipi_vector > max_vector_loc) {
 		printk(BIOS_CRIT, "SIPI vector too large! 0x%08x\n",
 		       sipi_vector);
-		return -1;
+		return CB_ERR;
 	}
 
 	printk(BIOS_DEBUG, "Attempting to start %d APs\n", ap_count);
@@ -439,10 +458,10 @@ static int start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
 	printk(BIOS_DEBUG, "Starting CPUs in %s mode\n", x2apic_mode ? "x2apic" : "xapic");
 
 	if (lapic_busy()) {
-		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000 /* 1 ms */, 50)) {
+		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...\n");
+		if (apic_wait_timeout(1000 /* 1 ms */, 50) != CB_SUCCESS) {
 			printk(BIOS_ERR, "timed out. Aborting.\n");
-			return -1;
+			return CB_ERR;
 		}
 		printk(BIOS_DEBUG, "done.\n");
 	}
@@ -453,66 +472,33 @@ static int start_aps(struct bus *cpu_bus, int ap_count, atomic_t *num_aps)
 	if (!CONFIG(X86_AMD_INIT_SIPI)) {
 		printk(BIOS_DEBUG, "Waiting for 10ms after sending INIT.\n");
 		mdelay(10);
+
+		/* Send 1st Startup IPI (SIPI) */
+		if (send_sipi_to_aps(ap_count, num_aps, sipi_vector) != CB_SUCCESS)
+			return CB_ERR;
+
+		/* Wait for CPUs to check in up to 200 us. */
+		wait_for_aps(num_aps, ap_count, 200 /* us */, 15 /* us */);
 	}
 
-	/* Send 1st Startup IPI (SIPI) */
-	if (lapic_busy()) {
-		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000 /* 1 ms */, 50)) {
-			printk(BIOS_ERR, "timed out. Aborting.\n");
-			return -1;
-		}
-		printk(BIOS_DEBUG, "done.\n");
-	}
-
-	lapic_send_ipi(LAPIC_DEST_ALLBUT | LAPIC_INT_ASSERT | LAPIC_DM_STARTUP | sipi_vector,
-		       0);
-	printk(BIOS_DEBUG, "Waiting for 1st SIPI to complete...");
-	if (apic_wait_timeout(10000 /* 10 ms */, 50 /* us */)) {
-		printk(BIOS_ERR, "timed out.\n");
-		return -1;
-	}
-	printk(BIOS_DEBUG, "done.\n");
-
-	/* Wait for CPUs to check in up to 200 us. */
-	wait_for_aps(num_aps, ap_count, 200 /* us */, 15 /* us */);
-
-	if (CONFIG(X86_AMD_INIT_SIPI))
-		return 0;
-
-	/* Send 2nd SIPI */
-	if (lapic_busy()) {
-		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000 /* 1 ms */, 50)) {
-			printk(BIOS_ERR, "timed out. Aborting.\n");
-			return -1;
-		}
-		printk(BIOS_DEBUG, "done.\n");
-	}
-
-	lapic_send_ipi(LAPIC_DEST_ALLBUT | LAPIC_INT_ASSERT | LAPIC_DM_STARTUP | sipi_vector,
-		       0);
-	printk(BIOS_DEBUG, "Waiting for 2nd SIPI to complete...");
-	if (apic_wait_timeout(10000 /* 10 ms */, 50 /* us */)) {
-		printk(BIOS_ERR, "timed out.\n");
-		return -1;
-	}
-	printk(BIOS_DEBUG, "done.\n");
+	/* Send final SIPI */
+	if (send_sipi_to_aps(ap_count, num_aps, sipi_vector) != CB_SUCCESS)
+		return CB_ERR;
 
 	/* Wait for CPUs to check in. */
-	if (wait_for_aps(num_aps, ap_count, 100000 /* 100 ms */, 50 /* us */)) {
+	if (wait_for_aps(num_aps, ap_count, 100000 /* 100 ms */, 50 /* us */) != CB_SUCCESS) {
 		printk(BIOS_ERR, "Not all APs checked in: %d/%d.\n",
 		       atomic_read(num_aps), ap_count);
-		return -1;
+		return CB_ERR;
 	}
 
-	return 0;
+	return CB_SUCCESS;
 }
 
-static int bsp_do_flight_plan(struct mp_params *mp_params)
+static enum cb_err bsp_do_flight_plan(struct mp_params *mp_params)
 {
 	int i;
-	int ret = 0;
+	enum cb_err ret = CB_SUCCESS;
 	/*
 	 * Set time out for flight plan to a huge minimum value (>=1 second).
 	 * CPUs with many APs may take longer if there is contention for
@@ -533,9 +519,9 @@ static int bsp_do_flight_plan(struct mp_params *mp_params)
 		if (atomic_read(&rec->barrier) == 0) {
 			/* Wait for the APs to check in. */
 			if (wait_for_aps(&rec->cpus_entered, num_aps,
-					 timeout_us, step_us)) {
+					 timeout_us, step_us) != CB_SUCCESS) {
 				printk(BIOS_ERR, "MP record %d timeout.\n", i);
-				ret = -1;
+				ret = CB_ERR;
 			}
 		}
 
@@ -594,10 +580,8 @@ static void init_bsp(struct bus *cpu_bus)
  *    Therefore, one cannot rely on this property or the order of devices in
  *    the device tree unless the chipset or mainboard know the APIC ids
  *    a priori.
- *
- * mp_init() returns < 0 on error, 0 on success.
  */
-static int mp_init(struct bus *cpu_bus, struct mp_params *p)
+static enum cb_err mp_init(struct bus *cpu_bus, struct mp_params *p)
 {
 	int num_cpus;
 	atomic_t *ap_count;
@@ -606,7 +590,7 @@ static int mp_init(struct bus *cpu_bus, struct mp_params *p)
 
 	if (p == NULL || p->flight_plan == NULL || p->num_records < 1) {
 		printk(BIOS_CRIT, "Invalid MP parameters\n");
-		return -1;
+		return CB_ERR;
 	}
 
 	/* Default to currently running CPU. */
@@ -616,7 +600,7 @@ static int mp_init(struct bus *cpu_bus, struct mp_params *p)
 		printk(BIOS_CRIT,
 		       "ERROR: More cpus requested (%d) than supported (%d).\n",
 		       p->num_cpus, num_cpus);
-		return -1;
+		return CB_ERR;
 	}
 
 	/* Copy needed parameters so that APs have a reference to the plan. */
@@ -626,7 +610,7 @@ static int mp_init(struct bus *cpu_bus, struct mp_params *p)
 	/* Load the SIPI vector. */
 	ap_count = load_sipi_vector(p);
 	if (ap_count == NULL)
-		return -1;
+		return CB_ERR;
 
 	/* Make sure SIPI data hits RAM so the APs that come up will see
 	 * the startup code even if the caches are disabled.  */
@@ -634,11 +618,11 @@ static int mp_init(struct bus *cpu_bus, struct mp_params *p)
 
 	/* Start the APs providing number of APs and the cpus_entered field. */
 	global_num_aps = p->num_cpus - 1;
-	if (start_aps(cpu_bus, global_num_aps, ap_count) < 0) {
+	if (start_aps(cpu_bus, global_num_aps, ap_count) != CB_SUCCESS) {
 		mdelay(1000);
 		printk(BIOS_DEBUG, "%d/%d eventually checked in?\n",
 		       atomic_read(ap_count), global_num_aps);
-		return -1;
+		return CB_ERR;
 	}
 
 	/* Walk the flight plan for the BSP. */
@@ -657,7 +641,7 @@ void smm_initiate_relocation_parallel(void)
 {
 	if (lapic_busy()) {
 		printk(BIOS_DEBUG, "Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000 /* 1 ms */, 50)) {
+		if (apic_wait_timeout(1000 /* 1 ms */, 50) != CB_SUCCESS) {
 			printk(BIOS_DEBUG, "timed out. Aborting.\n");
 			return;
 		}
@@ -667,7 +651,7 @@ void smm_initiate_relocation_parallel(void)
 	lapic_send_ipi(LAPIC_INT_ASSERT | LAPIC_DM_SMI, lapicid());
 
 	if (lapic_busy()) {
-		if (apic_wait_timeout(1000 /* 1 ms */, 100 /* us */)) {
+		if (apic_wait_timeout(1000 /* 1 ms */, 100 /* us */) != CB_SUCCESS) {
 			printk(BIOS_DEBUG, "SMI Relocation timed out.\n");
 			return;
 		}
@@ -773,7 +757,7 @@ static void adjust_smm_apic_id_map(struct smm_loader_params *smm_params)
 		stub_params->apic_id_to_cpu[i] = cpu_get_apic_id(i);
 }
 
-static int install_relocation_handler(int num_cpus, size_t real_save_state_size,
+static enum cb_err install_relocation_handler(int num_cpus, size_t real_save_state_size,
 				      size_t save_state_size, uintptr_t perm_smbase)
 {
 	struct smm_loader_params smm_params = {
@@ -791,16 +775,16 @@ static int install_relocation_handler(int num_cpus, size_t real_save_state_size,
 
 	if (smm_setup_relocation_handler((void *)perm_smbase, &smm_params)) {
 		printk(BIOS_ERR, "%s: smm setup failed\n", __func__);
-		return -1;
+		return CB_ERR;
 	}
 	adjust_smm_apic_id_map(&smm_params);
 
 	mp_state.reloc_start32_offset = smm_params.stub_params->start32_offset;
 
-	return 0;
+	return CB_SUCCESS;
 }
 
-static int install_permanent_handler(int num_cpus, uintptr_t smbase,
+static enum cb_err install_permanent_handler(int num_cpus, uintptr_t smbase,
 				     size_t smsize, size_t real_save_state_size,
 				     size_t save_state_size)
 {
@@ -826,11 +810,11 @@ static int install_permanent_handler(int num_cpus, uintptr_t smbase,
 	printk(BIOS_DEBUG, "Installing permanent SMM handler to 0x%08lx\n", smbase);
 
 	if (smm_load_module((void *)smbase, smsize, &smm_params))
-		return -1;
+		return CB_ERR;
 
 	adjust_smm_apic_id_map(&smm_params);
 
-	return 0;
+	return CB_SUCCESS;
 }
 
 /* Load SMM handlers as part of MP flight record. */
@@ -845,14 +829,15 @@ static void load_smm_handlers(void)
 
 	/* Install handlers. */
 	if (install_relocation_handler(mp_state.cpu_count, real_save_state_size,
-				       smm_save_state_size, mp_state.perm_smbase) < 0) {
+				       smm_save_state_size, mp_state.perm_smbase) !=
+										CB_SUCCESS) {
 		printk(BIOS_ERR, "Unable to install SMM relocation handler.\n");
 		smm_disable();
 	}
 
 	if (install_permanent_handler(mp_state.cpu_count, mp_state.perm_smbase,
 				      mp_state.perm_smsize, real_save_state_size,
-				      smm_save_state_size) < 0) {
+				      smm_save_state_size) != CB_SUCCESS) {
 		printk(BIOS_ERR, "Unable to install SMM permanent handler.\n");
 		smm_disable();
 	}
@@ -901,7 +886,7 @@ static void store_callback(struct mp_callback **slot, struct mp_callback *val)
 	);
 }
 
-static int run_ap_work(struct mp_callback *val, long expire_us)
+static enum cb_err run_ap_work(struct mp_callback *val, long expire_us)
 {
 	int i;
 	int cpus_accepted;
@@ -910,14 +895,14 @@ static int run_ap_work(struct mp_callback *val, long expire_us)
 
 	if (!CONFIG(PARALLEL_MP_AP_WORK)) {
 		printk(BIOS_ERR, "APs already parked. PARALLEL_MP_AP_WORK not selected.\n");
-		return -1;
+		return CB_ERR;
 	}
 
 	cur_cpu = cpu_index();
 
 	if (cur_cpu < 0) {
 		printk(BIOS_ERR, "Invalid CPU index.\n");
-		return -1;
+		return CB_ERR;
 	}
 
 	/* Signal to all the APs to run the func. */
@@ -943,12 +928,12 @@ static int run_ap_work(struct mp_callback *val, long expire_us)
 		}
 
 		if (cpus_accepted == global_num_aps)
-			return 0;
+			return CB_SUCCESS;
 	} while (expire_us <= 0 || !stopwatch_expired(&sw));
 
 	printk(BIOS_CRIT, "CRITICAL ERROR: AP call expired. %d/%d CPUs accepted.\n",
 		cpus_accepted, global_num_aps);
-	return -1;
+	return CB_ERR;
 }
 
 static void ap_wait_for_instruction(void)
@@ -989,7 +974,7 @@ static void ap_wait_for_instruction(void)
 	}
 }
 
-int mp_run_on_aps(void (*func)(void *), void *arg, int logical_cpu_num,
+enum cb_err mp_run_on_aps(void (*func)(void *), void *arg, int logical_cpu_num,
 		long expire_us)
 {
 	struct mp_callback lcb = { .func = func, .arg = arg,
@@ -997,7 +982,8 @@ int mp_run_on_aps(void (*func)(void *), void *arg, int logical_cpu_num,
 	return run_ap_work(&lcb, expire_us);
 }
 
-int mp_run_on_all_aps(void (*func)(void *), void *arg, long expire_us, bool run_parallel)
+enum cb_err mp_run_on_all_aps(void (*func)(void *), void *arg, long expire_us,
+			      bool run_parallel)
 {
 	int ap_index, bsp_index;
 
@@ -1012,14 +998,14 @@ int mp_run_on_all_aps(void (*func)(void *), void *arg, long expire_us, bool run_
 		/* skip if BSP */
 		if (ap_index == bsp_index)
 			continue;
-		if (mp_run_on_aps(func, arg, ap_index, expire_us))
+		if (mp_run_on_aps(func, arg, ap_index, expire_us) != CB_SUCCESS)
 			return CB_ERR;
 	}
 
 	return CB_SUCCESS;
 }
 
-int mp_run_on_all_cpus(void (*func)(void *), void *arg)
+enum cb_err mp_run_on_all_cpus(void (*func)(void *), void *arg)
 {
 	/* Run on BSP first. */
 	func(arg);
@@ -1028,10 +1014,10 @@ int mp_run_on_all_cpus(void (*func)(void *), void *arg)
 	return mp_run_on_aps(func, arg, MP_RUN_ON_ALL_CPUS, 1000 * USECS_PER_MSEC);
 }
 
-int mp_park_aps(void)
+enum cb_err mp_park_aps(void)
 {
 	struct stopwatch sw;
-	int ret;
+	enum cb_err ret;
 	long duration_msecs;
 
 	stopwatch_init(&sw);
@@ -1041,7 +1027,7 @@ int mp_park_aps(void)
 
 	duration_msecs = stopwatch_duration_msecs(&sw);
 
-	if (!ret)
+	if (ret == CB_SUCCESS)
 		printk(BIOS_DEBUG, "%s done after %ld msecs.\n", __func__,
 		       duration_msecs);
 	else
@@ -1109,9 +1095,9 @@ static void fill_mp_state(struct mp_state *state, const struct mp_ops *ops)
 		mp_state.ops.per_cpu_smm_trigger = smm_initiate_relocation;
 }
 
-int mp_init_with_smm(struct bus *cpu_bus, const struct mp_ops *mp_ops)
+static enum cb_err do_mp_init_with_smm(struct bus *cpu_bus, const struct mp_ops *mp_ops)
 {
-	int ret;
+	enum cb_err ret;
 	void *default_smm_area;
 	struct mp_params mp_params;
 
@@ -1124,7 +1110,7 @@ int mp_init_with_smm(struct bus *cpu_bus, const struct mp_ops *mp_ops)
 
 	if (mp_state.cpu_count <= 0) {
 		printk(BIOS_ERR, "Invalid cpu_count: %d\n", mp_state.cpu_count);
-		return -1;
+		return CB_ERR;
 	}
 
 	/* Sanity check SMM state. */
@@ -1151,8 +1137,18 @@ int mp_init_with_smm(struct bus *cpu_bus, const struct mp_ops *mp_ops)
 	restore_default_smm_area(default_smm_area);
 
 	/* Signal callback on success if it's provided. */
-	if (ret == 0 && mp_state.ops.post_mp_init != NULL)
+	if (ret == CB_SUCCESS && mp_state.ops.post_mp_init != NULL)
 		mp_state.ops.post_mp_init();
+
+	return ret;
+}
+
+enum cb_err mp_init_with_smm(struct bus *cpu_bus, const struct mp_ops *mp_ops)
+{
+	enum cb_err ret = do_mp_init_with_smm(cpu_bus, mp_ops);
+
+	if (ret != CB_SUCCESS)
+		printk(BIOS_ERR, "MP initialization failure.\n");
 
 	return ret;
 }

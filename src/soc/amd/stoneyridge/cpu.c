@@ -18,6 +18,7 @@
 #include <soc/smi.h>
 #include <soc/iomap.h>
 #include <console/console.h>
+#include <types.h>
 
 /*
  * MP and SMM loading initialization.
@@ -53,8 +54,8 @@ static const struct mp_ops mp_ops = {
 void mp_init_cpus(struct bus *cpu_bus)
 {
 	/* Clear for take-off */
-	if (mp_init_with_smm(cpu_bus, &mp_ops) < 0)
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
 
 	/* The flash is now no longer cacheable. Reset to WP for performance. */
 	mtrr_use_temp_range(FLASH_BASE_ADDR, CONFIG_ROM_SIZE, MTRR_TYPE_WRPROT);

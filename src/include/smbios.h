@@ -247,6 +247,7 @@ typedef enum {
 	SMBIOS_PHYS_MEMORY_ARRAY = 16,
 	SMBIOS_MEMORY_DEVICE = 17,
 	SMBIOS_MEMORY_ARRAY_MAPPED_ADDRESS = 19,
+	SMBIOS_MEMORY_DEVICE_MAPPED_ADDRESS = 20,
 	SMBIOS_SYSTEM_BOOT_INFORMATION = 32,
 	SMBIOS_IPMI_DEVICE_INFORMATION = 38,
 	SMBIOS_ONBOARD_DEVICES_EXTENDED_INFORMATION = 41,
@@ -306,6 +307,18 @@ struct smbios_type0 {
 	u16 extended_bios_rom_size;
 	u8 eos[2];
 } __packed;
+
+typedef enum {
+	SMBIOS_WAKEUP_TYPE_RESERVED = 0x00,
+	SMBIOS_WAKEUP_TYPE_OTHER = 0x01,
+	SMBIOS_WAKEUP_TYPE_UNKNOWN = 0x02,
+	SMBIOS_WAKEUP_TYPE_APM_TIMER = 0x03,
+	SMBIOS_WAKEUP_TYPE_MODEM_RING = 0x04,
+	SMBIOS_WAKEUP_TYPE_LAN_REMOTE = 0x05,
+	SMBIOS_WAKEUP_TYPE_POWER_SWITCH = 0x06,
+	SMBIOS_WAKEUP_TYPE_PCI_PME = 0x07,
+	SMBIOS_WAKEUP_TYPE_AC_POWER_RESTORED = 0x08,
+} smbios_wakeup_type;
 
 struct smbios_type1 {
 	struct smbios_header header;
@@ -880,6 +893,20 @@ struct smbios_type19 {
 	u8 eos[2];
 } __packed;
 
+struct smbios_type20 {
+	struct smbios_header header;
+	u32 addr_start;
+	u32 addr_end;
+	u16 memory_device_handle;
+	u16 memory_array_mapped_address_handle;
+	u8 partition_row_pos;
+	u8 interleave_pos;
+	u8 interleave_depth;
+	u64 ext_addr_start;
+	u64 ext_addr_end;
+	u8 eos[2];
+} __packed;
+
 struct smbios_type32 {
 	struct smbios_header header;
 	u8 reserved[6];
@@ -947,6 +974,7 @@ void smbios_fill_dimm_asset_tag(const struct dimm_info *dimm,
 void smbios_fill_dimm_locator(const struct dimm_info *dimm,
 	struct smbios_type17 *t);
 
+smbios_wakeup_type smbios_system_wakeup_type(void);
 smbios_board_type smbios_mainboard_board_type(void);
 smbios_enclosure_type smbios_mainboard_enclosure_type(void);
 

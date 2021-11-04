@@ -319,16 +319,6 @@ static void hudson_lpc_enable_resources(struct device *dev)
 	hudson_lpc_enable_childrens_resources(dev);
 }
 
-unsigned long acpi_fill_mcfg(unsigned long current)
-{
-	current += acpi_create_mcfg_mmconfig((acpi_mcfg_mmconfig_t *)current,
-					     CONFIG_MMCONF_BASE_ADDRESS,
-					     0,
-					     0,
-					     CONFIG_MMCONF_BUS_NUMBER - 1);
-	return current;
-}
-
 uintptr_t lpc_get_spibase(void)
 {
 	struct device *dev = pcidev_on_root(0x14, 3);

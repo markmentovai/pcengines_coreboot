@@ -19,6 +19,7 @@
 #include <soc/iomap.h>
 #include <console/console.h>
 #include <cpu/amd/microcode.h>
+#include <types.h>
 
 _Static_assert(CONFIG_MAX_CPUS == 8, "Do not override MAX_CPUS. To reduce the number of "
 	"available cores, use the downcore_mode and disable_smt devicetree settings instead.");
@@ -55,8 +56,8 @@ static const struct mp_ops mp_ops = {
 void mp_init_cpus(struct bus *cpu_bus)
 {
 	/* Clear for take-off */
-	if (mp_init_with_smm(cpu_bus, &mp_ops) < 0)
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
 
 	/* pre_mp_init made the flash not cacheable. Reset to WP for performance. */
 	mtrr_use_temp_range(FLASH_BASE_ADDR, CONFIG_ROM_SIZE, MTRR_TYPE_WRPROT);

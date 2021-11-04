@@ -13,6 +13,7 @@
 #include <cpu/x86/smm.h>
 #include <device/mmio.h>
 #include <device/pci.h>
+#include <intelblocks/cse.h>
 #include <intelblocks/lpc_lib.h>
 #include <intelblocks/pcr.h>
 #include <intelblocks/pmclib.h>
@@ -49,22 +50,12 @@ static void pch_handle_sideband(config_t *config)
 
 static void pch_finalize(void)
 {
-	config_t *config;
+	config_t *config = config_of_soc();
 
 	/* TCO Lock down */
 	tco_lockdown();
 
 	/* TODO: Add Thermal Configuration */
-
-	/*
-	 * Disable ACPI PM timer based on dt policy
-	 *
-	 * Disabling ACPI PM timer is necessary for XTAL OSC shutdown.
-	 * Disabling ACPI PM timer also switches off TCO
-	 */
-	config = config_of_soc();
-	if (config->PmTimerDisabled)
-		pmc_disable_acpi_timer();
 
 	pch_handle_sideband(config);
 
@@ -90,6 +81,23 @@ static void sa_finalize(void)
 		sa_lock_pam();
 }
 
+static void heci_finalize(void)
+{
+	unsigned int cse_dev[] = {
+		PCH_DEVFN_CSE,
+		PCH_DEVFN_CSE_2,
+		PCH_DEVFN_CSE_3,
+		PCH_DEVFN_CSE_4
+	};
+
+	for (int i = 0; i < ARRAY_SIZE(cse_dev); i++) {
+		if (!is_cse_devfn_visible(cse_dev[i]))
+			continue;
+
+		set_cse_device_state(cse_dev[i], DEV_IDLE);
+	}
+}
+
 static void soc_finalize(void *unused)
 {
 	printk(BIOS_DEBUG, "Finalizing chipset.\n");
@@ -98,6 +106,7 @@ static void soc_finalize(void *unused)
 	apm_control(APM_CNT_FINALIZE);
 	tbt_finalize();
 	sa_finalize();
+	heci_finalize();
 
 	/* Indicate finalize step with post code */
 	post_code(POST_OS_BOOT);

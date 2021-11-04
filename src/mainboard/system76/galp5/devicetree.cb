@@ -26,10 +26,6 @@ chip soc/intel/tigerlake
 		.tdp_pl2_override = 51,
 	}"
 
-# Finalize (soc/intel/tigerlake/finalize.c)
-	# PM Timer Disabled, saves power
-	register "PmTimerDisabled" = "1"
-
 # FSP Memory (soc/intel/tigerlake/romstage/fsp_params.c)
 	# Enable C6 DRAM
 	register "enable_c6dram" = "1"
@@ -106,6 +102,8 @@ chip soc/intel/tigerlake
 			register "DdiPortBConfig" = "0"
 			register "DdiPortBHpd" = "1"
 			register "DdiPortBDdc" = "1"
+
+			register "gfx" = "GMA_DEFAULT_PANEL(0)"
 		end
 		device ref dptf on
 			register "Device4Enable" = "1"

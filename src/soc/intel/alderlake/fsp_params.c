@@ -346,12 +346,14 @@ static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
 
 	/* Locate microcode and pass to FSP-S for 2nd microcode loading */
 	microcode_file = intel_microcode_find();
-	microcode_len = get_microcode_size(microcode_file);
 
-	if ((microcode_file != NULL) && (microcode_len != 0)) {
-		/* Update CPU Microcode patch base address/size */
-		s_cfg->MicrocodeRegionBase = (uint32_t)(uintptr_t)microcode_file;
-		s_cfg->MicrocodeRegionSize = (uint32_t)microcode_len;
+	if (microcode_file != NULL) {
+		microcode_len = get_microcode_size(microcode_file);
+		if (microcode_len != 0) {
+			/* Update CPU Microcode patch base address/size */
+			s_cfg->MicrocodeRegionBase = (uint32_t)(uintptr_t)microcode_file;
+			s_cfg->MicrocodeRegionSize = (uint32_t)microcode_len;
+		}
 	}
 
 	/* Use coreboot MP PPI services if Kconfig is enabled */
@@ -572,6 +574,19 @@ static void fill_fsps_8254_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->Enable8254ClockGatingOnS3 = !use_8254;
 }
 
+static void fill_fsps_pm_timer_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_alderlake_config *config)
+{
+	/*
+	 * Legacy PM ACPI Timer (and TCO Timer)
+	 * This *must* be 1 in any case to keep FSP from
+	 *  1) enabling PM ACPI Timer emulation in uCode.
+	 *  2) disabling the PM ACPI Timer.
+	 * We handle both by ourself!
+	 */
+	s_cfg->EnableTcoTimer = 1;
+}
+
 static void fill_fsps_storage_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
@@ -599,6 +614,8 @@ static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
+	/* Skip setting D0I3 bit for all HECI devices */
+	s_cfg->DisableD0I3SettingForHeci = 1;
 	/*
 	 * Power Optimizer for DMI
 	 * DmiPwrOptimizeDisable is default to 0.
@@ -695,7 +712,7 @@ static void fill_fsps_fivr_params(FSP_S_CONFIG *s_cfg,
 			config->ext_fivr_settings.vnn_supported_voltage_bitmap;
 
 	s_cfg->PchFivrExtVnnRailSxEnabledStates =
-			config->ext_fivr_settings.vnn_enable_bitmap;
+			config->ext_fivr_settings.vnn_sx_enable_bitmap;
 
 	/* Convert the voltages to increments of 2.5mv */
 	s_cfg->PchFivrExtV1p05RailVoltage =
@@ -738,6 +755,7 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		fill_fsps_thc_params,
 		fill_fsps_tbt_params,
 		fill_fsps_8254_params,
+		fill_fsps_pm_timer_params,
 		fill_fsps_storage_params,
 		fill_fsps_pcie_params,
 		fill_fsps_misc_power_params,

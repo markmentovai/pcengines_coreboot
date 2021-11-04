@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 bootblock-y += bootblock.c
+bootblock-$(CONFIG_CHROMEOS) += chromeos.c
 
 ifneq ($(wildcard $(MAINBOARD_BLOBS_DIR)/APCB_CZN_D4.bin),)
 $(info APCB sources present.)
@@ -18,6 +19,7 @@ ramstage-y += ec.c
 ramstage-$(CONFIG_CHROMEOS) += chromeos.c
 
 verstage-y += verstage.c
+verstage-$(CONFIG_CHROMEOS) += chromeos.c
 
 subdirs-y += variants/baseboard
 subdirs-y += variants/$(VARIANT_DIR)

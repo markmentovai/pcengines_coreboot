@@ -265,24 +265,37 @@ enum cppc_fields {
 	CPPC_MAX_FIELDS_VER_3,
 };
 
+typedef struct cppc_entry {
+	enum { CPPC_TYPE_REG, CPPC_TYPE_DWORD } type;
+	union {
+		acpi_addr_t reg;
+		uint32_t dword;
+	};
+} cppc_entry_t;
+
+#define CPPC_DWORD(_dword) \
+	(cppc_entry_t){ \
+		.type  = CPPC_TYPE_DWORD, \
+		.dword = _dword, \
+	}
+
+#define CPPC_REG(_reg) \
+	(cppc_entry_t){ \
+		.type = CPPC_TYPE_REG, \
+		.reg  = _reg, \
+	}
+
+#define CPPC_REG_MSR(address, offset, width) CPPC_REG(ACPI_REG_MSR(address, offset, width))
+#define CPPC_UNSUPPORTED CPPC_REG(ACPI_REG_UNSUPPORTED)
+
 struct cppc_config {
 	u32 version; /* must be 1, 2, or 3 */
 	/*
 	 * The generic acpi_addr_t structure is being used, though
 	 * anything besides PPC or FFIXED generally requires checking
 	 * if the OS has advertised support for it (via _OSC).
-	 *
-	 * NOTE: some fields permit DWORDs to be used.  If you
-	 * provide a System Memory register with all zeros (which
-	 * represents unsupported) then this will be used as-is.
-	 * Otherwise, a System Memory register with a 32-bit
-	 * width will be converted into a DWORD field (the value
-	 * of which will be the value of 'addrl'.  Any other use
-	 * of System Memory register is currently undefined.
-	 * (i.e., if you have an actual need for System Memory
-	 * then you'll need to adjust this kludge).
 	 */
-	acpi_addr_t regs[CPPC_MAX_FIELDS_VER_3];
+	cppc_entry_t entries[CPPC_MAX_FIELDS_VER_3];
 };
 
 void acpigen_write_return_integer(uint64_t arg);
@@ -357,8 +370,8 @@ void acpigen_write_PSS_package(u32 coreFreq, u32 power, u32 transLat,
 void acpigen_write_pss_object(const struct acpi_sw_pstate *pstate_values, size_t nentries);
 typedef enum { SW_ALL = 0xfc, SW_ANY = 0xfd, HW_ALL = 0xfe } PSD_coord;
 void acpigen_write_PSD_package(u32 domain, u32 numprocs, PSD_coord coordtype);
-void acpigen_write_CST_package_entry(acpi_cstate_t *cstate);
-void acpigen_write_CST_package(acpi_cstate_t *entry, int nentries);
+void acpigen_write_CST_package_entry(const acpi_cstate_t *cstate);
+void acpigen_write_CST_package(const acpi_cstate_t *entry, int nentries);
 typedef enum { CSD_HW_ALL = 0xfe } CSD_coord;
 void acpigen_write_CSD_package(u32 domain, u32 numprocs, CSD_coord coordtype,
 				u32 index);
@@ -499,7 +512,7 @@ void acpigen_write_field(const char *name, const struct fieldlist *l, size_t cou
 void acpigen_write_indexfield(const char *idx, const char *data,
 			      struct fieldlist *l, size_t count, uint8_t flags);
 
-int get_cst_entries(acpi_cstate_t **);
+int get_cst_entries(const acpi_cstate_t **);
 
 /*
  * Get element from package into specified destination op:

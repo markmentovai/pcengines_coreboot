@@ -4,23 +4,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <arch/cpu.h>
 #include <bootstate.h>
 #include <commonlib/bsd/compiler.h>
 #include <console/console.h>
+#include <smp/node.h>
 #include <thread.h>
 #include <timer.h>
 
-/* Can't use the IS_POWER_OF_2 in _Static_assert */
-_Static_assert((CONFIG_STACK_SIZE & (CONFIG_STACK_SIZE - 1)) == 0,
-	       "`cpu_info()` requires the stack size to be a power of 2");
-
-/*
- * struct cpu_info lives at the top of each thread's stack. `cpu_info()` locates this struct by
- * taking the current stack pointer and masking off CONFIG_STACK_SIZE. This requires the stack
- * to be STACK_SIZE aligned.
- */
-static u8 thread_stacks[CONFIG_STACK_SIZE * CONFIG_NUM_THREADS] __aligned(CONFIG_STACK_SIZE);
+static u8 thread_stacks[CONFIG_STACK_SIZE * CONFIG_NUM_THREADS] __aligned(sizeof(uint64_t));
 static bool initialized;
 
 static void idle_thread_init(void);
@@ -36,28 +27,25 @@ static struct thread all_threads[TOTAL_NUM_THREADS];
 static struct thread *runnable_threads;
 static struct thread *free_threads;
 
-static inline struct cpu_info *thread_cpu_info(const struct thread *t)
-{
-	return (void *)(t->stack_orig);
-}
+static struct thread *active_thread;
 
 static inline int thread_can_yield(const struct thread *t)
 {
 	return (t != NULL && t->can_yield > 0);
 }
 
-/* Assumes current CPU info can switch. */
-static inline struct thread *cpu_info_to_thread(const struct cpu_info *ci)
+static inline void set_current_thread(struct thread *t)
 {
-	return ci->thread;
+	assert(boot_cpu());
+	active_thread = t;
 }
 
 static inline struct thread *current_thread(void)
 {
-	if (!initialized)
+	if (!initialized || !boot_cpu())
 		return NULL;
 
-	return cpu_info_to_thread(cpu_info());
+	return active_thread;
 }
 
 static inline int thread_list_empty(struct thread **list)
@@ -94,22 +82,16 @@ static inline struct thread *pop_runnable(void)
 static inline struct thread *get_free_thread(void)
 {
 	struct thread *t;
-	struct cpu_info *ci;
-	struct cpu_info *new_ci;
 
 	if (thread_list_empty(&free_threads))
 		return NULL;
 
 	t = pop_thread(&free_threads);
 
-	ci = cpu_info();
-
-	/* Initialize the cpu_info structure on the new stack. */
-	new_ci = thread_cpu_info(t);
-	*new_ci = *ci;
-	new_ci->thread = t;
-
 	/* Reset the current stack value to the original. */
+	if (!t->stack_orig)
+		die("%s: Invalid stack value\n", __func__);
+
 	t->stack_current = t->stack_orig;
 
 	return t;
@@ -147,6 +129,8 @@ static void schedule(struct thread *t)
 
 	if (t->handle)
 		t->handle->state = THREAD_STARTED;
+
+	set_current_thread(t);
 
 	switch_to_thread(t->stack_current, &current->stack_current);
 }
@@ -262,24 +246,19 @@ static void threads_initialize(void)
 	int i;
 	struct thread *t;
 	u8 *stack_top;
-	struct cpu_info *ci;
 
 	if (initialized)
 		return;
 
-	/* `cpu_info()` requires the stacks to be STACK_SIZE aligned */
-	assert(IS_ALIGNED((uintptr_t)thread_stacks, CONFIG_STACK_SIZE));
-
-	/* Initialize the BSP thread first. The cpu_info structure is assumed
-	 * to be just under the top of the stack. */
 	t = &all_threads[0];
-	ci = cpu_info();
-	ci->thread = t;
-	t->stack_orig = (uintptr_t)ci;
+
+	set_current_thread(t);
+
+	t->stack_orig = (uintptr_t)NULL; /* We never free the main thread */
 	t->id = 0;
 	t->can_yield = 1;
 
-	stack_top = &thread_stacks[CONFIG_STACK_SIZE] - sizeof(struct cpu_info);
+	stack_top = &thread_stacks[CONFIG_STACK_SIZE];
 	for (i = 1; i < TOTAL_NUM_THREADS; i++) {
 		t = &all_threads[i];
 		t->stack_orig = (uintptr_t)stack_top;

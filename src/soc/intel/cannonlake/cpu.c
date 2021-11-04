@@ -16,6 +16,7 @@
 #include <cpu/x86/mtrr.h>
 #include <cpu/intel/microcode.h>
 #include <cpu/intel/common/common.h>
+#include <types.h>
 
 #include "chip.h"
 
@@ -50,7 +51,8 @@ static void configure_misc(void)
 
 	/* Enable PROCHOT */
 	msr = rdmsr(MSR_POWER_CTL);
-	msr.lo |= (1 << 0);	/* Enable Bi-directional PROCHOT as an input*/
+	msr.lo |= (1 << 0);	/* Enable Bi-directional PROCHOT as an input */
+	msr.lo |= (1 << 18);	/* Enable Energy/Performance Bias control */
 	msr.lo |= (1 << 23);	/* Lock it */
 	wrmsr(MSR_POWER_CTL, msr);
 }
@@ -62,8 +64,9 @@ static void configure_c_states(const config_t *const cfg)
 	msr = rdmsr(MSR_PKG_CST_CONFIG_CONTROL);
 	if (cfg->max_package_c_state && (msr.lo & 0xf) >= cfg->max_package_c_state) {
 		msr.lo = (msr.lo & ~0xf) | ((cfg->max_package_c_state - 1) & 0xf);
-		wrmsr(MSR_PKG_CST_CONFIG_CONTROL, msr);
 	}
+	msr.lo |= CST_CFG_LOCK_MASK;
+	wrmsr(MSR_PKG_CST_CONFIG_CONTROL, msr);
 
 	/* C-state Interrupt Response Latency Control 0 - package C3 latency */
 	msr.hi = 0;
@@ -187,8 +190,8 @@ static const struct mp_ops mp_ops = {
 
 void soc_init_cpus(struct bus *cpu_bus)
 {
-	if (mp_init_with_smm(cpu_bus, &mp_ops))
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
 
 	/* Thermal throttle activation offset */
 	configure_tcc_thermal_target();

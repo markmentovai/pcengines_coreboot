@@ -1,6 +1,6 @@
 # Coding Style
 
-This is a short document describing the preferred coding style for the
+This document describes the preferred C coding style for the
 coreboot project. It is in many ways exactly the same as the Linux
 kernel coding style. In fact, most of this document has been copied from
 the [Linux kernel coding style](http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/plain/Documentation/CodingStyle?id=HEAD)
@@ -801,7 +801,7 @@ There are a LOT of cpu cycles that can go into these 5 milliseconds.
 
 A reasonable rule of thumb is to not put inline at functions that have
 more than 3 lines of code in them. An exception to this rule are the
-cases where a parameter is known to be a compiletime constant, and as a
+cases where a parameter is known to be a compile time constant, and as a
 result of this constantness you *know* the compiler will be able to
 optimize most of your function away at compile time. For a good example
 of this later case, see the kmalloc() inline function.

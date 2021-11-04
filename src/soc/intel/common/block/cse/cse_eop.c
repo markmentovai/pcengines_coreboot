@@ -6,6 +6,7 @@
 #include <intelblocks/pmc_ipc.h>
 #include <security/vboot/vboot_common.h>
 #include <soc/intel/common/reset.h>
+#include <soc/pci_devs.h>
 #include <timestamp.h>
 #include <types.h>
 
@@ -174,13 +175,22 @@ static void handle_cse_eop_result(enum cse_eop_result result)
 
 static void set_cse_end_of_post(void *unused)
 {
-	set_cse_device_state(DEV_ACTIVE);
+	/*
+	 * If CSE is already hidden then accessing CSE registers would be wrong and will
+	 * receive junk, hence, return as CSE is already disabled.
+	 */
+	if (!is_cse_enabled()) {
+		printk(BIOS_DEBUG, "CSE is disabled, cannot send End-of-Post (EOP) message\n");
+		return;
+	}
+
+	set_cse_device_state(PCH_DEVFN_CSE, DEV_ACTIVE);
 
 	timestamp_add_now(TS_ME_BEFORE_END_OF_POST);
 	handle_cse_eop_result(cse_send_eop());
 	timestamp_add_now(TS_ME_AFTER_END_OF_POST);
 
-	set_cse_device_state(DEV_IDLE);
+	set_cse_device_state(PCH_DEVFN_CSE, DEV_IDLE);
 }
 
 /*

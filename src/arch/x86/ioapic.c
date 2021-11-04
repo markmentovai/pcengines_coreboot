@@ -27,18 +27,44 @@ static void write_vector(void *ioapic_base, u8 vector, u32 high, u32 low)
 	       vector, high, low);
 }
 
-static int ioapic_interrupt_count(void *ioapic_base)
+/* Bits 23-16 of register 0x01 specify the maximum redirection entry, which
+ * is the number of interrupts minus 1. */
+unsigned int ioapic_get_max_vectors(void *ioapic_base)
 {
-	/* Read the available number of interrupts. */
-	int ioapic_interrupts = (io_apic_read(ioapic_base, 0x01) >> 16) & 0xff;
-	if (!ioapic_interrupts || ioapic_interrupts == 0xff)
-		ioapic_interrupts = 23;
-	ioapic_interrupts += 1; /* Bits 23-16 specify the maximum redirection
-				   entry, which is the number of interrupts
-				   minus 1. */
-	printk(BIOS_DEBUG, "IOAPIC: %d interrupts\n", ioapic_interrupts);
+	u32 reg;
+	u8 count;
 
-	return ioapic_interrupts;
+	reg = io_apic_read(ioapic_base, 0x01);
+	count = (reg >> 16) & 0xff;
+
+	if (count == 0xff)
+		count = 23;
+	count++;
+
+	printk(BIOS_DEBUG, "IOAPIC: %d interrupts\n", count);
+	return count;
+}
+
+/* Set maximum number of redirection entries (MRE). It is write-once register
+ * for some chipsets, and a negative mre_count will lock it to the number
+ * of vectors read from the register. */
+void ioapic_set_max_vectors(void *ioapic_base, int mre_count)
+{
+	u32 reg;
+	u8 count;
+
+	reg = io_apic_read(ioapic_base, 0x01);
+	count = (reg >> 16) & 0xff;
+	if (mre_count > 0)
+		count = mre_count - 1;
+	reg &= ~(0xff << 16);
+	reg |= count << 16;
+	io_apic_write(ioapic_base, 0x01, reg);
+}
+
+void ioapic_lock_max_vectors(void *ioapic_base)
+{
+	ioapic_set_max_vectors(ioapic_base, -1);
 }
 
 static void clear_vectors(void *ioapic_base, u8 first, u8 last)
@@ -58,11 +84,6 @@ static void clear_vectors(void *ioapic_base, u8 first, u8 last)
 		printk(BIOS_WARNING, "IOAPIC not responding.\n");
 		return;
 	}
-}
-
-void clear_ioapic(void *ioapic_base)
-{
-	clear_vectors(ioapic_base, 0, ioapic_interrupt_count(ioapic_base) - 1);
 }
 
 static void route_i8259_irq0(void *ioapic_base)
@@ -136,17 +157,9 @@ void ioapic_set_boot_config(void *ioapic_base, bool irq_on_fsb)
 	}
 }
 
-void setup_ioapic_helper(void *ioapic_base, u8 ioapic_id, bool enable_virtual_wire)
-{
-	set_ioapic_id(ioapic_base, ioapic_id);
-	clear_ioapic(ioapic_base);
-
-	if (enable_virtual_wire)
-		route_i8259_irq0(ioapic_base);
-}
-
-
 void setup_ioapic(void *ioapic_base, u8 ioapic_id)
 {
-	setup_ioapic_helper(ioapic_base, ioapic_id, true);
+	set_ioapic_id(ioapic_base, ioapic_id);
+	clear_vectors(ioapic_base, 0, ioapic_get_max_vectors(ioapic_base) - 1);
+	route_i8259_irq0(ioapic_base);
 }

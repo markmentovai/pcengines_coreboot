@@ -1,5 +1,8 @@
 ifeq ($(CONFIG_SOC_QUALCOMM_SC7280),y)
 
+decompressor-y += decompressor.c
+decompressor-y += mmu.c
+decompressor-y += ../common/timer.c
 all-y += ../common/timer.c
 all-y += ../common/gpio.c
 all-y += ../common/clock.c
@@ -17,15 +20,23 @@ all-y += ../common/qupv3_spi.c
 bootblock-y += bootblock.c
 bootblock-y += mmu.c
 bootblock-$(CONFIG_DRIVERS_UART) += ../common/uart_bitbang.c
+
+################################################################################
+verstage-$(CONFIG_DRIVERS_UART) += ../common/qupv3_uart.c
+
 ################################################################################
 romstage-y += cbmem.c
+romstage-y += shrm_load_reset.c
 romstage-y += ../common/qclib.c
 romstage-y += ../common/mmu.c
 romstage-y += mmu.c
+romstage-$(CONFIG_DRIVERS_UART) += ../common/qupv3_uart.c
 
 ################################################################################
 ramstage-y += soc.c
 ramstage-y += cbmem.c
+ramstage-$(CONFIG_DRIVERS_UART) += ../common/qupv3_uart.c
+ramstage-y += ../common/aop_load_reset.c
 
 ################################################################################
 
@@ -91,5 +102,29 @@ $(I2C_FW_CBFS)-file := $(I2C_FW_FILE)
 $(I2C_FW_CBFS)-type := raw
 $(I2C_FW_CBFS)-compression := $(CBFS_PRERAM_COMPRESS_FLAG)
 cbfs-files-y += $(I2C_FW_CBFS)
+
+################################################################################
+AOP_FILE := $(SC7280_BLOB)/aop/aop.mbn
+AOP_CBFS := $(CONFIG_CBFS_PREFIX)/aop
+$(AOP_CBFS)-file := $(AOP_FILE)
+$(AOP_CBFS)-type := payload
+$(AOP_CBFS)-compression := $(CBFS_COMPRESS_FLAG)
+cbfs-files-y += $(AOP_CBFS)
+
+################################################################################
+SHRM_FILE := $(SC7280_BLOB)/shrm/shrm.elf
+SHRM_CBFS := $(CONFIG_CBFS_PREFIX)/shrm
+$(SHRM_CBFS)-file := $(SHRM_FILE)
+$(SHRM_CBFS)-type := payload
+$(SHRM_CBFS)-compression := $(CBFS_PRERAM_COMPRESS_FLAG)
+cbfs-files-y += $(SHRM_CBFS)
+
+################################################################################
+GSI_FW_FILE := $(SC7280_BLOB)/qup_fw/gsi_fw.bin
+GSI_FW_CBFS := $(CONFIG_CBFS_PREFIX)/gsi_fw
+$(GSI_FW_CBFS)-file := $(GSI_FW_FILE)
+$(GSI_FW_CBFS)-type := raw
+$(GSI_FW_CBFS)-compression := $(CBFS_COMPRESS_FLAG)
+cbfs-files-y += $(GSI_FW_CBFS)
 
 endif

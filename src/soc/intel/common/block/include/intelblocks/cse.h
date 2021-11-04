@@ -76,16 +76,6 @@ struct fw_version {
 	uint16_t build;
 } __packed;
 
-/*
- * CSE RW metadata structure
- * fw_version - CSE RW firmware version
- * sha256 - Hash of the CSE RW binary.
- */
-struct cse_rw_metadata {
-	struct fw_version version;
-	uint8_t sha256[VB2_SHA256_DIGEST_SIZE];
-};
-
 /* CSE recovery sub-error codes */
 enum csme_failure_reason {
 	/* No error */
@@ -151,6 +141,12 @@ void heci_disable(void);
 
 /* Reads config value from a specified offset in the CSE PCI Config space. */
 uint32_t me_read_config32(int offset);
+
+/*
+ * Check if the CSE device as per function argument `devfn` is enabled in device tree
+ * and also visible on the PCI bus.
+ */
+bool is_cse_devfn_visible(unsigned int devfn);
 
 /*
  * Check if the CSE device is enabled in device tree. Also check if the device
@@ -287,9 +283,9 @@ enum cse_device_state {
 };
 
 /* Function to get the current CSE device state as per `cse_device_state` */
-enum cse_device_state get_cse_device_state(void);
+enum cse_device_state get_cse_device_state(unsigned int devfn);
 
 /* Function that put the CSE into desired state based on `requested_state` */
-bool set_cse_device_state(enum cse_device_state requested_state);
+bool set_cse_device_state(unsigned int devfn, enum cse_device_state requested_state);
 
 #endif // SOC_INTEL_COMMON_CSE_H

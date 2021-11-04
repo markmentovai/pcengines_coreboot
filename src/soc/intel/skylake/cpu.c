@@ -22,6 +22,7 @@
 #include <soc/pci_devs.h>
 #include <soc/ramstage.h>
 #include <soc/systemagent.h>
+#include <types.h>
 
 #include "chip.h"
 
@@ -49,7 +50,7 @@ static void configure_misc(void)
 	wrmsr(IA32_PACKAGE_THERM_INTERRUPT, msr);
 
 	msr = rdmsr(MSR_POWER_CTL);
-	msr.lo |= (1 << 0);	/* Enable Bi-directional PROCHOT as an input*/
+	msr.lo |= (1 << 0);	/* Enable Bi-directional PROCHOT as an input */
 	msr.lo |= (1 << 18);	/* Enable Energy/Performance Bias control */
 	msr.lo &= ~POWER_CTL_C1E_MASK;	/* Disable C1E */
 	msr.lo |= (1 << 23);	/* Lock it */
@@ -162,7 +163,7 @@ static void fc_lock_configure(void *unused)
 
 static void post_mp_init(void)
 {
-	int ret = 0;
+	bool failure = false;
 
 	/* Set Max Ratio */
 	cpu_set_max_ratio();
@@ -177,14 +178,17 @@ static void post_mp_init(void)
 	if (CONFIG(HAVE_SMI_HANDLER))
 		smm_lock();
 
-	ret |= mp_run_on_all_cpus(vmx_configure, NULL);
+	if (mp_run_on_all_cpus(vmx_configure, NULL) != CB_SUCCESS)
+		failure = true;
 
 	if (CONFIG(SOC_INTEL_COMMON_BLOCK_SGX_ENABLE))
-		ret |= mp_run_on_all_cpus(sgx_configure, NULL);
+		if (mp_run_on_all_cpus(sgx_configure, NULL) != CB_SUCCESS)
+			failure = true;
 
-	ret |= mp_run_on_all_cpus(fc_lock_configure, NULL);
+	if (mp_run_on_all_cpus(fc_lock_configure, NULL) != CB_SUCCESS)
+		failure = true;
 
-	if (ret)
+	if (failure)
 		printk(BIOS_CRIT, "CRITICAL ERROR: MP post init failed\n");
 }
 
@@ -211,8 +215,8 @@ static const struct mp_ops mp_ops = {
 
 void soc_init_cpus(struct bus *cpu_bus)
 {
-	if (mp_init_with_smm(cpu_bus, &mp_ops))
-		printk(BIOS_ERR, "MP initialization failure.\n");
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
 
 	/* Thermal throttle activation offset */
 	configure_tcc_thermal_target();

@@ -7,7 +7,6 @@
 #include <types.h>
 
 #define EFS_OFFSET (0xffffff - (0x80000 << CONFIG_AMD_FWM_POSITION_INDEX) + 0x20000 + 1)
-#define EFS_ADDRESS (0xff000000 + EFS_OFFSET)
 
 #define EMBEDDED_FW_SIGNATURE			0x55aa55aa
 
@@ -26,18 +25,18 @@
 
 
 struct second_gen_efs { /* todo: expand for Server products */
-	int gen:1; /* Client products only use bit 0 */
-	int reserved:31;
+	uint32_t gen:1; /* Client products only use bit 0 */
+	uint32_t reserved:31;
 } __attribute__((packed));
 
 /* Copied from coreboot/util/amdfwtool.h */
-typedef struct _embedded_firmware {
+struct embedded_firmware {
 	uint32_t signature; /* 0x55aa55aa */
 	uint32_t imc_entry;
 	uint32_t gec_entry;
 	uint32_t xhci_entry;
-	uint32_t psp_entry;
-	uint32_t comboable;
+	uint32_t psp_directory;
+	uint32_t combo_psp_directory;
 	uint32_t bios0_entry;
 	uint32_t bios1_entry;
 	uint32_t bios2_entry;
@@ -61,7 +60,7 @@ typedef struct _embedded_firmware {
 	uint8_t reserved_4Ah;
 	uint8_t reserved_4Bh;
 	uint32_t reserved_4Ch;
-} __attribute__((packed, aligned(16))) embedded_firmware;
+} __attribute__((packed, aligned(16)));
 
 bool efs_is_valid(void);
 bool read_efs_spi_settings(uint8_t *mode, uint8_t *speed);

@@ -3,8 +3,6 @@ ifeq ($(CONFIG_SOC_INTEL_TIGERLAKE),y)
 subdirs-y += romstage
 subdirs-y += ../../../cpu/intel/microcode
 subdirs-y += ../../../cpu/intel/turbo
-subdirs-y += ../../../cpu/x86/lapic
-subdirs-y += ../../../cpu/x86/mtrr
 
 # all (bootblock, verstage, romstage, postcar, ramstage)
 all-y += gspi.c
@@ -31,6 +29,7 @@ ramstage-y += elog.c
 ramstage-y += espi.c
 ramstage-y += finalize.c
 ramstage-y += fsp_params.c
+ramstage-y += graphics.c
 ramstage-y += lockdown.c
 ramstage-y += lpm.c
 ramstage-y += me.c

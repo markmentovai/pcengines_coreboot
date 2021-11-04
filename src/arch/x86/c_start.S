@@ -80,6 +80,21 @@ _start:
 
 	push_cpu_info
 
+#if CONFIG(CPU_INFO_V2)
+	/* Allocate the per_cpu_segment_data on the stack */
+	push_per_cpu_segment_data
+
+	/*
+	 * Update the BSP's per_cpu_segment_descriptor to point to the
+	 * per_cpu_segment_data that was allocated on the stack.
+	 */
+	set_segment_descriptor_base $per_cpu_segment_descriptors, %esp
+
+	mov	$per_cpu_segment_selector, %eax
+	movl	(%eax), %eax
+	mov	%eax, %gs
+#endif
+
 	/*
 	 *	Now we are finished. Memory is up, data is copied and
 	 *	bss is cleared.   Now we call the main routine and
@@ -127,6 +142,7 @@ gdb_stub_breakpoint:
 #endif
 
 	.globl gdt, gdt_end
+	.global per_cpu_segment_descriptors, per_cpu_segment_selector
 
 gdtaddr:
 	.word	gdt_end - gdt - 1
@@ -136,7 +152,7 @@ gdtaddr:
 	.long	gdt		/* we know the offset */
 #endif
 
-	 .data
+	.data
 
 	/* This is the gdt for GCC part of coreboot.
 	 * It is different from the gdt in ASM part of coreboot
@@ -206,7 +222,25 @@ gdt:
 	.word	0xffff, 0x0000
 	.byte	0x00, 0x9b, 0xaf, 0x00
 #endif
+#if CONFIG(CPU_INFO_V2)
+per_cpu_segment_descriptors:
+	.rept CONFIG_MAX_CPUS
+	/* flat data segment */
+	.word	0xffff, 0x0000
+#if ENV_X86_64
+	.byte	0x00, 0x92, 0xcf, 0x00
+#else
+	.byte	0x00, 0x93, 0xcf, 0x00
+#endif
+	.endr
+#endif /* CPU_INFO_V2 */
 gdt_end:
+
+#if CONFIG(CPU_INFO_V2)
+/* Segment selector pointing to the first per_cpu_segment_descriptor. */
+per_cpu_segment_selector:
+	.long	per_cpu_segment_descriptors - gdt
+#endif /* CPU_INFO_V2 */
 
 	.section ".text._start", "ax", @progbits
 #if ENV_X86_64
@@ -217,7 +251,7 @@ SetCodeSelector:
 	# use iret to jump to a 64-bit offset in a new code segment
 	# iret will pop cs:rip, flags, then ss:rsp
 	mov	%ss, %ax	# need to push ss..
-	push	%rax		# push ss instuction not valid in x64 mode,
+	push	%rax		# push ss instruction not valid in x64 mode,
 				# so use ax
 	push	%rsp
 	pushfq
