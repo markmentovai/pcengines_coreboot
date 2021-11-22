@@ -11,22 +11,6 @@
 #include "pch.h"
 #include "hda_verb.h"
 
-static void codecs_init(u8 *base, u32 codec_mask)
-{
-	int i;
-
-	/* Can support up to 4 codecs */
-	for (i = 3; i >= 0; i--) {
-		if (codec_mask & (1 << i))
-			hda_codec_init(base, i,
-				       cim_verb_data_size,
-				       cim_verb_data);
-	}
-
-	if (pc_beep_verbs_size)
-		hda_codec_write(base, pc_beep_verbs_size, pc_beep_verbs);
-}
-
 static void azalia_pch_init(struct device *dev, u8 *base)
 {
 	u8 reg8;
@@ -101,7 +85,7 @@ static void azalia_init(struct device *dev)
 	u32 codec_mask;
 
 	/* Find base address */
-	res = find_resource(dev, PCI_BASE_ADDRESS_0);
+	res = probe_resource(dev, PCI_BASE_ADDRESS_0);
 	if (!res)
 		return;
 
@@ -117,7 +101,7 @@ static void azalia_init(struct device *dev)
 
 	if (codec_mask) {
 		printk(BIOS_DEBUG, "Azalia: codec_mask = %02x\n", codec_mask);
-		codecs_init(base, codec_mask);
+		azalia_codecs_init(base, codec_mask);
 	}
 }
 

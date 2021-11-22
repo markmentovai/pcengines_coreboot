@@ -56,6 +56,8 @@ enum timestamp_id {
 	TS_DELAY_END = 111,
 	TS_READ_UCODE_START = 112,
 	TS_READ_UCODE_END = 113,
+	TS_ELOG_INIT_START = 114,
+	TS_ELOG_INIT_END = 115,
 
 	/* 500+ reserved for vendorcode extensions (500-600: google/chromeos) */
 	TS_START_COPYVER = 501,
@@ -113,6 +115,11 @@ enum timestamp_id {
 	TS_ME_INFORM_DRAM_DONE = 941,
 	TS_ME_BEFORE_END_OF_POST = 942,
 	TS_ME_AFTER_END_OF_POST = 943,
+	TS_ME_BOOT_STALL_DONE = 944,
+	TS_ME_ICC_CONFIG_START = 945,
+	TS_ME_HOST_BOOT_PREP_DONE = 946,
+	TS_ME_RECEIVED_CRDA_FROM_PMC = 947,
+	TS_FIT_UCODE_LOADED = 948,
 
 	/* 950+ reserved for vendorcode extensions (950-999: intel/fsp) */
 	TS_FSP_MEMORY_INIT_START = 950,
@@ -195,6 +202,8 @@ static const struct timestamp_id_to_name {
 	{ TS_DELAY_END,		"Forced delay end" },
 	{ TS_READ_UCODE_START,	"started reading uCode" },
 	{ TS_READ_UCODE_END,	"finished reading uCode" },
+	{ TS_ELOG_INIT_START,	"started elog init" },
+	{ TS_ELOG_INIT_END,	"finished elog init" },
 
 	{ TS_START_COPYVER,	"starting to load verstage" },
 	{ TS_END_COPYVER,	"finished loading verstage" },
@@ -267,6 +276,11 @@ static const struct timestamp_id_to_name {
 	{ TS_ME_INFORM_DRAM_DONE,	"finished waiting for ME response"},
 	{ TS_ME_BEFORE_END_OF_POST,	"before sending EOP to ME"},
 	{ TS_ME_AFTER_END_OF_POST,	"after sending EOP to ME"},
+	{ TS_ME_BOOT_STALL_DONE,	"CSE sent 'Boot Stall Done' to PMC"},
+	{ TS_ME_ICC_CONFIG_START,	"CSE started to handle ICC configuration"},
+	{ TS_ME_HOST_BOOT_PREP_DONE,	"CSE sent 'Host BIOS Prep Done' to PMC"},
+	{ TS_ME_RECEIVED_CRDA_FROM_PMC,	"CSE received 'CPU Reset Done Ack sent' from PMC"},
+	{ TS_FIT_UCODE_LOADED,		"CPU has loaded UCODE/PCODE from FIT"},
 
 	/* FSP related timestamps */
 	{ TS_FSP_MEMORY_INIT_START, "calling FspMemoryInit" },

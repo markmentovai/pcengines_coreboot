@@ -19,10 +19,10 @@ config SOC_SPECIFIC_OPTIONS
 	select CPU_INFO_V2
 	select DRIVERS_USB_ACPI
 	select DRIVERS_I2C_DESIGNWARE
-	select COOP_MULTITASKING
 	select DRIVERS_USB_PCI_XHCI
-	select FSP_COMPRESS_FSP_M_LZMA
-	select FSP_COMPRESS_FSP_S_LZMA
+	select FSP_COMPRESS_FSP_M_LZMA if !ASYNC_FILE_LOADING
+	select FSP_COMPRESS_FSP_M_LZ4 if ASYNC_FILE_LOADING
+	select FSP_COMPRESS_FSP_S_LZ4
 	select GENERIC_GPIO_LIB
 	select HAVE_ACPI_TABLES
 	select HAVE_CF9_RESET
@@ -31,7 +31,6 @@ config SOC_SPECIFIC_OPTIONS
 	select HAVE_SMI_HANDLER
 	select IDT_IN_EVERY_STAGE
 	select PARALLEL_MP_AP_WORK
-	select PAYLOAD_PRELOAD
 	select PLATFORM_USES_FSP2_0
 	select PROVIDES_ROM_SHARING
 	select PSP_VERSTAGE_CCP_DMA if VBOOT_STARTS_BEFORE_BOOTBLOCK
@@ -53,7 +52,6 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_I2C
 	select SOC_AMD_COMMON_BLOCK_IOMMU
 	select SOC_AMD_COMMON_BLOCK_LPC
-	select SOC_AMD_COMMON_BLOCK_LPC_SPI_DMA
 	select SOC_AMD_COMMON_BLOCK_MCAX
 	select SOC_AMD_COMMON_BLOCK_NONCAR
 	select SOC_AMD_COMMON_BLOCK_PCI
@@ -73,7 +71,6 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_FSP_DMI_TABLES
 	select SOC_AMD_COMMON_FSP_PCI
 	select SSE2
-	select TIMER_QUEUE
 	select UDK_2017_BINDING
 	select X86_AMD_FIXED_MTRRS
 	select X86_AMD_INIT_SIPI
@@ -195,6 +192,21 @@ config VERSTAGE_SIZE
 	  Sets the size of DRAM allocation for verstage in linker script if
 	  running as a separate stage on x86.
 
+config ASYNC_FILE_LOADING
+	bool "Loads files from SPI asynchronously"
+	select COOP_MULTITASKING
+	select SOC_AMD_COMMON_BLOCK_LPC_SPI_DMA
+	select CBFS_PRELOAD
+	help
+	  When enabled, the platform will use the LPC SPI DMA controller to
+	  asynchronously load contents from the SPI ROM. This will improve
+	  boot time because the CPUs can be performing useful work while the
+	  SPI contents are being preloaded.
+
+config CBFS_CACHE_SIZE
+	hex
+	default 0x40000 if CBFS_PRELOAD
+
 config RAMBASE
 	hex
 	default 0x10000000
@@ -204,14 +216,10 @@ config RO_REGION_ONLY
 	depends on VBOOT_SLOTS_RW_AB || VBOOT_SLOTS_RW_A
 	default "apu/amdfw"
 
-config CPU_ADDR_BITS
-	int
-	default 48
-
-config MMCONF_BASE_ADDRESS
+config ECAM_MMCONF_BASE_ADDRESS
 	default 0xF8000000
 
-config MMCONF_BUS_NUMBER
+config ECAM_MMCONF_BUS_NUMBER
 	default 64
 
 config MAX_CPUS

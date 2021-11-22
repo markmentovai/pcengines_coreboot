@@ -39,6 +39,7 @@ ramstage-y	+= gpio.c
 ramstage-y	+= graphics.c
 ramstage-y	+= i2c.c
 ramstage-y	+= mca.c
+ramstage-y	+= preload.c
 ramstage-y	+= reset.c
 ramstage-y	+= root_complex.c
 ramstage-y	+= uart.c
@@ -52,8 +53,6 @@ smm-$(CONFIG_DEBUG_SMI) += uart.c
 CPPFLAGS_common += -I$(src)/soc/amd/cezanne/include
 CPPFLAGS_common += -I$(src)/soc/amd/cezanne/acpi
 CPPFLAGS_common += -I$(src)/vendorcode/amd/fsp/cezanne
-
-$(call strip_quotes,$(CONFIG_FSP_M_CBFS))-options := -b $(CONFIG_FSP_M_ADDR)
 
 MAINBOARD_BLOBS_DIR:=$(top)/3rdparty/blobs/mainboard/$(MAINBOARDDIR)
 

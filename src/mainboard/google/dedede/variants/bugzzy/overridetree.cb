@@ -63,12 +63,18 @@ chip soc/intel/jasperlake
 		},
 		.i2c[1] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 133,
+			.fall_time_ns = 29,
 		},
 		.i2c[2] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 227,
+			.fall_time_ns = 9,
 		},
 		.i2c[3] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 91,
+			.fall_time_ns = 2,
 		},
 		.i2c[4] = {
 			.speed = I2C_SPEED_FAST,
@@ -114,10 +120,10 @@ chip soc/intel/jasperlake
 					}
 				}"
 				register "controls.charger_perf" = "{
-					[0] = {  55, 3500 },
-					[1] = {  47, 3000 },
-					[2] = {  39, 2500 },
-					[3] = {  31, 2000 },
+					[0] = { 255, 2800 },
+					[1] = {  39, 2500 },
+					[2] = {  31, 2000 },
+					[3] = {  23, 1500 },
 				}"
 				device generic 0 on end
 			end

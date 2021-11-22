@@ -10,6 +10,7 @@
 #include <console/console.h>
 #include <fmap.h>
 #include <pc80/mc146818rtc.h>
+#include <soc/iomap.h>
 #include <soc/psp_transfer.h>
 #include <security/vboot/vbnv.h>
 #include <security/vboot/misc.h>
@@ -23,7 +24,10 @@
 extern char _bss_start, _bss_end;
 
 void __weak verstage_mainboard_early_init(void) {}
+void __weak verstage_mainboard_espi_init(void) {}
+void __weak verstage_mainboard_tpm_init(void) {}
 void __weak verstage_mainboard_init(void) {}
+
 uint32_t __weak get_max_workbuf_size(uint32_t *size)
 {
 	/* This svc only exists in picasso and deprecated for later platforms.
@@ -119,6 +123,12 @@ static uint32_t update_boot_region(struct vb2_context *ctx)
 	if (*bios_dir_in_spi != BDT1_COOKIE) {
 		printk(BIOS_ERR, "Error: BIOS Directory address is not correct.\n");
 		return POSTCODE_BDT1_COOKIE_MISMATCH_ERROR;
+	}
+
+	/* EFS2 uses relative address and PSP isn't happy with that */
+	if (ef_table->efs_gen.gen == EFS_SECOND_GEN) {
+		psp_dir_addr = FLASH_BASE_ADDR + (psp_dir_addr & SPI_ADDR_MASK);
+		bios_dir_addr = FLASH_BASE_ADDR + (bios_dir_addr & SPI_ADDR_MASK);
 	}
 
 	if (update_psp_bios_dir(&psp_dir_addr, &bios_dir_addr)) {
@@ -217,16 +227,41 @@ void Main(void)
 	svc_write_postcode(POSTCODE_EARLY_INIT);
 	retval = verstage_soc_early_init();
 	if (retval) {
-		svc_debug_print("verstage_soc_early_init failed\n");
-		reboot_into_recovery(NULL, retval);
+		/*
+		 * If verstage_soc_early_init fails, cmos is probably not
+		 * accessible, so rebooting into recovery is not an option.
+		 * Just reboot and hope for the best.
+		 */
+		svc_write_postcode(POSTCODE_EARLY_INIT_ERROR);
+		svc_debug_print("verstage_soc_early_init failed! -- rebooting\n");
+		vboot_reboot();
 	}
-	svc_debug_print("calling verstage_mainboard_early_init\n");
 
+	printk(BIOS_DEBUG, "calling verstage_mainboard_espi_init\n");
+	verstage_mainboard_espi_init();
+
+	printk(BIOS_DEBUG, "calling verstage_soc_espi_init\n");
+	verstage_soc_espi_init();
+
+	printk(BIOS_DEBUG, "calling verstage_mainboard_tpm_init\n");
+	/* mainboard_tpm_init may check board_id, so make sure espi is ready first */
+	verstage_mainboard_tpm_init();
+
+	printk(BIOS_DEBUG, "calling verstage_mainboard_early_init\n");
 	verstage_mainboard_early_init();
 
 	svc_write_postcode(POSTCODE_LATE_INIT);
 	fch_io_enable_legacy_io();
-	verstage_soc_init();
+
+	printk(BIOS_DEBUG, "calling verstage_soc_aoac_init\n");
+	verstage_soc_aoac_init();
+
+	printk(BIOS_DEBUG, "calling verstage_soc_i2c_init\n");
+	verstage_soc_i2c_init();
+
+	printk(BIOS_DEBUG, "calling verstage_soc_spi_init\n");
+	verstage_soc_spi_init();
+
 	verstage_mainboard_init();
 
 	post_code(POSTCODE_VERSTAGE_MAIN);

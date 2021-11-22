@@ -313,10 +313,9 @@ static void mainboard_enable(struct device *dev)
 
 	config_gpio_mux();
 
-	setup_bsp_ramtop();
-	u32 total_mem = bsp_topmem() / (1024 * 1024);
-	if (bsp_topmem2() > 0)
-		total_mem += (bsp_topmem2() / (1024 * 1024)) - 4 * 1024;
+	u32 total_mem = amd_topmem() / (1024 * 1024);
+	if (amd_topmem2() > 0)
+		total_mem += (amd_topmem2() / (1024 * 1024)) - 4 * 1024;
 
 	if(scon) {
 		printk(BIOS_ALERT, "%d MB", total_mem);

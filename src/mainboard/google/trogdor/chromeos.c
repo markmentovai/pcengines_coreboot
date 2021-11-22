@@ -22,6 +22,8 @@ void setup_chromeos_gpios(void)
 	} else {
 		gpio_output(GPIO_EN_PP3300_DX_EDP, 0);
 		gpio_output(GPIO_EDP_BRIDGE_ENABLE, 0);
+		gpio_output(GPIO_PS8640_EDP_BRIDGE_3V3_ENABLE, 0);
+		gpio_output(GPIO_PS8640_EDP_BRIDGE_RST_L, 0);
 	}
 
 	if (CONFIG(TROGDOR_HAS_FINGERPRINT)) {
@@ -54,4 +56,10 @@ void fill_lb_gpios(struct lb_gpios *gpios)
 int tis_plat_irq_status(void)
 {
 	return gpio_irq_status(GPIO_H1_AP_INT);
+}
+
+int get_ec_is_trusted(void)
+{
+	/* EC is trusted if not in RW. This is active low. */
+	return !!gpio_get(GPIO_EC_IN_RW);
 }

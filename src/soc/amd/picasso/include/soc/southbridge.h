@@ -96,15 +96,15 @@
 #define MISC_I2C1_PAD_CTRL		0xdc
 #define MISC_I2C2_PAD_CTRL		0xe0
 #define MISC_I2C3_PAD_CTRL		0xe4
-#define   I2C_PAD_CTRL_NG_MASK		(BIT(0) + BIT(1) + BIT(2) + BIT(3))
+#define   I2C_PAD_CTRL_NG_MASK		(BIT(0) | BIT(1) | BIT(2) | BIT(3))
 #define     I2C_PAD_CTRL_NG_NORMAL	0xc
-#define   I2C_PAD_CTRL_RX_SEL_MASK	(BIT(4) + BIT(5))
+#define   I2C_PAD_CTRL_RX_SEL_MASK	(BIT(4) | BIT(5))
 #define     I2C_PAD_CTRL_RX_SHIFT	4
 #define     I2C_PAD_CTRL_RX_SEL_OFF	(0 << I2C_PAD_CTRL_RX_SHIFT)
 #define     I2C_PAD_CTRL_RX_SEL_3_3V	(1 << I2C_PAD_CTRL_RX_SHIFT)
 #define     I2C_PAD_CTRL_RX_SEL_1_8V	(3 << I2C_PAD_CTRL_RX_SHIFT)
 #define   I2C_PAD_CTRL_PULLDOWN_EN	BIT(6)
-#define   I2C_PAD_CTRL_FALLSLEW_MASK	(BIT(7) + BIT(8))
+#define   I2C_PAD_CTRL_FALLSLEW_MASK	(BIT(7) | BIT(8))
 #define     I2C_PAD_CTRL_FALLSLEW_SHIFT	7
 #define     I2C_PAD_CTRL_FALLSLEW_STD	(0 << I2C_PAD_CTRL_FALLSLEW_SHIFT)
 #define     I2C_PAD_CTRL_FALLSLEW_LOW	(1 << I2C_PAD_CTRL_FALLSLEW_SHIFT)
@@ -115,7 +115,7 @@
 #define   I2C_PAD_CTRL_CAP_UP		BIT(13)
 #define   I2C_PAD_CTRL_RES_DOWN		BIT(14)
 #define   I2C_PAD_CTRL_RES_UP		BIT(15)
-#define   I2C_PAD_CTRL_BIOS_CRT_EN	BIT(16)
+#define   I2C_PAD_CTRL_BIAS_CRT_EN	BIT(16)
 #define   I2C_PAD_CTRL_SPARE0		BIT(17)
 #define   I2C_PAD_CTRL_SPARE1		BIT(18)
 
@@ -127,22 +127,6 @@
 /* Register in AHCIBaseAddress (BAR5 at D11F0x24) */
 #define SATA_CAPABILITIES_REG		0xfc
 #define SATA_CAPABILITY_SPM		BIT(12)
-
-typedef struct aoac_devs {
-	unsigned int :7;
-	unsigned int ic2e:1; /* 7: I2C2 */
-	unsigned int ic3e:1; /* 8: I2C3 */
-	unsigned int ic4e:1; /* 9: I2C4 */
-	unsigned int :1;
-	unsigned int ut0e:1; /* 11: UART0 */
-	unsigned int ut1e:1; /* 12: UART1 */
-	unsigned int :3;
-	unsigned int ut2e:1; /* 16: UART2 */
-	unsigned int :9;
-	unsigned int ut3e:1; /* 26: UART3 */
-	unsigned int espi:1; /* 27: ESPI */
-	unsigned int :4;
-} __packed aoac_devs_t;
 
 void fch_pre_init(void);
 void fch_early_init(void);

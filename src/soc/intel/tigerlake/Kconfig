@@ -39,7 +39,6 @@ config CPU_SPECIFIC_OPTIONS
 	select MRC_SETTINGS_PROTECT
 	select PARALLEL_MP_AP_WORK
 	select PLATFORM_USES_FSP2_2
-	select PM_ACPI_TIMER_OPTIONAL
 	select PMC_GLOBAL_RESET_ENABLE_LOCK
 	select SOC_INTEL_COMMON
 	select SOC_INTEL_COMMON_ACPI_WAKE_SOURCE
@@ -162,7 +161,7 @@ config PCR_BASE_ADDRESS
 	help
 	  This option allows you to select MMIO Base Address of sideband bus.
 
-config MMCONF_BASE_ADDRESS
+config ECAM_MMCONF_BASE_ADDRESS
 	default 0xc0000000
 
 config CPU_BCLK_MHZ
@@ -187,6 +186,12 @@ config SOC_INTEL_COMMON_BLOCK_GSPI_MAX
 config SOC_INTEL_I2C_DEV_MAX
 	int
 	default 6
+
+config SOC_INTEL_TIGERLAKE_S3
+	bool
+	default n
+	help
+	  Select if using S3 instead of S0ix to disable D3Cold
 
 config SOC_INTEL_UART_DEV_MAX
 	int

@@ -4,7 +4,6 @@
 #include <baseboard/variants.h>
 #include <commonlib/helpers.h>
 #include <soc/gpio.h>
-#include <vendorcode/google/chromeos/chromeos.h>
 
 /* Pad configuration in ramstage */
 static const struct pad_config override_gpio_table[] = {
@@ -31,10 +30,14 @@ static const struct pad_config override_gpio_table[] = {
 	PAD_NC(GPP_D3, NONE),
 	/* D5  : SRCCLKREQ0# ==> SSD_CLKREQ_ODL */
 	PAD_CFG_NF(GPP_D5, NONE, DEEP, NF1),
+	/* D6  : SRCCLKREQ1# ==> APU_PEN_DETECT_ODL */
+	PAD_CFG_GPI_GPIO_DRIVER(GPP_D6, NONE, PLTRST),
 	/* D7  : SRCCLKREQ2# ==> NC */
 	PAD_NC(GPP_D7, NONE),
 	/* D8  : SRCCLKREQ3# ==> NC */
 	PAD_NC(GPP_D8, NONE),
+	/* D17  : UART1_RXD ==> APU_PEN_DETECT_ODL */
+	PAD_CFG_GPI_SCI(GPP_D17, NONE, DEEP, EDGE_SINGLE, NONE),
 	/* D18 : UART1_TXD ==> NC */
 	PAD_NC(GPP_D18, NONE),
 
@@ -82,18 +85,18 @@ static const struct pad_config override_gpio_table[] = {
 	/* R5 : HDA_SDI1 ==> DMIC_DATA0_R */
 	PAD_CFG_NF(GPP_R5, NONE, DEEP, NF3),
 	/* R6 : I2S2_TXD ==> DMIC_CLK1_R */
-	PAD_CFG_NF(GPP_R6, NONE, DEEP, NF2),
+	PAD_CFG_NF(GPP_R6, NONE, DEEP, NF3),
 	/* R7 : I2S2_RXD ==> DMIC_DATA1_R */
-	PAD_CFG_NF(GPP_R7, NONE, DEEP, NF2),
+	PAD_CFG_NF(GPP_R7, NONE, DEEP, NF3),
 
 	/* S0 : SNDW0_CLK ==> I2S1_SPKR_SCLK_R */
-	PAD_CFG_NF(GPP_S0, NONE, DEEP, NF2),
+	PAD_CFG_NF(GPP_S0, NONE, DEEP, NF4),
 	/* S1 : SNDW0_DATA ==> I2S1_SPKR_SFRM_R */
-	PAD_CFG_NF(GPP_S1, NONE, DEEP, NF2),
+	PAD_CFG_NF(GPP_S1, NONE, DEEP, NF4),
 	/* S2 : SNDW1_CLK ==> I2S1_PCH_TX_SPKR_RX_R */
-	PAD_CFG_NF(GPP_S2, NONE, DEEP, NF3),
+	PAD_CFG_NF(GPP_S2, NONE, DEEP, NF4),
 	/* S3 : SNDW1_DATA ==> I2S1_PCH_RX_SPKR_TX */
-	PAD_CFG_NF(GPP_S3, NONE, DEEP, NF3),
+	PAD_CFG_NF(GPP_S3, NONE, DEEP, NF4),
 
 	/* GPD11: LANPHYC ==> NC */
 	PAD_NC(GPD11, NONE),

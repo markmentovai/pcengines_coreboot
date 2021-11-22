@@ -20,9 +20,6 @@
 #include <soc/lpc.h>
 #include <soc/southbridge.h>
 
-/* Most systems should have already enabled the bridge */
-void __weak soc_late_lpc_bridge_enable(void) { }
-
 static void setup_serirq(void)
 {
 	u8 byte;
@@ -40,8 +37,6 @@ static void setup_serirq(void)
 static void lpc_init(struct device *dev)
 {
 	u8 byte;
-
-	soc_late_lpc_bridge_enable();
 
 	/* Initialize isa dma */
 	isa_dma_init();
@@ -327,9 +322,10 @@ static struct device_operations lpc_ops = {
 };
 
 static const unsigned short pci_device_ids[] = {
+	/* PCI device ID is used on all discrete FCHs and Family 16h Models 00h-3Fh */
 	PCI_DEVICE_ID_AMD_SB900_LPC,
+	/* PCI device ID is used on all integrated FCHs except Family 16h Models 00h-3Fh */
 	PCI_DEVICE_ID_AMD_CZ_LPC,
-	PCI_DEVICE_ID_AMD_FAM17H_LPC,
 	0
 };
 static const struct pci_driver lpc_driver __pci_driver = {

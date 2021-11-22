@@ -227,7 +227,7 @@ __weak void mainboard_azalia_program_runtime_verbs(u8 *base, u32 viddid)
 {
 }
 
-static void codec_init(struct device *dev, u8 *base, int addr)
+void azalia_codec_init(u8 *base, int addr, const u32 *verb_table, u32 verb_table_bytes)
 {
 	u32 reg32;
 	const u32 *verb;
@@ -252,7 +252,7 @@ static void codec_init(struct device *dev, u8 *base, int addr)
 	/* 2 */
 	reg32 = read32(base + HDA_IR_REG);
 	printk(BIOS_DEBUG, "azalia_audio: codec viddid: %08x\n", reg32);
-	verb_size = azalia_find_verb(cim_verb_data, cim_verb_data_size, reg32, &verb);
+	verb_size = azalia_find_verb(verb_table, verb_table_bytes, reg32, &verb);
 
 	if (!verb_size) {
 		printk(BIOS_DEBUG, "azalia_audio: No verb!\n");
@@ -261,19 +261,22 @@ static void codec_init(struct device *dev, u8 *base, int addr)
 	printk(BIOS_DEBUG, "azalia_audio: verb_size: %u\n", verb_size);
 
 	/* 3 */
-	azalia_program_verb_table(base, verb, verb_size);
-	printk(BIOS_DEBUG, "azalia_audio: verb loaded.\n");
+	const int rc = azalia_program_verb_table(base, verb, verb_size);
+	if (rc < 0)
+		printk(BIOS_DEBUG, "azalia_audio: verb not loaded.\n");
+	else
+		printk(BIOS_DEBUG, "azalia_audio: verb loaded.\n");
 
 	mainboard_azalia_program_runtime_verbs(base, reg32);
 }
 
-static void codecs_init(struct device *dev, u8 *base, u16 codec_mask)
+void azalia_codecs_init(u8 *base, u16 codec_mask)
 {
 	int i;
 
 	for (i = CONFIG_AZALIA_MAX_CODECS - 1; i >= 0; i--) {
 		if (codec_mask & (1 << i))
-			codec_init(dev, base, i);
+			azalia_codec_init(base, i, cim_verb_data, cim_verb_data_size);
 	}
 
 	azalia_program_verb_table(base, pc_beep_verbs, pc_beep_verbs_size);
@@ -285,7 +288,7 @@ void azalia_audio_init(struct device *dev)
 	struct resource *res;
 	u16 codec_mask;
 
-	res = find_resource(dev, PCI_BASE_ADDRESS_0);
+	res = probe_resource(dev, PCI_BASE_ADDRESS_0);
 	if (!res)
 		return;
 
@@ -297,7 +300,7 @@ void azalia_audio_init(struct device *dev)
 
 	if (codec_mask) {
 		printk(BIOS_DEBUG, "azalia_audio: codec_mask = %02x\n", codec_mask);
-		codecs_init(dev, base, codec_mask);
+		azalia_codecs_init(base, codec_mask);
 	}
 }
 

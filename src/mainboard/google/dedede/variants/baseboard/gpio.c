@@ -2,7 +2,7 @@
 
 #include <baseboard/gpio.h>
 #include <baseboard/variants.h>
-#include <commonlib/helpers.h>
+#include <types.h>
 #include <vendorcode/google/chromeos/chromeos.h>
 
 /* Pad configuration in ramstage*/
@@ -422,6 +422,9 @@ static const struct pad_config early_gpio_table[] = {
 	PAD_CFG_GPI(GPP_C4, NONE, DEEP),
 	/* C5  : RAM_STRAP_3 */
 	PAD_CFG_GPI(GPP_C5, NONE, DEEP),
+
+	/* C14 : EC_IN_RW_OD */
+	PAD_CFG_GPI(GPP_C14, NONE, DEEP),
 
 	/* C20 : UART2 RX */
 	PAD_CFG_NF(GPP_C20, NONE, DEEP, NF1),

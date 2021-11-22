@@ -9,20 +9,40 @@
 
 /* This table is used by guybrush variant with board version < 2. */
 static const struct soc_amd_gpio bid1_ramstage_gpio_table[] = {
-	/* Unused TP183 */
-	PAD_NC(GPIO_31),
 	/* EN_SPKR */
 	PAD_GPO(GPIO_69, HIGH),
 	/* SD_AUX_RESET_L */
 	PAD_GPO(GPIO_70, HIGH),
 	/* RAM_ID_CHAN_SEL */
 	PAD_GPI(GPIO_74, PULL_NONE),
+	/* EN_PP5000_PEN */
+	PAD_GPO(GPIO_5, HIGH),
+	/* GSC_SOC_INT_L */
+	PAD_INT(GPIO_3, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
+	/* Unused */
+	PAD_NC(GPIO_85),
+	/* EN_PWR_FP */
+	PAD_GPO(GPIO_32, LOW),
 };
 
-/* This table is used by guybrush variant with board version < 2. */
-/* Use AUX Reset lines instead of PCIE_RST for Board Version 1 */
+/* This table is used by guybrush variant with board version >= 2. */
+static const struct soc_amd_gpio bid2_ramstage_gpio_table[] = {
+	/* EN_PP5000_PEN */
+	PAD_GPO(GPIO_5, HIGH),
+	/* GSC_SOC_INT_L */
+	PAD_INT(GPIO_3, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
+	/* Unused */
+	PAD_NC(GPIO_85),
+	/* EN_PWR_FP */
+	PAD_GPO(GPIO_32, LOW),
+	/* EN_SPKR */
+	PAD_GPO(GPIO_31, HIGH),
+	/* Unused TP27 */
+	PAD_NC(GPIO_70),
+};
+
 static const struct soc_amd_gpio override_early_gpio_table[] = {
-	/* SD_AUX_RESET_L */
+	/* BID == 1: SD_AUX_RESET_L */
 	PAD_GPO(GPIO_70, LOW),
 };
 
@@ -30,6 +50,15 @@ static const struct soc_amd_gpio override_early_gpio_table[] = {
 static const struct soc_amd_gpio bid1_pcie_gpio_table[] = {
 	/* SD_AUX_RESET_L */
 	PAD_GPO(GPIO_70, HIGH),
+};
+
+static const struct soc_amd_gpio tpm_gpio_table[] = {
+	/* I2C3_SCL */
+	PAD_NF(GPIO_19, I2C3_SCL, PULL_NONE),
+	/* I2C3_SDA */
+	PAD_NF(GPIO_20, I2C3_SDA, PULL_NONE),
+	/* GSC_SOC_INT_L */
+	PAD_INT(GPIO_3, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
 };
 
 const struct soc_amd_gpio *variant_override_gpio_table(size_t *size)
@@ -42,17 +71,16 @@ const struct soc_amd_gpio *variant_override_gpio_table(size_t *size)
 		return bid1_ramstage_gpio_table;
 	}
 
-	return NULL;
+	*size = ARRAY_SIZE(bid2_ramstage_gpio_table);
+	return bid2_ramstage_gpio_table;
 }
 
 const struct soc_amd_gpio *variant_early_override_gpio_table(size_t *size)
 {
 	/*
 	 * This code is run before the EC is available to check the board ID
-	 * since this is needed to work on Board ID 1 and is unused on other
-	 * versions of guybrush, just enable it.
-	 *
-	 * Guybrush BID>1: Unused TP27; BID==1: SD_AUX_RESET_L
+	 * since this is needed to work on all versions of guybrush, just enable
+	 * both GPIOs and reconfigure them on later stages.
 	 */
 	*size = ARRAY_SIZE(override_early_gpio_table);
 	return override_early_gpio_table;
@@ -66,5 +94,12 @@ const struct soc_amd_gpio *variant_pcie_override_gpio_table(size_t *size)
 		*size = ARRAY_SIZE(bid1_pcie_gpio_table);
 		return bid1_pcie_gpio_table;
 	}
+
 	return NULL;
+}
+
+const struct soc_amd_gpio *variant_tpm_gpio_table(size_t *size)
+{
+	*size = ARRAY_SIZE(tpm_gpio_table);
+	return tpm_gpio_table;
 }

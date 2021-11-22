@@ -11,6 +11,7 @@
 #define MAX_TRIP_TEMP 205
 /* This is the safest default Trip Temp value */
 #define DEFAULT_TRIP_TEMP 50
+/* Trip Point Temp = (LTT / 2 - 50 degree C) */
 #define GET_LTT_VALUE(x) (((x) + 50) * (2))
 
 static uint8_t get_thermal_trip_temp(void)
@@ -22,9 +23,8 @@ static uint8_t get_thermal_trip_temp(void)
 }
 
 /* PCH Low Temp Threshold (LTT) */
-static uint16_t pch_get_ltt_value(struct device *dev)
+static uint32_t pch_get_ltt_value(void)
 {
-	uint16_t ltt_value;
 	uint8_t thermal_config;
 
 	thermal_config = get_thermal_trip_temp();
@@ -34,19 +34,15 @@ static uint16_t pch_get_ltt_value(struct device *dev)
 	if (thermal_config > MAX_TRIP_TEMP)
 		die("Input PCH temp trip is higher than allowed range!");
 
-	/* Trip Point Temp = (LTT / 2 - 50 degree C) */
-	ltt_value = GET_LTT_VALUE(thermal_config);
-
-	return ltt_value;
+	return GET_LTT_VALUE(thermal_config);
 }
 
 /* Enable thermal sensor power management */
 void pch_thermal_configuration(void)
 {
-	uint16_t reg16;
 	uintptr_t thermalbar;
 	uintptr_t thermalbar_pm;
-	struct device *dev;
+	const struct device *dev;
 	struct resource *res;
 
 	dev = pcidev_path_on_root(PCH_DEVFN_THERMAL);
@@ -55,7 +51,7 @@ void pch_thermal_configuration(void)
 		return;
 	}
 
-	res = find_resource(dev, PCI_BASE_ADDRESS_0);
+	res = probe_resource(dev, PCI_BASE_ADDRESS_0);
 	if (!res) {
 		printk(BIOS_ERR, "ERROR: PCH thermal device not found!\n");
 		return;
@@ -68,9 +64,5 @@ void pch_thermal_configuration(void)
 	thermalbar_pm = thermalbar + THERMAL_SENSOR_POWER_MANAGEMENT;
 
 	/* Set Low Temp Threshold (LTT) at TSPM offset 0x1c[8:0] */
-	reg16 = read16((uint16_t *)thermalbar_pm);
-	reg16 &= ~CATASTROPHIC_TRIP_POINT_MASK;
-	/* Low Temp Threshold (LTT) */
-	reg16 |= pch_get_ltt_value(dev);
-	write16((uint16_t *)thermalbar_pm, reg16);
+	clrsetbits32((void *)thermalbar_pm, CATASTROPHIC_TRIP_POINT_MASK, pch_get_ltt_value());
 }

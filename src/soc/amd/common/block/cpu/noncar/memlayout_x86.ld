@@ -25,6 +25,10 @@ BOOTBLOCK_ADDR = BOOTBLOCK_END - CONFIG_C_ENV_BOOTBLOCK_SIZE;
  *                     |                                |
  *   reserved_dram_end +--------------------------------+
  *                     |                                |
+ *                     |      cbfs_cache (if reqd)      |
+ *                     |        (CBFS_CACHE_SIZE)       |
+ *                     +--------------------------------+ VERSTAGE_ADDR + VERSTAGE_SIZE
+ *                     |                                |
  *                     |       verstage (if reqd)       |
  *                     |          (VERSTAGE_SIZE)       |
  *                     +--------------------------------+ VERSTAGE_ADDR
@@ -95,17 +99,12 @@ SECTIONS
 	VERSTAGE(CONFIG_VERSTAGE_ADDR, CONFIG_VERSTAGE_SIZE)
 #endif
 
-	EARLY_RESERVED_DRAM_END(.)
-
-#if CONFIG(PAYLOAD_PRELOAD)
-        /*
-         * This section is outside the early_reserved_dram section. We only read
-         * the payload on non-S3 boots, so we don't need to reserve it from the
-         * OS. The 64 byte alignment is required by the SPI DMA controller.
-         */
+#if CONFIG_CBFS_CACHE_SIZE > 0
         . = ALIGN(ARCH_CACHELINE_ALIGN_SIZE);
-        REGION(payload_preload_cache, ., CONFIG_PAYLOAD_PRELOAD_CACHE_SIZE, ARCH_CACHELINE_ALIGN_SIZE)
+        CBFS_CACHE(., CONFIG_CBFS_CACHE_SIZE)
 #endif
+
+	EARLY_RESERVED_DRAM_END(.)
 
 	RAMSTAGE(CONFIG_RAMBASE, 8M)
 }

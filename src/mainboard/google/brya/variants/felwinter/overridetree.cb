@@ -7,7 +7,7 @@ fw_config
 end
 
 chip soc/intel/alderlake
-	register "SaGv" = "SaGv_Disabled"
+	register "SaGv" = "SaGv_Enabled"
 
 	# FIVR configurations for brya are disabled since the board doesn't have V1p05 and Vnn
 	# bypass rails implemented.
@@ -15,6 +15,7 @@ chip soc/intel/alderlake
 		.configure_ext_fivr = 1,
 	}"
 
+	register "usb2_ports[0]" = "USB2_PORT_EMPTY"
 	register "usb2_ports[3]" = "USB2_PORT_EMPTY"
 	register "usb3_ports[3]" = "USB3_PORT_EMPTY"
 
@@ -37,6 +38,12 @@ chip soc/intel/alderlake
 	device domain 0 on
 		device ref dtt on end
 		device ref tbt_pcie_rp0 off end
+		device ref tbt_pcie_rp1 on
+			probe DB_USB USB4_KB8001
+		end
+		device ref tbt_pcie_rp2 on
+			probe DB_USB USB4_KB8001
+		end
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"
@@ -44,6 +51,7 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref tcss_dma0 on
+			probe DB_USB USB4_KB8001
 			chip drivers/intel/usb4/retimer
 				register "dfp[0].power_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_E4)"
 				use tcss_usb3_port2 as dfp[0].typec_port
@@ -51,14 +59,14 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref tcss_dma1 on
+			probe DB_USB USB4_KB8001
 			chip drivers/intel/usb4/retimer
 				register "dfp[0].power_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_E4)"
 				use tcss_usb3_port3 as dfp[0].typec_port
-				device generic 0 on
-					probe DB_USB USB4_KB8001
-				end
+				device generic 0 on end
 			end
 		end
+		device ref pcie_rp6 off end
 		device ref pcie_rp8 on
 			chip soc/intel/common/block/pcie/rtd3
 				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_H13)"
@@ -101,6 +109,18 @@ chip soc/intel/alderlake
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 10 on end
 			end
+			chip drivers/generic/gpio_keys
+				register "name" = ""PENH""
+				register "gpio" = "ACPI_GPIO_IRQ_EDGE_BOTH(GPP_A7)"
+				register "key.wake_gpe" = "GPE0_DW0_08"
+				register "key.wakeup_route" = "WAKEUP_ROUTE_SCI"
+				register "key.wakeup_event_action" = "EV_ACT_DEASSERTED"
+				register "key.dev_name" = ""EJCT""
+				register "key.linux_code" = "SW_PEN_INSERTED"
+				register "key.linux_input_type" = "EV_SW"
+				register "key.label" = ""pen_eject""
+				device generic 0 on end
+			end
 		end
 		device ref i2c3 on end
 		device ref i2c5 on
@@ -123,10 +143,9 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref pch_espi on
-			#TBD, felwinter remove typeC port0
 			chip ec/google/chromeec
 				use conn1 as mux_conn[1]
-				use conn2 as mux_conn[2]
+				use conn2 as mux_conn[0]
 				device pnp 0c09.0 on end
 			end
 		end
@@ -134,14 +153,14 @@ chip soc/intel/alderlake
 			chip drivers/intel/pmc_mux
 				device generic 0 on
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "2"
-						register "usb3_port_number" = "2"
-						device generic 1 alias conn1 on end
-					end
-					chip drivers/intel/pmc_mux/conn
 						register "usb2_port_number" = "3"
 						register "usb3_port_number" = "3"
 						device generic 2 alias conn2 on end
+					end
+					chip drivers/intel/pmc_mux/conn
+						register "usb2_port_number" = "2"
+						register "usb3_port_number" = "2"
+						device generic 1 alias conn1 on end
 					end
 				end
 			end

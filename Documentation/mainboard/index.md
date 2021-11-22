@@ -182,15 +182,19 @@ The boards in this section are not real mainboards, but emulators.
 
 - [Adder Workstation 1](system76/addw1.md)
 - [Adder Workstation 2](system76/addw2.md)
+- [Bonobo Workstation 14](system76/bonw14.md)
 - [Darter Pro 6](system76/darp6.md)
 - [Darter Pro 7](system76/darp7.md)
 - [Galago Pro 4](system76/galp4.md)
 - [Galago Pro 5](system76/galp5.md)
 - [Gazelle 15](system76/gaze15.md)
+- [Gazelle 16](system76/gaze16.md)
 - [Lemur Pro 9](system76/lemp9.md)
 - [Lemur Pro 10](system76/lemp10.md)
 - [Oryx Pro 5](system76/oryp5.md)
 - [Oryx Pro 6](system76/oryp6.md)
+- [Oryx Pro 7](system76/oryp7.md)
+- [Oryx Pro 8](system76/oryp8.md)
 
 ## Texas Instruments
 

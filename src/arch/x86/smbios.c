@@ -224,6 +224,9 @@ static int create_smbios_type17_for_dimm(struct dimm_info *dimm,
 					 unsigned long *current, int *handle,
 					 int type16_handle)
 {
+	struct spd_info info;
+	get_spd_info(dimm->ddr_type, dimm->mod_type, &info);
+
 	struct smbios_type17 *t = smbios_carve_table(*current, SMBIOS_MEMORY_DEVICE,
 						     sizeof(*t), *handle);
 
@@ -244,24 +247,7 @@ static int create_smbios_type17_for_dimm(struct dimm_info *dimm,
 	}
 	t->data_width = 8 * (1 << (dimm->bus_width & 0x7));
 	t->total_width = t->data_width + 8 * ((dimm->bus_width & 0x18) >> 3);
-
-	switch (dimm->mod_type) {
-	case SPD_RDIMM:
-	case SPD_MINI_RDIMM:
-		t->form_factor = MEMORY_FORMFACTOR_RIMM;
-		break;
-	case SPD_UDIMM:
-	case SPD_MICRO_DIMM:
-	case SPD_MINI_UDIMM:
-		t->form_factor = MEMORY_FORMFACTOR_DIMM;
-		break;
-	case SPD_SODIMM:
-		t->form_factor = MEMORY_FORMFACTOR_SODIMM;
-		break;
-	default:
-		t->form_factor = MEMORY_FORMFACTOR_UNKNOWN;
-		break;
-	}
+	t->form_factor = info.form_factor;
 
 	smbios_fill_dimm_manufacturer_from_id(dimm->mod_id, t);
 	smbios_fill_dimm_serial_number(dimm, t);
@@ -278,19 +264,8 @@ static int create_smbios_type17_for_dimm(struct dimm_info *dimm,
 	t->maximum_voltage = dimm->vdd_voltage;
 
 	/* Fill in type detail */
-	switch (dimm->mod_type) {
-	case SPD_RDIMM:
-	case SPD_MINI_RDIMM:
-		t->type_detail = MEMORY_TYPE_DETAIL_REGISTERED;
-		break;
-	case SPD_UDIMM:
-	case SPD_MINI_UDIMM:
-		t->type_detail = MEMORY_TYPE_DETAIL_UNBUFFERED;
-		break;
-	default:
-		t->type_detail = MEMORY_TYPE_DETAIL_UNKNOWN;
-		break;
-	}
+	t->type_detail = info.type_detail;
+
 	/* Synchronous = 1 */
 	t->type_detail |= MEMORY_TYPE_DETAIL_SYNCHRONOUS;
 	/* no handle for error information */
@@ -1177,30 +1152,55 @@ static u8 smbios_get_device_type_from_dev(struct device *dev)
 	}
 }
 
+static bool smbios_get_type41_instance_id(struct device *dev, u8 device_type, u8 *instance_id)
+{
+#if CONFIG(SMBIOS_TYPE41_PROVIDED_BY_DEVTREE)
+	*instance_id = dev->smbios_instance_id;
+	return dev->smbios_instance_id_valid;
+#else
+	static u8 type41_inst_cnt[SMBIOS_DEVICE_TYPE_COUNT + 1] = {};
+
+	if (device_type == SMBIOS_DEVICE_TYPE_OTHER ||
+	    device_type == SMBIOS_DEVICE_TYPE_UNKNOWN)
+		return false;
+
+	if (device_type > SMBIOS_DEVICE_TYPE_COUNT)
+		return false;
+
+	*instance_id = type41_inst_cnt[device_type]++;
+	return true;
+#endif
+}
+
+static const char *smbios_get_type41_refdes(struct device *dev)
+{
+#if CONFIG(SMBIOS_TYPE41_PROVIDED_BY_DEVTREE)
+	if (dev->smbios_refdes)
+		return dev->smbios_refdes;
+#endif
+	return get_pci_subclass_name(dev);
+}
+
 static int smbios_generate_type41_from_devtree(struct device *dev, int *handle,
 					       unsigned long *current)
 {
-	static u8 type41_inst_cnt[SMBIOS_DEVICE_TYPE_COUNT + 1] = {};
-
 	if (dev->path.type != DEVICE_PATH_PCI)
 		return 0;
 	if (!dev->on_mainboard)
 		return 0;
 
-	u8 device_type = smbios_get_device_type_from_dev(dev);
+	const u8 device_type = smbios_get_device_type_from_dev(dev);
 
-	if (device_type == SMBIOS_DEVICE_TYPE_OTHER ||
-	    device_type == SMBIOS_DEVICE_TYPE_UNKNOWN)
+	u8 instance_id;
+
+	if (!smbios_get_type41_instance_id(dev, device_type, &instance_id))
 		return 0;
 
-	if (device_type > SMBIOS_DEVICE_TYPE_COUNT)
-		return 0;
-
-	const char *name = get_pci_subclass_name(dev);
+	const char *name = smbios_get_type41_refdes(dev);
 
 	return smbios_write_type41(current, handle,
 					name, // name
-					type41_inst_cnt[device_type]++, // inst
+					instance_id, // inst
 					0, // segment
 					dev->bus->secondary, //bus
 					PCI_SLOT(dev->path.pci.devfn), // device
