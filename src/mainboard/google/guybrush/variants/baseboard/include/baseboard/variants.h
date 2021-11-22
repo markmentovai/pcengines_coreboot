@@ -40,12 +40,11 @@ const struct soc_amd_gpio *variant_pcie_gpio_table(size_t *size);
 /* This function provides GPIO settings before entering sleep. */
 const struct soc_amd_gpio *variant_sleep_gpio_table(size_t *size);
 
-/* Finalize GPIOs, such as FPMCU power */
-void variant_finalize_gpios(void);
+/* This function provides GPIO settings for eSPI bus. */
+const struct soc_amd_gpio *variant_espi_gpio_table(size_t *size);
 
-void variant_fpmcu_reset(void);
-
-bool variant_has_fpmcu(void);
+/* This function provides GPIO settings for TPM i2c bus. */
+const struct soc_amd_gpio *variant_tpm_gpio_table(size_t *size);
 
 bool variant_has_pcie_wwan(void);
 
@@ -58,4 +57,7 @@ enum dxio_port_id {
 	NVME
 };
 
+uint8_t variant_sd_aux_reset_gpio(void);
+
+void variant_devtree_update(void);
 #endif /* __BASEBOARD_VARIANTS_H__ */

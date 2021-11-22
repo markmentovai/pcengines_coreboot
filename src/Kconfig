@@ -395,16 +395,6 @@ config FW_CONFIG
 	  Enable support for probing devices with fw_config.  This is a simple
 	  bitmask broken into fields and options for probing.
 
-config FW_CONFIG_SOURCE_CBFS
-	bool "Obtain Firmware Configuration value from CBFS"
-	depends on FW_CONFIG
-	default n
-	help
-	  With this option enabled coreboot will look for the 32bit firmware
-	  configuration value in CBFS at the selected prefix with the file name
-	  "fw_config".  This option will override other sources and allow the
-	  local image to preempt the mainboard selected source.
-
 config FW_CONFIG_SOURCE_CHROMEEC_CBI
 	bool "Obtain Firmware Configuration value from Google Chrome EC CBI"
 	depends on FW_CONFIG && EC_GOOGLE_CHROMEEC
@@ -414,6 +404,27 @@ config FW_CONFIG_SOURCE_CHROMEEC_CBI
 	  from the Google Chrome Embedded Controller CBI interface.  This source
 	  is not tried if FW_CONFIG_SOURCE_CBFS is enabled and the value was
 	  found in CBFS.
+
+config FW_CONFIG_SOURCE_CBFS
+	bool "Obtain Firmware Configuration value from CBFS"
+	depends on FW_CONFIG
+	default n
+	help
+	  With this option enabled coreboot will look for the 32bit firmware
+	  configuration value in CBFS at the selected prefix with the file name
+	  "fw_config".  This option will override other sources and allow the
+	  local image to preempt the mainboard selected source and can be used as
+	  FW_CONFIG_SOURCE_CHROMEEC_CBI fallback option.
+
+config FW_CONFIG_SOURCE_VPD
+	bool "Obtain Firmware Configuration value from VPD"
+	depends on FW_CONFIG && VPD
+	default n
+	help
+	  With this option enabled coreboot will look for the 32bit firmware
+	  configuration value in VPD key name "fw_config".  This option will
+	  override other sources and allow the local image to preempt the mainboard
+	  selected source and can be used for other FW_CONFIG_SOURCEs fallback option.
 
 config HAVE_RAMPAYLOAD
 	bool
@@ -677,12 +688,12 @@ config TIMER_QUEUE
 
 config COOP_MULTITASKING
 	def_bool n
-	depends on TIMER_QUEUE && ARCH_X86 && CPU_INFO_V2
+	select TIMER_QUEUE
+	depends on ARCH_X86 && CPU_INFO_V2
 	help
 	  Cooperative multitasking allows callbacks to be multiplexed on the
-	  main thread of ramstage. With this enabled it allows for multiple
-	  execution paths to take place when they have udelay() calls within
-	  their code.
+	  main thread. With this enabled it allows for multiple execution paths
+	  to take place when they have udelay() calls within their code.
 
 config NUM_THREADS
 	int
@@ -784,6 +795,21 @@ config GENERATE_SMBIOS_TABLES
 	  Generate SMBIOS tables for this board.
 
 	  If unsure, say Y.
+
+config SMBIOS_TYPE41_PROVIDED_BY_DEVTREE
+	bool
+	depends on ARCH_X86
+	help
+	  If enabled, only generate SMBIOS Type 41 entries for PCI devices in
+	  the devicetree for which Type 41 information is provided, e.g. with
+	  the `smbios_dev_info` devicetree syntax. This is useful to manually
+	  assign specific instance IDs to onboard devices irrespective of the
+	  device traversal order. It is assumed that instance IDs for devices
+	  of the same class are unique.
+	  When disabled, coreboot autogenerates SMBIOS Type 41 entries for all
+	  appropriate PCI devices in the devicetree. Instance IDs are assigned
+	  successive numbers from a monotonically increasing counter, with one
+	  counter for each device class.
 
 config SMBIOS_PROVIDED_BY_MOBO
 	bool
@@ -1153,7 +1179,7 @@ config DEBUG_INTEL_ME
 endif
 
 config DEBUG_FUNC
-	bool "Enable function entry and exit reporting macros" if DEFAULT_CONSOLE_LOGLEVEL_8
+	bool "Enable function entry and exit reporting macros" if DEFAULT_CONSOLE_LOGLEVEL_8 || CONSOLE_OVERRIDE_LOGLEVEL
 	default n
 	help
 	  This option enables additional function entry and exit debug messages

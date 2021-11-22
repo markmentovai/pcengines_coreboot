@@ -260,7 +260,7 @@ static void setup_sdram_meminfo(struct pei_data *pei_data)
 				dimm->mod_id =
 					(pei_data->spd_data[index][SPD_DIMM_MOD_ID2] << 8) |
 					(pei_data->spd_data[index][SPD_DIMM_MOD_ID1] & 0xff);
-				dimm->mod_type = SPD_SODIMM;
+				dimm->mod_type = DDR3_SPD_SODIMM;
 				dimm->bus_width = MEMORY_BUS_WIDTH_64;
 				dimm_cnt++;
 			}
@@ -349,7 +349,7 @@ void perform_raminit(const int s3resume)
 		.mchbar			= CONFIG_FIXED_MCHBAR_MMIO_BASE,
 		.dmibar			= CONFIG_FIXED_DMIBAR_MMIO_BASE,
 		.epbar			= CONFIG_FIXED_EPBAR_MMIO_BASE,
-		.pciexbar		= CONFIG_MMCONF_BASE_ADDRESS,
+		.pciexbar		= CONFIG_ECAM_MMCONF_BASE_ADDRESS,
 		.smbusbar		= CONFIG_FIXED_SMBUS_IO_BASE,
 		.hpet_address		= CONFIG_HPET_ADDRESS,
 		.rcba			= CONFIG_FIXED_RCBA_MMIO_BASE,

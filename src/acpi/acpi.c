@@ -266,7 +266,8 @@ void acpi_create_madt(acpi_madt_t *madt)
 static unsigned long acpi_fill_mcfg(unsigned long current)
 {
 	current += acpi_create_mcfg_mmconfig((acpi_mcfg_mmconfig_t *)current,
-			CONFIG_MMCONF_BASE_ADDRESS, 0, 0, CONFIG_MMCONF_BUS_NUMBER - 1);
+			CONFIG_ECAM_MMCONF_BASE_ADDRESS, 0, 0,
+			CONFIG_ECAM_MMCONF_BUS_NUMBER - 1);
 	return current;
 }
 
@@ -291,7 +292,7 @@ void acpi_create_mcfg(acpi_mcfg_t *mcfg)
 	header->length = sizeof(acpi_mcfg_t);
 	header->revision = get_acpi_table_revision(MCFG);
 
-	if (CONFIG(MMCONF_SUPPORT))
+	if (CONFIG(ECAM_MMCONF_SUPPORT))
 		current = acpi_fill_mcfg(current);
 
 	/* (Re)calculate length and checksum. */
@@ -1248,7 +1249,7 @@ unsigned long acpi_write_dbg2_pci_uart(acpi_rsdp_t *rsdp, unsigned long current,
 		printk(BIOS_INFO, "%s: Device not enabled\n", __func__);
 		return current;
 	}
-	res = find_resource(dev, PCI_BASE_ADDRESS_0);
+	res = probe_resource(dev, PCI_BASE_ADDRESS_0);
 	if (!res) {
 		printk(BIOS_ERR, "%s: Unable to find resource for %s\n",
 		       __func__, dev_path(dev));

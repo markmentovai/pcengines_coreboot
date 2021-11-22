@@ -28,10 +28,37 @@ type memPart struct {
 }
 
 type memTech interface {
+	/*
+	 * Returns the set -> platform mapping for the memory technology. Platforms with the
+	 * same SPD requirements should be grouped together into a single set.
+	 */
 	getSetMap() map[int][]int
+
+	/*
+	 * Takes the name and attributes of a part, as read from the memory_parts JSON file.
+	 * Validates the attributes, returning an error if any attribute has an invalid value.
+	 * Stores the name and attributes internally to be used later.
+	 */
 	addNewPart(string, interface{}) error
+
+	/*
+	 * Takes the name of a part and a set number.
+	 * Retrieves the part's attributes which were stored by addNewPart(). Updates them by
+	 * setting any optional attributes which weren't specified in the JSON file to their
+	 * default values.
+	 * Returns these updated attributes.
+	 */
 	getSPDAttribs(string, int) (interface{}, error)
+
+	/*
+	 * Returns the size of an SPD file for this memory technology.
+	 */
 	getSPDLen() int
+
+	/*
+	 * Takes an SPD byte index and the attributes of a part.
+	 * Returns the value which that SPD byte should be set to based on the attributes.
+	 */
 	getSPDByte(int, interface{}) byte
 }
 
@@ -63,6 +90,12 @@ var platformNames = map[int]string{
 	PlatformJSL: "JSL",
 	PlatformPCO: "PCO",
 	PlatformCZN: "CZN",
+}
+
+var memTechMap = map[string]memTech{
+	"lp4x": lp4x{},
+	"ddr4": ddr4{},
+	"lp5":  lp5{},
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -211,7 +244,9 @@ func usage() {
 	fmt.Printf("\nUsage: %s <mem_parts_list_json> <mem_technology>\n\n", os.Args[0])
 	fmt.Printf("   where,\n")
 	fmt.Printf("   mem_parts_list_json = JSON File containing list of memory parts and attributes\n")
-	fmt.Printf("   mem_technology = Memory technology -- one of lp4x, ddr4\n\n\n")
+	fmt.Printf("   mem_technology = Memory technology for which to generate SPDs\n")
+	fmt.Printf("                    supported technologies: %v\n\n\n",
+		reflect.ValueOf(memTechMap).MapKeys())
 }
 
 func main() {
@@ -223,11 +258,8 @@ func main() {
 	var t memTech
 	memPartsFilePath, memTechnology := os.Args[1], os.Args[2]
 
-	if strings.ToUpper(memTechnology) == "LP4X" {
-		t = lp4x{}
-	} else if strings.ToUpper(memTechnology) == "DDR4" {
-		t = ddr4{}
-	} else {
+	t, ok := memTechMap[strings.ToLower(memTechnology)]
+	if !ok {
 		log.Fatal("Unsupported memory technology ", memTechnology)
 	}
 

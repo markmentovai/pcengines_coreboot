@@ -83,7 +83,8 @@ static bool is_ps8640_bridge(void)
 	 */
 	return (CONFIG(BOARD_GOOGLE_HOMESTAR) && board_id() >= 4 &&
 		board_id() != 19 && board_id() != 23) ||
-	       (CONFIG(BOARD_GOOGLE_LAZOR) && board_id() >= 9);
+	       (CONFIG(BOARD_GOOGLE_LAZOR) && board_id() >= 9) ||
+	       (CONFIG(BOARD_GOOGLE_KINGOFTOWN) && board_id() >= 1);
 }
 
 static void power_on_sn65dsi86_bridge(void)
@@ -105,12 +106,18 @@ static void power_on_ps8640_bridge(void)
 	gpio_output(GPIO_EN_PP3300_DX_EDP, 1);
 
 	gpio_output(GPIO_PS8640_EDP_BRIDGE_3V3_ENABLE, 1);
-	gpio_output(GPIO_PS8640_EDP_BRIDGE_PD_L, 1);
-	gpio_output(GPIO_PS8640_EDP_BRIDGE_RST_L, 0);
 
 	/*
-	 * According to ps8640 app note v0.6, wait for 2ms ("t1") after
-	 * VDD33 goes high and then deassert RST.
+	 * According to ps8640 v1.4 spec, and the raise time of vdd33 is a bit
+	 * long, so wait for 4ms after VDD33 goes high and then deassert PD.
+	 */
+	mdelay(4);
+
+	gpio_output(GPIO_PS8640_EDP_BRIDGE_PD_L, 1);
+
+	/*
+	 * According to ps8640 app note v0.6, wait for 2ms after VDD33 goes
+	 * high and then deassert RST.
 	 */
 	mdelay(2);
 
@@ -129,14 +136,21 @@ static void configure_mipi_panel(void)
 	gpio_output(GPIO_VDD_RESET_1V8, 1);
 	mdelay(15);
 	/*
-	 * In mrbland, BOE panel_id = 3, it needs 15ms delay and
-	 * do reset again according to spec(See in b/197300876).
+	 * In mrbland, BOE panel_id = 3(EVT) or 4(DVT and after),
+	 * it needs 15ms delay and do reset again according to spec
+	 * (See in b/197300876).
 	 */
-	if (CONFIG(BOARD_GOOGLE_MRBLAND) && (panel_id == 3)) {
+	if (CONFIG(BOARD_GOOGLE_MRBLAND) && ((panel_id == 3) || (panel_id == 4))) {
 		gpio_output(GPIO_VDD_RESET_1V8, 0);
 		mdelay(5);
 		gpio_output(GPIO_VDD_RESET_1V8, 1);
 	}
+	/*
+	 * In mipi panel, TP_EN(GPIO 85) need pull up before
+	 * GPIO_BACKLIGHT_ENABLE(GPIO12) up.
+	 */
+	if (CONFIG(TROGDOR_HAS_MIPI_PANEL))
+		gpio_output(GPIO_TP_EN, 1);
 }
 
 static struct panel_serializable_data *get_mipi_panel(enum lb_fb_orientation *orientation)
@@ -147,6 +161,7 @@ static struct panel_serializable_data *get_mipi_panel(enum lb_fb_orientation *or
 	if (CONFIG(BOARD_GOOGLE_MRBLAND)) {
 		switch (panel_id) {
 		case 3:
+		case 4:
 			cbfs_filename = "panel-BOE_TV101WUM_N53";
 			*orientation = LB_FB_ORIENTATION_LEFT_UP;
 			break;

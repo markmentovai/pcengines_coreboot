@@ -43,6 +43,7 @@
 #define ICC_MAX_ID_ADL_P_5_MA     32000
 #define ICC_MAX_ID_ADL_P_6_MA     32000
 #define ICC_MAX_ID_ADL_P_7_MA     32000
+#define ICC_MAX_ID_ADL_M_MA       12000
 
 /*
  * ME End of Post configuration
@@ -310,6 +311,9 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 		return ICC_MAX_ID_ADL_P_6_MA;
 	case PCI_DEVICE_ID_INTEL_ADL_P_ID_7:
 		return ICC_MAX_ID_ADL_P_7_MA;
+	case PCI_DEVICE_ID_INTEL_ADL_M_ID_1:
+	case PCI_DEVICE_ID_INTEL_ADL_M_ID_2:
+		return ICC_MAX_ID_ADL_M_MA;
 	default:
 		printk(BIOS_ERR, "Unknown MCH ID: 0x%4x, skipping VccInAuxImonIccMax config\n",
 			mch_id);
@@ -731,6 +735,27 @@ static void fill_fsps_fivr_params(FSP_S_CONFIG *s_cfg,
 			config->ext_fivr_settings.vnn_icc_max_ma;
 }
 
+static void fill_fsps_fivr_rfi_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_alderlake_config *config)
+{
+	/* transform from Hz to 100 KHz */
+	s_cfg->FivrRfiFrequency = config->FivrRfiFrequency / (100 * KHz);
+	s_cfg->FivrSpreadSpectrum = config->FivrSpreadSpectrum;
+}
+
+static void fill_fsps_acoustic_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_alderlake_config *config)
+{
+	s_cfg->AcousticNoiseMitigation = config->AcousticNoiseMitigation;
+
+	if (s_cfg->AcousticNoiseMitigation) {
+		for (int i = 0; i < NUM_VR_DOMAINS; i++) {
+			s_cfg->FastPkgCRampDisable[i] = config->FastPkgCRampDisable[i];
+			s_cfg->SlowSlewRate[i] = config->SlowSlewRate[i];
+		}
+	}
+}
+
 static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		struct soc_intel_alderlake_config *config)
 {
@@ -761,6 +786,8 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		fill_fsps_misc_power_params,
 		fill_fsps_irq_params,
 		fill_fsps_fivr_params,
+		fill_fsps_fivr_rfi_params,
+		fill_fsps_acoustic_params,
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(fill_fsps_params); i++)

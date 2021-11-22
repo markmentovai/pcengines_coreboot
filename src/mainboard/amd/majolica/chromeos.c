@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <bootmode.h>
 #include <boot/coreboot_tables.h>
 #include <gpio.h>
+#include <types.h>
 #include <vendorcode/google/chromeos/chromeos.h>
 
 void fill_lb_gpios(struct lb_gpios *gpios)

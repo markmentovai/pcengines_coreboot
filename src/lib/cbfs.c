@@ -3,35 +3,40 @@
 #include <assert.h>
 #include <boot_device.h>
 #include <cbfs.h>
-#include <cbfs_private.h>
 #include <cbmem.h>
+#include <commonlib/bsd/cbfs_private.h>
 #include <commonlib/bsd/compression.h>
 #include <commonlib/endian.h>
 #include <console/console.h>
 #include <fmap.h>
 #include <lib.h>
+#include <list.h>
 #include <metadata_hash.h>
 #include <security/tpm/tspi/crtm.h>
 #include <security/vboot/vboot_common.h>
 #include <stdlib.h>
 #include <string.h>
 #include <symbols.h>
+#include <thread.h>
 #include <timestamp.h>
 
-#if CBFS_CACHE_AVAILABLE
-struct mem_pool cbfs_cache = MEM_POOL_INIT(_cbfs_cache, REGION_SIZE(cbfs_cache));
+#if ENV_STAGE_HAS_DATA_SECTION
+struct mem_pool cbfs_cache =
+	MEM_POOL_INIT(_cbfs_cache, REGION_SIZE(cbfs_cache), CONFIG_CBFS_CACHE_ALIGN);
+#else
+struct mem_pool cbfs_cache = MEM_POOL_INIT(NULL, 0, 0);
+#endif
 
 static void switch_to_postram_cache(int unused)
 {
 	if (_preram_cbfs_cache != _postram_cbfs_cache)
-		mem_pool_init(&cbfs_cache, _postram_cbfs_cache,
-			      REGION_SIZE(postram_cbfs_cache));
+		mem_pool_init(&cbfs_cache, _postram_cbfs_cache, REGION_SIZE(postram_cbfs_cache),
+			      CONFIG_CBFS_CACHE_ALIGN);
 }
 ROMSTAGE_CBMEM_INIT_HOOK(switch_to_postram_cache);
-#endif
 
-cb_err_t cbfs_boot_lookup(const char *name, bool force_ro,
-			  union cbfs_mdata *mdata, struct region_device *rdev)
+cb_err_t _cbfs_boot_lookup(const char *name, bool force_ro,
+			   union cbfs_mdata *mdata, struct region_device *rdev)
 {
 	const struct cbfs_boot_device *cbd = cbfs_get_boot_device(force_ro);
 	if (!cbd)
@@ -60,7 +65,7 @@ cb_err_t cbfs_boot_lookup(const char *name, bool force_ro,
 
 	if (CONFIG(VBOOT_ENABLE_CBFS_FALLBACK) && !force_ro && err == CB_CBFS_NOT_FOUND) {
 		printk(BIOS_INFO, "CBFS: Fall back to RO region for %s\n", name);
-		return cbfs_boot_lookup(name, true, mdata, rdev);
+		return _cbfs_boot_lookup(name, true, mdata, rdev);
 	}
 	if (err) {
 		if (err == CB_CBFS_NOT_FOUND)
@@ -85,7 +90,7 @@ cb_err_t cbfs_boot_lookup(const char *name, bool force_ro,
 
 int cbfs_boot_locate(struct cbfsf *fh, const char *name, uint32_t *type)
 {
-	if (cbfs_boot_lookup(name, false, &fh->mdata, &fh->data))
+	if (_cbfs_boot_lookup(name, false, &fh->mdata, &fh->data))
 		return -1;
 
 	size_t msize = be32toh(fh->mdata.h.offset);
@@ -111,8 +116,7 @@ void cbfs_unmap(void *mapping)
 	 * that requires a free() for the boot_device, they need to implement it via the
 	 * cbfs_cache mem_pool.
 	 */
-	if (CBFS_CACHE_AVAILABLE)
-		mem_pool_free(&cbfs_cache, mapping);
+	mem_pool_free(&cbfs_cache, mapping);
 }
 
 int cbfs_locate_file_in_region(struct cbfsf *fh, const char *region_name,
@@ -264,17 +268,161 @@ static size_t cbfs_load_and_decompress(const struct region_device *rdev, void *b
 	}
 }
 
+struct cbfs_preload_context {
+	struct region_device rdev;
+	struct thread_handle handle;
+	struct list_node list_node;
+	void *buffer;
+	char name[];
+};
+
+static struct list_node cbfs_preload_context_list;
+
+static struct cbfs_preload_context *alloc_cbfs_preload_context(size_t additional)
+{
+	struct cbfs_preload_context *context;
+	size_t size = sizeof(*context) + additional;
+
+	context = mem_pool_alloc(&cbfs_cache, size);
+
+	if (!context)
+		return NULL;
+
+	memset(context, 0, size);
+
+	return context;
+}
+
+static void append_cbfs_preload_context(struct cbfs_preload_context *context)
+{
+	list_append(&context->list_node, &cbfs_preload_context_list);
+}
+
+static void free_cbfs_preload_context(struct cbfs_preload_context *context)
+{
+	list_remove(&context->list_node);
+
+	mem_pool_free(&cbfs_cache, context);
+}
+
+static enum cb_err cbfs_preload_thread_entry(void *arg)
+{
+	struct cbfs_preload_context *context = arg;
+
+	if (rdev_readat_full(&context->rdev, context->buffer) < 0) {
+		ERROR("%s(name='%s') readat failed\n", __func__, context->name);
+		return CB_ERR;
+	}
+
+	return CB_SUCCESS;
+}
+
+void cbfs_preload(const char *name)
+{
+	struct region_device rdev;
+	union cbfs_mdata mdata;
+	struct cbfs_preload_context *context;
+	bool force_ro = false;
+	size_t size;
+
+	if (!CONFIG(CBFS_PRELOAD))
+		dead_code();
+
+	DEBUG("%s(name='%s')\n", __func__, name);
+
+	if (_cbfs_boot_lookup(name, force_ro, &mdata, &rdev))
+		return;
+
+	size = region_device_sz(&rdev);
+
+	context = alloc_cbfs_preload_context(strlen(name) + 1);
+	if (!context) {
+		ERROR("%s(name='%s') failed to allocate preload context\n", __func__, name);
+		return;
+	}
+
+	context->buffer = mem_pool_alloc(&cbfs_cache, size);
+	if (context->buffer == NULL) {
+		ERROR("%s(name='%s') failed to allocate %zu bytes for preload buffer\n",
+		      __func__, name, size);
+		goto out;
+	}
+
+	context->rdev = rdev;
+	strcpy(context->name, name);
+
+	append_cbfs_preload_context(context);
+
+	if (thread_run(&context->handle, cbfs_preload_thread_entry, context) == 0)
+		return;
+
+	ERROR("%s(name='%s') failed to start preload thread\n", __func__, name);
+	mem_pool_free(&cbfs_cache, context->buffer);
+
+out:
+	free_cbfs_preload_context(context);
+}
+
+static struct cbfs_preload_context *find_cbfs_preload_context(const char *name)
+{
+	struct cbfs_preload_context *context;
+
+	list_for_each(context, cbfs_preload_context_list, list_node) {
+		if (strcmp(context->name, name) == 0)
+			return context;
+	}
+
+	return NULL;
+}
+
+static enum cb_err get_preload_rdev(struct region_device *rdev, const char *name)
+{
+	enum cb_err err;
+	struct cbfs_preload_context *context;
+
+	if (!CONFIG(CBFS_PRELOAD) || (!ENV_RAMSTAGE && !ENV_ROMSTAGE))
+		return CB_ERR_ARG;
+
+	context = find_cbfs_preload_context(name);
+	if (!context)
+		return CB_ERR_ARG;
+
+	err = thread_join(&context->handle);
+	if (err != CB_SUCCESS) {
+		ERROR("%s(name='%s') Preload thread failed: %u\n", __func__, name, err);
+
+		goto out;
+	}
+
+	if (rdev_chain_mem(rdev, context->buffer, region_device_sz(&context->rdev)) != 0) {
+		ERROR("%s(name='%s') chaining failed\n", __func__, name);
+
+		err = CB_ERR;
+		goto out;
+	}
+
+	err = CB_SUCCESS;
+
+	DEBUG("%s(name='%s') preload successful\n", __func__, name);
+
+out:
+	free_cbfs_preload_context(context);
+
+	return err;
+}
+
 void *_cbfs_alloc(const char *name, cbfs_allocator_t allocator, void *arg,
 		  size_t *size_out, bool force_ro, enum cbfs_type *type)
 {
 	struct region_device rdev;
+	bool preload_successful = false;
 	union cbfs_mdata mdata;
-	void *loc;
+	void *loc = NULL;
 
 	DEBUG("%s(name='%s', alloc=%p(%p), force_ro=%s, type=%d)\n", __func__, name, allocator,
 	      arg, force_ro ? "true" : "false", type ? *type : -1);
 
-	if (cbfs_boot_lookup(name, force_ro, &mdata, &rdev))
+	if (_cbfs_boot_lookup(name, force_ro, &mdata, &rdev))
 		return NULL;
 
 	if (type) {
@@ -304,6 +452,10 @@ void *_cbfs_alloc(const char *name, cbfs_allocator_t allocator, void *arg,
 	if (CONFIG(CBFS_VERIFICATION))
 		file_hash = cbfs_file_hash(&mdata);
 
+	/* Update the rdev with the preload content */
+	if (!force_ro && get_preload_rdev(&rdev, name) == CB_SUCCESS)
+		preload_successful = true;
+
 	/* allocator == NULL means do a cbfs_map() */
 	if (allocator) {
 		loc = allocator(arg, size, &mdata);
@@ -311,29 +463,43 @@ void *_cbfs_alloc(const char *name, cbfs_allocator_t allocator, void *arg,
 		void *mapping = rdev_mmap_full(&rdev);
 
 		if (!mapping)
-			return NULL;
+			goto out;
 
 		if (cbfs_file_hash_mismatch(mapping, size, file_hash)) {
 			rdev_munmap(&rdev, mapping);
-			return NULL;
+			goto out;
 		}
 
 		return mapping;
-	} else if (!CBFS_CACHE_AVAILABLE) {
-		ERROR("Cannot map compressed file %s on x86\n", mdata.h.filename);
-		return NULL;
+	} else if (!cbfs_cache.size) {
+		/*
+		 * In order to use the cbfs_cache you need to add a CBFS_CACHE to your
+		 * memlayout. For stages that don't have .data sections (x86 pre-RAM),
+		 * it is not possible to add a CBFS_CACHE.
+		 */
+		ERROR("Cannot map compressed file %s without cbfs_cache\n", mdata.h.filename);
+		goto out;
 	} else {
 		loc = mem_pool_alloc(&cbfs_cache, size);
 	}
 
 	if (!loc) {
 		ERROR("'%s' allocation failure\n", mdata.h.filename);
-		return NULL;
+		goto out;
 	}
 
 	size = cbfs_load_and_decompress(&rdev, loc, size, compression, file_hash);
+
 	if (!size)
-		return NULL;
+		loc = NULL;
+
+out:
+	/*
+	 * When using cbfs_preload we need to free the preload buffer after populating the
+	 * destination buffer.
+	 */
+	if (preload_successful)
+		cbfs_unmap(rdev_mmap_full(&rdev));
 
 	return loc;
 }
@@ -359,7 +525,7 @@ cb_err_t cbfs_prog_stage_load(struct prog *pstage)
 
 	prog_locate_hook(pstage);
 
-	if ((err = cbfs_boot_lookup(prog_name(pstage), false, &mdata, &rdev)))
+	if ((err = _cbfs_boot_lookup(prog_name(pstage), false, &mdata, &rdev)))
 		return err;
 
 	assert(be32toh(mdata.h.type) == CBFS_TYPE_STAGE);

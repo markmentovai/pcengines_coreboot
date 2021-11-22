@@ -8,6 +8,9 @@ The memory technologies currently supported are:
 *   LPDDR4x - based on the JESD209-4C spec and Intel recommendations
     (docs #616599, #610202, #634730).
 *   DDR4 - based on the JESD79-4C and Jedec 4.1.2.L-5 R29 v103 specs.
+*   LPDDR5 - based on the LPDDR5 spec JESD209-5B, the SPD spec SPD4.1.2.M-2 (the
+    LPDDR3/4 spec is used since JEDEC has not released an SPD spec for LPDDR5),
+    and Intel recommendations in advisory #616599.
 
 There are two tools provided to assist with generating SPDs and Makefiles to
 integrate into the coreboot build. These tools can also be used to allocate DRAM
@@ -292,6 +295,100 @@ string like "9 10 11 12 14".
 }
 ```
 
+### LP5 attributes
+
+#### Mandatory
+
+*   `densityPerDieGb`: Density per die in Gb. Valid values: `4, 6, 8, 12, 16,
+    24, 32` Gb per die.
+
+*   `diesPerPackage`: Number of physical dies in each SDRAM package. Valid
+    values: `2, 4, 8` dies per package.
+
+*   `bitWidthPerChannel`: Width of each physical channel. Valid values: `8, 16`
+    bits.
+
+*   `ranksPerChannel`: Number of ranks per physical channel. Valid values: `1,
+    2`. If the channels across multiple dies share the same DQ/DQS pins but use
+    a separate CS, then ranks is 2 else it is 1.
+
+*   `speedMbps`: Maximum data rate supported by the part in Mbps. Valid values:
+    `5500, 6400` Mbps.
+
+#### Optional
+
+*   `trfcabNs`: Minimum Refresh Recovery Delay Time (tRFCab) for all banks in
+    nanoseconds. As per JESD209-5B, this is dependent on the density per die.
+    Default values used:
+
+    *   4 Gb : 180 ns
+    *   6 Gb : 210 ns
+    *   8 Gb : 210 ns
+    *   12 Gb: 280 ns
+    *   16 Gb: 280 ns
+    *   24 Gb: 380 ns
+    *   32 Gb: 380 ns
+
+*   `trfcpbNs`: Minimum Refresh Recovery Delay Time (tRFCpb) per bank in
+    nanoseconds. As per JESD209-5B, this is dependent on the density per die.
+    Default values used:
+
+    *   4 Gb : 90 ns
+    *   6 Gb : 120 ns
+    *   8 Gb : 120 ns
+    *   12 Gb: 140 ns
+    *   16 Gb: 140 ns
+    *   24 Gb: 190 ns
+    *   32 Gb: 190 ns
+
+*   `trpabMinNs`: Minimum Row Precharge Delay Time (tRPab) for all banks in
+    nanoseconds. As per JESD209-5B, this is max(21ns, 2nCK), which defaults to
+    `21 ns`.
+
+*   `trppbMinNs`: Minimum Row Precharge Delay Time (tRPpb) per bank in
+    nanoseconds. As per JESD209-5B, this is max(18ns, 2nCK) which defaults to
+    `18 ns`.
+
+*   `tckMinPs`: SDRAM minimum cycle time (tCKmin) value in picoseconds. LPDDR5
+    has two clocks: the command/addrees clock (CK) and the data clock (WCK).
+    They are related by the WCK:CK ratio, which can be either 4:1 or 2:1. For
+    LPDDR5, tCKmin is the CK period, which can be calculated from the
+    `speedMbps` attribute and the WCK:CK ratio as follows: `tCKmin = 1 /
+    (speedMbps / 2 / WCK:CK)`. The default values used are for a 4:1 WCK:CK
+    ratio:
+
+    *   6400 Mbps: 1250 ps
+    *   5500 Mbps: 1455 ps
+
+*   `taaMinPs`: Minimum CAS Latency Time(tAAmin) in picoseconds. This value
+    defaults to nck * tCKmin, where nck is maximum CAS latency, and is
+    determined from the `speedMbps` attribute as per JESD209-5B:
+
+    *   6400 Mbps: 17
+    *   5500 Mbps: 15
+
+*   `trcdMinNs`: Minimum RAS# to CAS# Delay Time (tRCDmin) in nanoseconds. As
+    per JESD209-5B, this is max(18ns, 2nCK) which defaults to `18 ns`.
+
+#### Example `memory_parts.json`
+
+```
+{
+    "parts": [
+        {
+            "name": "MT62F1G32D4DR-031 WT:B",
+            "attribs": {
+                "densityPerDieGb": 8,
+                "diesPerPackage": 4,
+                "bitWidthPerChannel": 16,
+                "ranksPerChannel": 2,
+                "speedMbps": 6400
+            }
+        },
+    ]
+}
+```
+
 ### Output
 
 The `spd_gen` tool generates the directory structure shown below. The inputs to
@@ -493,3 +590,48 @@ util/spd_tools/bin/part_id_gen \
         `dram_id.generated.txt` with the new part.
     *   Upload the changes to `Makefile.inc` and `dram_id.generated.txt` for
         review.
+
+## How to add support for a new memory technology
+
+### 1. Gather the SPD requirements
+
+To generate SPDs for the new memory technology, information is needed about the
+list of bytes in the SPD and how the value of each byte should be determined.
+This information usually comes from a combination of:
+
+*   The JEDEC spec for the memory technology, e.g. JESD209-5B for LPDDR5.
+*   The JEDEC SPD spec for the memory technology, e.g. SPD4.1.2.M-2 for LPDDR3/4
+    (also used for LP4x and LP5).
+*   Platform-specific requirements. SoC vendors often don't follow the JEDEC
+    specs exactly. E.g. the memory training code may expect certain SPD bytes to
+    encode a different value to what is stated in the spec. So for each SoC
+    platform using the new memory technology, any platform-specific requirements
+    need to be gathered.
+
+### 2. Implement support in spd_tools
+
+Support for the new memory technology needs to be added to both the `spd_gen`
+and `part_id_gen` tools.
+
+#### `spd_gen`
+
+Adding support to `spd_gen` requires implementing the logic to generate SPDs for
+the new memory technology. The changes required are:
+
+*   Add the new memory technology to the `memTechMap` in `spd_gen/spd_gen.go`.
+*   Add a new file `spd_gen/<mem_tech>.go`. This file will contain all the logic
+    for generating SPDs for the new memory technology. It needs to implement the
+    `memTech` interface defined in `spd_gen/spd_gen.go`. The interface functions
+    are documented inline. Examples of how the interface is implemented for
+    existing memory technologies can be found in the `spd_gen/` directory, e.g.
+    `lp4x.go`, `ddr4.go`, `lp5.go`. While not strictly necessary, it is
+    recommended to follow the overall structure of these existing files when
+    adding a new memory technology.
+
+#### `part_id_gen`
+
+The `part_id_gen` tool is memory technology-agnostic, so the only change
+required is:
+
+*   Add the new memory technology to the `supportedMemTechs` list in
+    `part_id_gen/part_id_gen.go`.

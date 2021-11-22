@@ -123,6 +123,7 @@ endif
 
 ifeq ($(FIRMWARE_TYPE),ST)
 OPT_COMBOCAPABLE=--combo-capable
+OPT_SOCNAME=--soc-name "Stoneyridge"
 endif
 
 ifeq ($(CONFIG_USE_PSPSECUREOS),y)
@@ -130,6 +131,9 @@ PSP_USE_PSPSECUREOS="--use-pspsecureos"
 endif
 
 OPT_PSP_USE_PSPSECUREOS=$(call strip_quotes, $(PSP_USE_PSPSECUREOS))
+
+OPT_EFS_SPI_READ_MODE=$(call add_opt_prefix, $(CONFIG_EFS_SPI_READ_MODE), --spi-read-mode)
+OPT_EFS_SPI_SPEED=$(call add_opt_prefix, $(CONFIG_EFS_SPI_SPEED), --spi-speed)
 
 # Add all the files listed in the config file
 POUND_SIGN=$(call strip_quotes, "\#")
@@ -146,7 +150,10 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(CONFIG_STONEYRIDGE_XHCI_FWM_FILE)) \
 		$(OPT_STONEYRIDGE_GEC_FWM_FILE) \
 		$(OPT_COMBOCAPABLE)\
 		$(OPT_PSP_USE_PSPSECUREOS) \
+		$(OPT_EFS_SPI_READ_MODE) \
+		$(OPT_EFS_SPI_SPEED) \
 		--config $(CONFIG_AMDFW_CONFIG_FILE) \
+		$(OPT_SOCNAME) \
 		--flashsize $(CONFIG_ROM_SIZE) \
 		--location $(shell printf "0x%x" $(STONEYRIDGE_FWM_POSITION)) \
 		--output	$@

@@ -15,6 +15,7 @@
 #include <intelblocks/acpi_wake_source.h>
 #include <intelblocks/lpc_lib.h>
 #include <intelblocks/pmclib.h>
+#include <intelblocks/sgx.h>
 #include <intelblocks/uart.h>
 #include <soc/gpio.h>
 #include <soc/iomap.h>
@@ -142,7 +143,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 			ACPI_FADT_SLEEP_BUTTON |
 			ACPI_FADT_SEALED_CASE | ACPI_FADT_S4_RTC_WAKE;
 
-	if (CONFIG(USE_PM_ACPI_TIMER) || !CONFIG(PM_ACPI_TIMER_OPTIONAL))
+	if (CONFIG(USE_PM_ACPI_TIMER))
 		fadt->flags |= ACPI_FADT_PLATFORM_CLOCK;
 
 	fadt->x_pm1a_evt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
@@ -427,4 +428,7 @@ void generate_cpu_entries(const struct device *device)
 
 	/* Add a method to notify processor nodes */
 	acpigen_write_processor_cnot(num_virt);
+
+	if (CONFIG(SOC_INTEL_COMMON_BLOCK_SGX_ENABLE))
+		sgx_fill_ssdt();
 }

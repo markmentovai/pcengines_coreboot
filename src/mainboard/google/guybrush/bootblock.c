@@ -31,8 +31,8 @@ void mb_set_up_early_espi(void)
 void bootblock_mainboard_early_init(void)
 {
 	uint32_t dword;
-	size_t base_num_gpios, override_num_gpios;
-	const struct soc_amd_gpio *base_gpios, *override_gpios;
+	size_t num_gpios, override_num_gpios;
+	const struct soc_amd_gpio *gpios, *override_gpios;
 
 	/* Beware that the bit definitions for LPC_LDRQ0_PU_EN and LPC_LDRQ0_PD_EN are swapped
 	   on Picasso and older compared to Renoir/Cezanne and newer */
@@ -50,11 +50,15 @@ void bootblock_mainboard_early_init(void)
 	if (CONFIG(VBOOT_STARTS_BEFORE_BOOTBLOCK))
 		return;
 
-	base_gpios = variant_early_gpio_table(&base_num_gpios);
-	override_gpios = variant_early_override_gpio_table(&override_num_gpios);
+	gpios = variant_espi_gpio_table(&num_gpios);
+	gpio_configure_pads(gpios, num_gpios);
 
-	gpio_configure_pads_with_override(base_gpios, base_num_gpios,
-			override_gpios, override_num_gpios);
+	gpios = variant_tpm_gpio_table(&num_gpios);
+	gpio_configure_pads(gpios, num_gpios);
+
+	gpios = variant_early_gpio_table(&num_gpios);
+	override_gpios = variant_early_override_gpio_table(&override_num_gpios);
+	gpio_configure_pads_with_override(gpios, num_gpios, override_gpios, override_num_gpios);
 
 	/* Set a timer to make sure there's enough delay for
 	 * the Fibocom 350 PCIe init
@@ -63,6 +67,7 @@ void bootblock_mainboard_early_init(void)
 
 	/* Early eSPI interface configuration */
 
+	/* Use SPI2 pins for eSPI */
 	dword = pm_read32(PM_SPI_PAD_PU_PD);
 	dword |= PM_ESPI_CS_USE_DATA2;
 	pm_write32(PM_SPI_PAD_PU_PD, dword);
@@ -98,8 +103,4 @@ void bootblock_mainboard_init(void)
 
 	gpio_configure_pads_with_override(base_gpios, base_num_gpios, override_gpios,
 					  override_num_gpios);
-
-	/* FPMCU check needs to happen after EC initialization for FW_CONFIG bits */
-	if (variant_has_fpmcu())
-		variant_fpmcu_reset();
 }

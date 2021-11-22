@@ -14,12 +14,15 @@ config BOARD_GOOGLE_BRYA_COMMON
 	def_bool y
 	select BOARD_ROMSIZE_KB_32768
 	select DRIVERS_GENERIC_ALC1015
+	select DRIVERS_GENERIC_GPIO_KEYS
 	select DRIVERS_GENERIC_MAX98357A
 	select DRIVERS_I2C_GENERIC
 	select DRIVERS_I2C_HID
 	select DRIVERS_I2C_NAU8825
 	select DRIVERS_I2C_SX9324
 	select DRIVERS_INTEL_DPTF
+	select PMC_IPC_ACPI_INTERFACE
+	select DRIVERS_INTEL_DPTF_SUPPORTS_TPCH
 	select DRIVERS_INTEL_PMC
 	select DRIVERS_INTEL_SOUNDWIRE
 	select DRIVERS_INTEL_USB4_RETIMER
@@ -54,7 +57,6 @@ config BASEBOARD_DIR
 config CHROMEOS
 	select EC_GOOGLE_CHROMEEC_SWITCHES
 	select HAS_RECOVERY_MRC_CACHE
-	select VBOOT_LID_SWITCH
 
 config CHROMEOS_WIFI_SAR
 	bool "Enable SAR options for Chrome OS build"
@@ -100,6 +102,7 @@ config MAINBOARD_PART_NUMBER
 	default "Taeko" if BOARD_GOOGLE_TAEKO
 	default "Felwinter" if BOARD_GOOGLE_FELWINTER
 	default "Anahera" if BOARD_GOOGLE_ANAHERA
+	default "Vell" if BOARD_GOOGLE_VELL
 
 config VARIANT_DIR
 	default "brya0" if BOARD_GOOGLE_BRYA0
@@ -111,6 +114,11 @@ config VARIANT_DIR
 	default "taeko" if BOARD_GOOGLE_TAEKO
 	default "felwinter" if BOARD_GOOGLE_FELWINTER
 	default "anahera" if BOARD_GOOGLE_ANAHERA
+	default "vell" if BOARD_GOOGLE_VELL
+
+config VBOOT
+	select VBOOT_EARLY_EC_SYNC
+	select VBOOT_LID_SWITCH
 
 config DIMM_SPD_SIZE
 	default 512

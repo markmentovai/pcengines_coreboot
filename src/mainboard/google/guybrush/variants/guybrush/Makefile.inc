@@ -9,4 +9,8 @@ romstage-y += variant.c
 ramstage-y += gpio.c
 ramstage-y += variant.c
 
+verstage-y += gpio.c
+
 subdirs-y += ./memory
+
+smm-y += gpio.c

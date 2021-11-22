@@ -3,7 +3,8 @@
 #include <acpi/acpi.h>
 #include <baseboard/gpio.h>
 #include <baseboard/variants.h>
-#include <commonlib/helpers.h>
+#include <types.h>
+#include <vendorcode/google/chromeos/chromeos.h>
 
 /*
  * Pad configuration in ramstage. The order largely follows the 'GPIO Muxing'
@@ -343,6 +344,8 @@ static const struct pad_config early_gpio_table[] = {
 	 * stages.
 	 */
 	PAD_CFG_GPO_IOSSTATE_IOSTERM(GPIO_161, 1, DEEP, UP_20K, Tx1RxDCRx0, DISPUPD), /* AVS_I2S1_MCLK -- LTE_OFF_ODL */
+
+	PAD_CFG_GPI(GPIO_189, NONE, DEEP), /* EC_IN_RW */
 };
 
 const struct pad_config *__weak

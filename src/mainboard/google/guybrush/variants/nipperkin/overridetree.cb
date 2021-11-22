@@ -61,10 +61,10 @@ chip soc/amd/cezanne
 	register "sustained_power_limit_mW"  = "15000"
 	register "thermctl_limit_degreeC"    = "100"
 
-	register "telemetry_vddcrvddfull_scale_current_mA" = "92165" #mA
-	register "telemetry_vddcrvddoffset" =  "412"
-	register "telemetry_vddcrsocfull_scale_current_mA" = "30233" #mA
-	register "telemetry_vddcrsocoffset" =  "457"
+	register "telemetry_vddcrvddfull_scale_current_mA" = "73457" #mA
+	register "telemetry_vddcrvddoffset" =  "291"
+	register "telemetry_vddcrsocfull_scale_current_mA" = "30761" #mA
+	register "telemetry_vddcrsocoffset" =  "834"
 
 	# I2C Config
 	#+-------------------+---------------------------+
@@ -116,6 +116,19 @@ chip soc/amd/cezanne
 			register "has_power_resource" = "1"
 			device i2c 10 on end
 		end
+		chip drivers/i2c/hid
+			register "generic.hid" = ""GTCH7503""
+			register "generic.desc" = ""G2TOUCH Touchscreen""
+			register "generic.irq_gpio" = "ACPI_GPIO_IRQ_LEVEL_LOW(GPIO_89)"
+			register "generic.probed" = "1"
+			register "generic.enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_68)"
+			register "generic.enable_delay_ms" = "1"
+			register "generic.reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPIO_121)"
+			register "generic.reset_delay_ms" = "50"
+			register "generic.has_power_resource" = "1"
+			register "hid_desc_reg_offset" = "0x01"
+			device i2c 40 on end
+		end
 	end # I2C1
 
 	device ref i2c_2 on
@@ -141,6 +154,10 @@ chip soc/amd/cezanne
 			register "irq_gpio" = "ACPI_GPIO_IRQ_LEVEL_LOW(GPIO_21)"
 			register "wake" = "GEVENT_5"
 			register "uart" = "ACPI_UART_RAW_DEVICE(3000000, 64)"
+			register "has_power_resource" = "1"
+			register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPIO_11)"
+			register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_3)"
+			register "enable_delay_ms" = "3"
 			device generic 0 alias fpmcu on
 				probe FP FP_PRESENT
 			end
@@ -149,9 +166,11 @@ chip soc/amd/cezanne
 
 	chip drivers/generic/max98357a
 			register "hid" = ""MX98360A""
-			register "sdmode_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_31)"
+			register "sdmode_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_70)"
 			register "sdmode_delay" = "5"
 			device generic 0.1 on end
 	end
+
+	register "common_config.espi_config.alert_pin" = "ESPI_ALERT_PIN_IN_BAND"
 
 end	# chip soc/amd/cezanne

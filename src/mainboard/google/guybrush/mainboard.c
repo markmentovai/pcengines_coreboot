@@ -112,10 +112,15 @@ static void mainboard_configure_gpios(void)
 					  override_num_gpios);
 }
 
+void __weak variant_devtree_update(void)
+{
+}
+
 static void mainboard_init(void *chip_info)
 {
 	mainboard_configure_gpios();
 	mainboard_ec_init();
+	variant_devtree_update();
 }
 
 static void mainboard_write_blken(void)
@@ -204,13 +209,7 @@ static void mainboard_enable(struct device *dev)
 	pm_write32(PM_ESPI_INTR_CTRL, PM_ESPI_DEV_INTR_MASK & ~(BIT(1)));
 }
 
-static void mainboard_final(void *chip_info)
-{
-	variant_finalize_gpios();
-}
-
 struct chip_operations mainboard_ops = {
 	.init = mainboard_init,
 	.enable_dev = mainboard_enable,
-	.final = mainboard_final,
 };

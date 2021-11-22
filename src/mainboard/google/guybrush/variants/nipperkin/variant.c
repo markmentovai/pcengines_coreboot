@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <baseboard/variants.h>
+#include <boardid.h>
 #include <device/device.h>
+#include <soc/gpio.h>
 
 void variant_update_dxio_descriptors(fsp_dxio_descriptor *dxio_descriptors)
 {

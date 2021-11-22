@@ -11,6 +11,7 @@
 #include <lib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <drivers/vpd/vpd.h>
 
 uint64_t fw_config_get(void)
 {
@@ -21,30 +22,40 @@ uint64_t fw_config_get(void)
 	if (fw_config_value_initialized)
 		return fw_config_value;
 	fw_config_value_initialized = true;
-
-	/* Look in CBFS to allow override of value. */
-	if (CONFIG(FW_CONFIG_SOURCE_CBFS)) {
-		if (cbfs_load(CONFIG_CBFS_PREFIX "/fw_config", &fw_config_value,
-			      sizeof(fw_config_value)) != sizeof(fw_config_value)) {
-			printk(BIOS_WARNING, "%s: Could not get fw_config from CBFS\n",
-			       __func__);
-			fw_config_value = UNDEFINED_FW_CONFIG;
-		} else {
-			printk(BIOS_INFO, "FW_CONFIG value from CBFS is 0x%" PRIx64 "\n",
-			       fw_config_value);
-			return fw_config_value;
-		}
-	}
+	fw_config_value = UNDEFINED_FW_CONFIG;
 
 	/* Read the value from EC CBI. */
 	if (CONFIG(FW_CONFIG_SOURCE_CHROMEEC_CBI)) {
-		if (google_chromeec_cbi_get_fw_config(&fw_config_value)) {
-			printk(BIOS_WARNING, "%s: Could not get fw_config from EC\n", __func__);
-			fw_config_value = UNDEFINED_FW_CONFIG;
-		}
+		if (google_chromeec_cbi_get_fw_config(&fw_config_value))
+			printk(BIOS_WARNING, "%s: Could not get fw_config from CBI\n",
+				__func__);
+		else
+			printk(BIOS_INFO, "FW_CONFIG value from CBI is 0x%" PRIx64 "\n",
+				fw_config_value);
 	}
 
-	printk(BIOS_INFO, "FW_CONFIG value is 0x%" PRIx64 "\n", fw_config_value);
+	/* Look in CBFS to allow override of value. */
+	if (CONFIG(FW_CONFIG_SOURCE_CBFS) && fw_config_value == UNDEFINED_FW_CONFIG) {
+		if (cbfs_load(CONFIG_CBFS_PREFIX "/fw_config", &fw_config_value,
+			      sizeof(fw_config_value)) != sizeof(fw_config_value))
+			printk(BIOS_WARNING, "%s: Could not get fw_config from CBFS\n",
+				__func__);
+		else
+			printk(BIOS_INFO, "FW_CONFIG value from CBFS is 0x%" PRIx64 "\n",
+				fw_config_value);
+	}
+
+	if (CONFIG(FW_CONFIG_SOURCE_VPD) && fw_config_value == UNDEFINED_FW_CONFIG) {
+		int vpd_value;
+		if (vpd_get_int("fw_config", VPD_RW_THEN_RO, &vpd_value)) {
+			fw_config_value = vpd_value;
+			printk(BIOS_INFO, "FW_CONFIG value from VPD is 0x%" PRIx64 "\n",
+				fw_config_value);
+		} else
+			printk(BIOS_WARNING, "%s: Could not get fw_config from vpd\n",
+				__func__);
+	}
+
 	return fw_config_value;
 }
 
