@@ -20,26 +20,6 @@ static void model_14_init(struct device *dev)
 	u32 siblings;
 	printk(BIOS_DEBUG, "Model 14 Init.\n");
 
-
-	if (acpi_is_wakeup_s3()) {
-		restore_mtrr();
-	} else {
-		/*
-		 * All cores are initialized sequentially, so the solution for APs will be
-		 * created before they start.
-		 */
-		x86_setup_mtrrs_with_detect();
-		/*
-		 * Enable ROM caching on BSP we just lost when creating MTRR solution, for
-		 * faster execution
-		 */
-		if (boot_cpu()) {
-			mtrr_use_temp_range(OPTIMAL_CACHE_ROM_BASE, OPTIMAL_CACHE_ROM_SIZE,
-					    MTRR_TYPE_WRPROT);
-		}
-	}
-
-	x86_mtrr_check();
 	enable_cache();
 
 	/* zero the machine check error status registers */

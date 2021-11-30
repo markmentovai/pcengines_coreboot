@@ -10,7 +10,7 @@
 #include <device/pci_ids.h>
 #include <string.h>
 #include <lib.h>
-#include <cpu/cpu.h>
+#include <cpu/x86/mp.h>
 #include <cpu/amd/msr.h>
 #include <cpu/amd/mtrr.h>
 #include <northbridge/amd/nb_common.h>
@@ -330,31 +330,36 @@ static const char *domain_acpi_name(const struct device *dev)
 
 /* Bus related code */
 
-static void cpu_bus_scan(struct device *dev)
+static void pre_mp_init(void)
 {
-	struct bus *cpu_bus = dev->link_list;
-	struct device *cpu;
-	int apic_id, cores_found;
+	if (acpi_is_wakeup_s3())
+		restore_mtrr();
+	else
+		x86_setup_mtrrs_with_detect();
 
-	/* There is only one node for fam14, but there may be multiple cores. */
-	cpu = pcidev_on_root(0x18, 0);
-	if (!cpu)
-		printk(BIOS_ERR, "ERROR: %02x:%02x.0 not found", 0, 0x18);
-
-	cores_found = (pci_read_config32(pcidev_on_root(0x18, 0x3),
-					0xe8) >> 12) & 3;
-	printk(BIOS_DEBUG, "  AP siblings=%d\n", cores_found);
-
-	for (apic_id = 0; apic_id <= cores_found; apic_id++) {
-		cpu = add_cpu_device(cpu_bus, apic_id, 1);
-		if (cpu)
-			amd_cpu_topology(cpu, 0, apic_id);
-	}
+	x86_mtrr_check();
 }
 
-static void cpu_bus_init(struct device *dev)
+static int get_cpu_count(void)
 {
-	initialize_cpus(dev->link_list);
+	uint8_t siblings = cpuid_ecx(0x80000008) & 0xff;
+
+	return siblings + 1;
+}
+
+static const struct mp_ops mp_ops = {
+	.pre_mp_init = pre_mp_init,
+	.get_cpu_count = get_cpu_count,
+};
+
+void mp_init_cpus(struct bus *cpu_bus)
+{
+	/* TODO: Handle mp_init_with_smm failure? */
+	mp_init_with_smm(cpu_bus, &mp_ops);
+
+	/* The flash is now no longer cacheable. Reset to WP for performance. */
+	mtrr_use_temp_range(OPTIMAL_CACHE_ROM_BASE, OPTIMAL_CACHE_ROM_SIZE,
+			    MTRR_TYPE_WRPROT);
 }
 
 /* North Bridge Structures */
@@ -526,8 +531,7 @@ static struct device_operations pci_domain_ops = {
 static struct device_operations cpu_bus_ops = {
 	.read_resources = noop_read_resources,
 	.set_resources = noop_set_resources,
-	.init = cpu_bus_init,
-	.scan_bus = cpu_bus_scan,
+	.init = mp_cpu_bus_init,
 };
 
 static void root_complex_enable_dev(struct device *dev)
