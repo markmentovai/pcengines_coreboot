@@ -58,6 +58,7 @@ subdirs-$(CONFIG_LP_LZ4) += liblz4
 
 INCLUDES := -Iinclude -Iinclude/$(ARCHDIR-y) -I$(obj)
 INCLUDES += -include include/kconfig.h -include include/compiler.h
+INCLUDES += -I$(coreboottop)/src/commonlib/bsd/include
 
 CFLAGS += $(INCLUDES) -Os -pipe -nostdinc -ggdb3
 CFLAGS += -nostdlib -fno-builtin -ffreestanding -fomit-frame-pointer
@@ -114,6 +115,11 @@ install: real-target
 	for file in `find include -name *.h -type f`; do \
 		install -m 755 -d $(DESTDIR)/libpayload/`dirname $$file`; \
 		install -m 644 $$file $(DESTDIR)/libpayload/$$file; \
+	done
+	for file in `find $(coreboottop)/src/commonlib/bsd/include -name *.h -type f`; do \
+		dest_file=$$(realpath --relative-to=$(coreboottop)/src/commonlib/bsd/ $$file); \
+		install -m 755 -d "$(DESTDIR)/libpayload/`dirname $$dest_file`"; \
+		install -m 644 "$$file" "$(DESTDIR)/libpayload/$$dest_file"; \
 	done
 	install -m 644 $(obj)/libpayload-config.h $(DESTDIR)/libpayload/include
 	$(foreach item,$(includes), \

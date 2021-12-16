@@ -105,9 +105,7 @@ chip soc/intel/tigerlake
 
 			register "gfx" = "GMA_DEFAULT_PANEL(0)"
 		end
-		device ref dptf on
-			register "Device4Enable" = "1"
-		end
+		device ref dptf on end
 		device ref peg on
 			# PCIe PEG0 x4, Clock 0 (SSD1)
 			register "PcieClkSrcUsage[0]" = "0x40"
@@ -329,9 +327,7 @@ chip soc/intel/tigerlake
 		device ref hda on
 			register "PchHdaAudioLinkHdaEnable" = "1"
 		end
-		device ref smbus on
-			register "SmbusEnable" = "1"
-		end
+		device ref smbus on end
 		device ref fast_spi on end
 	end
 end

@@ -11,9 +11,14 @@
 #define MKHI_GROUP_ID_HMRFPO	0x5
 #define MKHI_GROUP_ID_GEN	0xff
 #define MKHI_GROUP_ID_BUP_COMMON	0xf0
+#define MKHI_GROUP_ID_FWCAPS	0x3
 
 /* Global Reset Command ID */
 #define MKHI_CBM_GLOBAL_RESET_REQ	0xb
+
+/* Set State Command ID */
+#define MKHI_SET_ME_DISABLE	0x3
+#define MKHI_SET_ME_ENABLE	0x3
 
 /* Origin of Global Reset command */
 #define GR_ORIGIN_BIOS_POST	0x2
@@ -43,6 +48,12 @@
 #define ME_HFS1_COM_NORMAL	0x0
 #define ME_HFS1_COM_SOFT_TEMP_DISABLE	0x3
 #define ME_HFS1_COM_SECOVER_MEI_MSG	0x5
+
+/* ME Disable Rule */
+#define ME_DISABLE_RULE_ID	6
+#define ME_DISABLE_RULE_LENGTH	4
+#define ME_DISABLE_COMMAND	0
+#define ME_DISABLE_ATTEMPTS	3
 
 /* ME Firmware SKU Types */
 #define ME_HFS3_FW_SKU_CONSUMER	0x2
@@ -132,6 +143,24 @@ enum csme_failure_reason {
 
 	/* Error sending EOP to CSE */
 	CSE_EOP_FAIL = 12,
+
+	/* CSE Sub-partition update fail */
+	CSE_LITE_SKU_SUB_PART_UPDATE_FAIL = 13,
+
+	/* CSE sub-partition access failure */
+	CSE_LITE_SKU_SUB_PART_ACCESS_ERR = 14,
+
+	/* CSE CBFS sub-partition access error */
+	CSE_LITE_SKU_SUB_PART_BLOB_ACCESS_ERR = 15,
+
+	/* CSE Lite sub-partition update is not required */
+	CSE_LITE_SKU_SUB_PART_UPDATE_NOT_REQ = 16,
+
+	/* CSE Lite sub-partition layout mismatch error */
+	CSE_LITE_SKU_SUB_PART_LAYOUT_MISMATCH_ERROR = 17,
+
+	/* CSE Lite sub-partition update success */
+	CSE_LITE_SKU_PART_UPDATE_SUCCESS = 18,
 };
 
 /* set up device for use in early boot enviroument with temp bar */
@@ -309,4 +338,9 @@ enum cse_device_state get_cse_device_state(unsigned int devfn);
 /* Function that put the CSE into desired state based on `requested_state` */
 bool set_cse_device_state(unsigned int devfn, enum cse_device_state requested_state);
 
+/*
+ * Check if cse sub-parition update is required or not.
+ * Returns true if cse sub-parition update is required otherwise false.
+ */
+bool skip_cse_sub_part_update(void);
 #endif // SOC_INTEL_COMMON_CSE_H

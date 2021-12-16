@@ -22,6 +22,7 @@ romstage-y += gpio.c
 romstage-y += meminit.c
 romstage-y += pcie_rp.c
 romstage-y += reset.c
+romstage-y += cpu.c
 
 ramstage-y += acpi.c
 ramstage-y += chip.c
@@ -38,6 +39,7 @@ ramstage-y += p2sb.c
 ramstage-y += pcie_rp.c
 ramstage-y += pmc.c
 ramstage-y += reset.c
+ramstage-y += retimer.c
 ramstage-y += soundwire.c
 ramstage-y += systemagent.c
 ramstage-y += vr_config.c
@@ -65,7 +67,7 @@ $(eval $(call cse_add_dummy_to_bp1_bp2,SBDT))
 $(eval $(call cse_add_decomp_to_bp1_bp2,RBEP))
 $(eval $(call cse_add_dummy_to_bp1_bp2,UFSP))
 $(eval $(call cse_add_dummy_to_bp1_bp2,UFSG))
-$(eval $(call cse_add_dummy_to_bp1_bp2,OEMP))
+$(eval $(call cse_add_input_to_bp1_bp2,OEMP))
 $(eval $(call cse_add_input_to_bp1_bp2,PMCP))
 $(eval $(call cse_add_decomp,bp1,MFTP))
 $(eval $(call cse_add_decomp,bp2,FTPR))

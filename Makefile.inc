@@ -189,29 +189,29 @@ ramstage-generic-ccopts += -D__RAMSTAGE__
 ifeq ($(CONFIG_COVERAGE),y)
 ramstage-c-ccopts += -fprofile-arcs -ftest-coverage
 endif
-
 ifneq ($(UPDATED_SUBMODULES),1)
 # try to fetch non-optional submodules if the source is under git
-forgetthis:=$(if $(GIT),$(shell git submodule update --init))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init $(quiet_errors)))
 # Checkout Cmocka repository
-forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/cmocka))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/cmocka $(quiet_errors)))
 ifeq ($(CONFIG_USE_BLOBS),y)
 # These items are necessary because each has update=none in .gitmodules.  They are ignored
 # until expressly requested and enabled with --checkout
-forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/blobs))
-forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/intel-microcode))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/blobs $(quiet_errors)))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/intel-microcode $(quiet_errors)))
 ifeq ($(CONFIG_FSP_USE_REPO),y)
-forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/fsp))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/fsp $(quiet_errors)))
 endif
 ifeq ($(CONFIG_USE_AMD_BLOBS),y)
-forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/amd_blobs))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/amd_blobs $(quiet_errors)))
 endif
 ifeq ($(CONFIG_USE_QC_BLOBS),y)
-forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/qc_blobs))
+forgetthis:=$(if $(GIT),$(shell git submodule update --init --checkout 3rdparty/qc_blobs $(quiet_errors)))
 endif
 endif
 UPDATED_SUBMODULES:=1
 COREBOOT_EXPORTS += UPDATED_SUBMODULES
+
 endif
 
 postcar-c-deps:=$$(OPTION_TABLE_H)
@@ -280,6 +280,9 @@ define asl_template
 $(CONFIG_CBFS_PREFIX)/$(1).aml-file = $(obj)/$(1).aml
 $(CONFIG_CBFS_PREFIX)/$(1).aml-type = raw
 $(CONFIG_CBFS_PREFIX)/$(1).aml-compression = none
+ifeq ($(CONFIG_SOC_AMD_COMMON_BLOCK_LPC_SPI_DMA),y)
+$(CONFIG_CBFS_PREFIX)/$(1).aml-align = 64
+endif
 cbfs-files-$(if $(2),$(2),y) += $(CONFIG_CBFS_PREFIX)/$(1).aml
 -include $(obj)/$(1).d
 $(obj)/$(1).aml: $(src)/mainboard/$(MAINBOARDDIR)/$(1).asl $(obj)/config.h
