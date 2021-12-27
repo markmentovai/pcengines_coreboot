@@ -7,6 +7,9 @@ config BOARD_GOOGLE_BASEBOARD_BRYA
 config BOARD_GOOGLE_BASEBOARD_BRASK
 	def_bool n
 	select SPD_CACHE_IN_FMAP
+	select ENABLE_TCSS_DISPLAY_DETECTION if RUN_FSP_GOP
+	select RT8168_GET_MAC_FROM_VPD
+	select RT8168_GEN_ACPI_POWER_RESOURCE
 
 if BOARD_GOOGLE_BASEBOARD_BRYA || BOARD_GOOGLE_BASEBOARD_BRASK
 
@@ -44,7 +47,7 @@ config BOARD_GOOGLE_BRYA_COMMON
 	select MAINBOARD_HAS_CHROMEOS
 	select MAINBOARD_HAS_I2C_TPM_CR50
 	select MAINBOARD_HAS_TPM2
-	select SOC_INTEL_ALDERLAKE
+	select SOC_INTEL_ALDERLAKE_PCH_P
 	select SOC_INTEL_COMMON_BLOCK_PCIE_RTD3
 	select SOC_INTEL_CSE_LITE_SKU
 	select INTEL_CAR_NEM #TODO - Enable INTEL_CAR_NEM_ENHANCED
@@ -71,7 +74,22 @@ config DEVICETREE
 
 config DRIVER_TPM_I2C_BUS
 	hex
-	default 0x3
+	default 0x3 if BOARD_GOOGLE_BRYA0
+	default 0x3 if BOARD_GOOGLE_BRYA4ES
+	default 0x3 if BOARD_GOOGLE_BRASK
+	default 0x1 if BOARD_GOOGLE_PRIMUS
+	default 0x3 if BOARD_GOOGLE_PRIMUS4ES
+	default 0x1 if BOARD_GOOGLE_GIMBLE
+	default 0x3 if BOARD_GOOGLE_GIMBLE4ES
+	default 0x1 if BOARD_GOOGLE_REDRIX
+	default 0x3 if BOARD_GOOGLE_REDRIX4ES
+	default 0x1 if BOARD_GOOGLE_KANO
+	default 0x3 if BOARD_GOOGLE_TAEKO
+	default 0x3 if BOARD_GOOGLE_TAEKO4ES
+	default 0x1 if BOARD_GOOGLE_FELWINTER
+	default 0x3 if BOARD_GOOGLE_ANAHERA
+	default 0x3 if BOARD_GOOGLE_ANAHERA4ES
+	default 0x3 if BOARD_GOOGLE_VELL
 
 config DRIVER_TPM_I2C_ADDR
 	hex
@@ -94,27 +112,41 @@ config MAINBOARD_FAMILY
 
 config MAINBOARD_PART_NUMBER
 	default "Brya" if BOARD_GOOGLE_BRYA0
+	default "Brya4ES" if BOARD_GOOGLE_BRYA4ES
 	default "Brask" if BOARD_GOOGLE_BRASK
 	default "Primus" if BOARD_GOOGLE_PRIMUS
+	default "Primus4ES" if BOARD_GOOGLE_PRIMUS4ES
 	default "Gimble" if BOARD_GOOGLE_GIMBLE
+	default "Gimble4ES" if BOARD_GOOGLE_GIMBLE4ES
 	default "Redrix" if BOARD_GOOGLE_REDRIX
+	default "Redrix4ES" if BOARD_GOOGLE_REDRIX4ES
 	default "Kano" if BOARD_GOOGLE_KANO
 	default "Taeko" if BOARD_GOOGLE_TAEKO
+	default "Taeko4ES" if BOARD_GOOGLE_TAEKO4ES
 	default "Felwinter" if BOARD_GOOGLE_FELWINTER
 	default "Anahera" if BOARD_GOOGLE_ANAHERA
+	default "Anahera4ES" if BOARD_GOOGLE_ANAHERA4ES
 	default "Vell" if BOARD_GOOGLE_VELL
+	default "Taniks" if BOARD_GOOGLE_TANIKS
 
 config VARIANT_DIR
 	default "brya0" if BOARD_GOOGLE_BRYA0
+	default "brya4es" if BOARD_GOOGLE_BRYA4ES
 	default "brask" if BOARD_GOOGLE_BRASK
 	default "primus" if BOARD_GOOGLE_PRIMUS
+	default "primus4es" if BOARD_GOOGLE_PRIMUS4ES
 	default "gimble" if BOARD_GOOGLE_GIMBLE
+	default "gimble4es" if BOARD_GOOGLE_GIMBLE4ES
 	default "redrix" if BOARD_GOOGLE_REDRIX
+	default "redrix4es" if BOARD_GOOGLE_REDRIX4ES
 	default "kano" if BOARD_GOOGLE_KANO
 	default "taeko" if BOARD_GOOGLE_TAEKO
+	default "taeko4es" if BOARD_GOOGLE_TAEKO4ES
 	default "felwinter" if BOARD_GOOGLE_FELWINTER
 	default "anahera" if BOARD_GOOGLE_ANAHERA
+	default "anahera4es" if BOARD_GOOGLE_ANAHERA4ES
 	default "vell" if BOARD_GOOGLE_VELL
+	default "taniks" if BOARD_GOOGLE_TANIKS
 
 config VBOOT
 	select VBOOT_EARLY_EC_SYNC
@@ -134,5 +166,8 @@ config HAVE_WWAN_POWER_SEQUENCE
 	  to be performed on shutdown. Must define WWAN_FCPO, WWAN_RST and WWAN_PERST GPIOs
 	  in variant.h, as well as T1_OFF_MS (time between PERST & RST) and T2_OFF_MS (time
 	  between RST and FCPO).
+
+config USE_PM_ACPI_TIMER
+	default n
 
 endif # BOARD_GOOGLE_BASEBOARD_BRYA || BOARD_GOOGLE_BASEBOARD_BRASK

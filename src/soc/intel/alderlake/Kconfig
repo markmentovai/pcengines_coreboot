@@ -1,18 +1,34 @@
 config SOC_INTEL_ALDERLAKE
 	bool
 	help
-	  Intel Alderlake support
+	  Intel Alderlake support. Mainboards should specify the PCH
+	  type using the `SOC_INTEL_ALDERLAKE_PCH_*` options instead
+	  of selecting this option directly.
 
 config SOC_INTEL_ALDERLAKE_PCH_M
 	bool
+	select SOC_INTEL_ALDERLAKE
 	help
-	  Choose this option if you have PCH-M chipset.
+	  Choose this option if your mainboard has a PCH-M chipset.
+
+config SOC_INTEL_ALDERLAKE_PCH_N
+	bool
+	select SOC_INTEL_ALDERLAKE
+	help
+	  Choose this option if your mainboard has a PCH-N chipset.
+
+config SOC_INTEL_ALDERLAKE_PCH_P
+	bool
+	select SOC_INTEL_ALDERLAKE
+	help
+	  Choose this option if your mainboard has a PCH-P chipset.
 
 if SOC_INTEL_ALDERLAKE
 
 config CPU_SPECIFIC_OPTIONS
 	def_bool y
 	select ACPI_INTEL_HARDWARE_SLEEP_VALUES
+	select ACPI_ADL_IPU_ES_SUPPORT
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES
 	select CACHE_MRC_SETTINGS
@@ -67,6 +83,7 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_SA
 	select SOC_INTEL_COMMON_BLOCK_SMM
 	select SOC_INTEL_COMMON_BLOCK_SMM_IO_TRAP
+	select SOC_INTEL_COMMON_BLOCK_SMM_LOCK_GPIO_PADS
 	select SOC_INTEL_COMMON_BLOCK_TCSS
 	select SOC_INTEL_COMMON_BLOCK_THERMAL_BEHIND_PMC
 	select SOC_INTEL_COMMON_BLOCK_USB4
@@ -169,12 +186,14 @@ endif # SOC_INTEL_ENABLE_USB4_PCIE_RESOURCES
 config MAX_PCH_ROOT_PORTS
 	int
 	default 10 if SOC_INTEL_ALDERLAKE_PCH_M
-	default 12
+	default 12 if SOC_INTEL_ALDERLAKE_PCH_N
+	default 12 if SOC_INTEL_ALDERLAKE_PCH_P
 
 config MAX_CPU_ROOT_PORTS
 	int
 	default 1 if SOC_INTEL_ALDERLAKE_PCH_M
-	default 3
+	default 0 if SOC_INTEL_ALDERLAKE_PCH_N
+	default 3 if SOC_INTEL_ALDERLAKE_PCH_P
 
 config MAX_ROOT_PORTS
 	int
@@ -183,12 +202,14 @@ config MAX_ROOT_PORTS
 config MAX_PCIE_CLOCK_SRC
 	int
 	default 6 if SOC_INTEL_ALDERLAKE_PCH_M
-	default 7
+	default 5 if SOC_INTEL_ALDERLAKE_PCH_N
+	default 7 if SOC_INTEL_ALDERLAKE_PCH_P
 
 config MAX_PCIE_CLOCK_REQ
 	int
-	default 6 if SOC_INTEL_ALDERLAKE_PCH_M
-	default 10
+	default 6  if SOC_INTEL_ALDERLAKE_PCH_M
+	default 5  if SOC_INTEL_ALDERLAKE_PCH_N
+	default 10 if SOC_INTEL_ALDERLAKE_PCH_P
 
 config SMM_TSEG_SIZE
 	hex
@@ -289,7 +310,7 @@ config SOC_INTEL_ALDERLAKE_DEBUG_CONSENT
 	int "Debug Consent for ADL"
 	# USB DBC is more common for developers so make this default to 3 if
 	# SOC_INTEL_DEBUG_CONSENT=y
-	default 3 if SOC_INTEL_DEBUG_CONSENT
+	default 2 if SOC_INTEL_DEBUG_CONSENT
 	default 0
 	help
 	  This is to control debug interface on SOC.
@@ -297,9 +318,8 @@ config SOC_INTEL_ALDERLAKE_DEBUG_CONSENT
 	  PlatformDebugConsent in FspmUpd.h has the details.
 
 	  Desired platform debug type are
-	  0:Disabled, 1:Enabled (DCI OOB+[DbC]), 2:Enabled (DCI OOB),
-	  3:Enabled (USB3 DbC), 4:Enabled (XDP/MIPI60), 5:Enabled (USB2 DbC),
-	  6:Enable (2-wire DCI OOB), 7:Manual
+	  0:Disabled, 2:Enabled (All Probes+TraceHub), 6:Enable (Low Power),
+	  7:Manual
 
 config DATA_BUS_WIDTH
 	int
@@ -319,6 +339,11 @@ config SOC_INTEL_CRASHLOG
 	select ACPI_BERT
 	help
 	  Enables CrashLog.
+
+config ACPI_ADL_IPU_ES_SUPPORT
+	def_bool n
+	help
+	  Enables ACPI entry to provide silicon type information to IPU kernel driver.
 
 if STITCH_ME_BIN
 

@@ -11,6 +11,7 @@ bootblock-y += ../common/mmu_operations.c
 bootblock-y += ../common/pll.c pll.c
 bootblock-$(CONFIG_SPI_FLASH) += ../common/spi.c spi.c
 bootblock-y += ../common/timer.c timer.c
+bootblock-y += ../common/tracker.c ../common/tracker_v1.c
 bootblock-y += ../common/uart.c
 bootblock-y += ../common/wdt.c wdt.c
 
@@ -30,6 +31,7 @@ romstage-y += ../common/flash_controller.c
 romstage-y += ../common/gpio.c gpio.c
 romstage-y += ../common/i2c.c i2c.c
 romstage-y += ../common/mmu_operations.c ../common/mmu_cmops.c
+romstage-y += ../common/pll.c pll.c
 romstage-$(CONFIG_SPI_FLASH) += ../common/spi.c spi.c
 romstage-y += ../common/timer.c timer.c
 romstage-y += ../common/uart.c
@@ -56,6 +58,8 @@ ramstage-y += ../common/usb.c usb.c
 ramstage-y += ../common/wdt.c wdt.c
 ramstage-y += ../common/pmic_wrap.c pmic_wrap.c mt6366.c
 ramstage-y += ../common/rtc.c ../common/rtc_osc_init.c rtc.c
+
+BL31_MAKEARGS += PLAT=mt8186
 
 CPPFLAGS_common += -Isrc/soc/mediatek/mt8186/include
 CPPFLAGS_common += -Isrc/soc/mediatek/common/include

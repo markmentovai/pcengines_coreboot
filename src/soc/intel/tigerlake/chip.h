@@ -215,7 +215,6 @@ struct soc_intel_tigerlake_config {
 	uint8_t SlowSlewRate;
 
 	/* SATA related */
-	uint8_t SataEnable;
 	uint8_t SataMode;
 	uint8_t SataSalpSupport;
 	uint8_t SataPortsEnable[8];
@@ -272,13 +271,8 @@ struct soc_intel_tigerlake_config {
 	/* PCIE RP Advanced Error Report: Enable (1) / Disable (0) */
 	uint8_t PcieRpAdvancedErrorReporting[CONFIG_MAX_ROOT_PORTS];
 
-	/* SMBus */
-	uint8_t SmbusEnable;
-
 	/* Gfx related */
 	uint8_t SkipExtGfxScan;
-
-	uint8_t Device4Enable;
 
 	/* HeciEnabled decides the state of Heci1 at end of boot
 	 * Setting to 0 (default) disables Heci1 and hides the device from OS */

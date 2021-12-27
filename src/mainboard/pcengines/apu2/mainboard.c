@@ -324,28 +324,10 @@ static void mainboard_enable(struct device *dev)
 	// Read memory configuration from GPIO 49 and 50
 	//
 	u8 spd_index = get_spd_offset();
-	u8 *spd;
 	u8 spd_buffer[CONFIG_DIMM_SPD_SIZE];
 
-	if(CONFIG(VBOOT_MEASURED_BOOT)) {
-		struct cbfsf fh;
-		u32 cbfs_type = CBFS_TYPE_SPD;
-
-		/* Read index 0, first SPD_SIZE bytes of spd.bin file. */
-		if (cbfs_locate_file_in_region(&fh, "COREBOOT", "spd.bin",
-						&cbfs_type) < 0) {
-			printk(BIOS_WARNING, "spd.bin not found\n");
-		}
-		spd = rdev_mmap_full(&fh.data);
-		if (spd)
-			memcpy(spd_buffer,
-				&spd[spd_index * CONFIG_DIMM_SPD_SIZE],
-				CONFIG_DIMM_SPD_SIZE);
-
-	} else {
-		read_ddr3_spd_from_cbfs(spd_buffer, spd_index);
-	}
-
+	if (read_ddr3_spd_from_cbfs(spd_buffer, spd_index) < 0)
+		die("No SPD data\n");
 
 	if (scon) {
 		if (spd_buffer[3] == 8)
