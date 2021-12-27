@@ -12,7 +12,7 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
-## [v4.15.0.2] - 2021-12-16
+## [v4.15.0.2] - 2021-12-27
 ### Changed
 - rebased with official coreboot repository commit 3990da0b
 - disabled SMM
