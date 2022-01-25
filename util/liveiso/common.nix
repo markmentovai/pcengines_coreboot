@@ -33,6 +33,7 @@
 			"console=ttyS0,115200"
 			"console=tty0"
 			"iomem=relaxed"
+			"intel-spi.writeable=1"
 		];
 		# pkgs.linuxPackages == lts
 		# pkgs.linuxPackages_latest == stable
@@ -137,6 +138,7 @@
 		mkpasswd
 		ms-sys
 		msr-tools
+		mtdutils
 		neovim
 		nixos-install-tools
 		ntfsprogs

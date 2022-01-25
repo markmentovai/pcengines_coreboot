@@ -444,6 +444,7 @@ ADAFLAGS_common += -pipe -g -nostdinc
 ADAFLAGS_common += -Wstrict-aliasing -Wshadow
 ADAFLAGS_common += -fno-common -fomit-frame-pointer
 ADAFLAGS_common += -ffunction-sections -fdata-sections
+ADAFLAGS_common += -fno-pie
 # Ada warning options:
 #
 #  a   Activate most optional warnings.
@@ -590,6 +591,8 @@ IFDTOOL:=$(objutil)/ifdtool/ifdtool
 AMDFWTOOL:=$(objutil)/amdfwtool/amdfwtool
 
 APCB_EDIT_TOOL:=$(top)/util/apcb/apcb_edit.py
+
+APCB_V3_EDIT_TOOL:=$(top)/util/apcb/apcb_v3_edit.py
 
 CBOOTIMAGE:=$(objutil)/cbootimage/cbootimage
 
