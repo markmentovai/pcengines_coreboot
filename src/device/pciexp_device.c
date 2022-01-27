@@ -10,7 +10,7 @@
 
 #include "mainboard/pcengines/apu2/bios_knobs.h"
 
-unsigned int pciexp_find_extended_cap(struct device *dev, unsigned int cap)
+unsigned int pciexp_find_extended_cap(const struct device *dev, unsigned int cap)
 {
 	unsigned int this_cap_offset, next_cap_offset;
 	unsigned int this_cap, cafe;
