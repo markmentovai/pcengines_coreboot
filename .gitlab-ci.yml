@@ -76,7 +76,7 @@ check_dependencies:
   only:
     - tags
 
-.check_hw_matrix:
+.check_hw_matrix: &check_hw_matrix
   image:
     name: 3mdeb/rf-docker:1.1.0
     # https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#overriding-the-entrypoint-of-an-image
