@@ -9,6 +9,7 @@ stages:
   - build_rom
   - sign_rom
   - publish_rom
+  - check_hw_matrix
   - run_regression
 
 check_dependencies:
@@ -72,6 +73,26 @@ check_dependencies:
     - curl -u ${UPLOADER_USERNAME}:${UPLOADER_PASSWORD} -X MKCOL "${UPLOADER_URL}/releases/${CI_COMMIT_REF_NAME}/"
     - curl --fail -u ${UPLOADER_USERNAME}:${UPLOADER_PASSWORD} -T ${RELEASE_DIR}/${PLATFORM}_${CI_COMMIT_REF_NAME}.rom ${UPLOADER_URL}/releases/${CI_COMMIT_REF_NAME}/
     - curl --fail -u ${UPLOADER_USERNAME}:${UPLOADER_PASSWORD} -T ${RELEASE_DIR}/${PLATFORM}_${CI_COMMIT_REF_NAME}.SHA256 ${UPLOADER_URL}/releases/${CI_COMMIT_REF_NAME}/
+  only:
+    - tags
+
+.check_hw_matrix:
+  image:
+    name: 3mdeb/rf-docker:1.1.0
+    # https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#overriding-the-entrypoint-of-an-image
+    # https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2692
+    # use EMPTY ENTRYPOINT for docker >17.06
+    entrypoint: [""]
+  variables:
+    PLATFORM:
+    RTE_IP:
+    CONFIG:
+  stage: check_hw_matrix
+  tags:
+    - local
+  timeout: 6h
+  script:
+    - bash -x .gitlab-ci/check_hw_matrix.sh
   only:
     - tags
 
