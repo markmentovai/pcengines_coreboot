@@ -134,6 +134,13 @@ publish:apu1:
   variables:
     PLATFORM: apu1
 
+check_hw_matrix:apu1:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu1
+    CONFIG: apu1
+    RTE_IP: $RTE_IP_APU1
+
 regression:apu1:
   <<: *run_regression
   variables:
@@ -157,6 +164,13 @@ publish:apu2:
   <<: *publish_rom
   variables:
     PLATFORM: apu2
+
+check_hw_matrix:apu2:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu2
+    CONFIG: apu2
+    RTE_IP: $RTE_IP_APU2
 
 regression:apu2:
   <<: *run_regression
@@ -182,6 +196,13 @@ publish:apu3:
   variables:
     PLATFORM: apu3
 
+check_hw_matrix:apu3:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu3
+    CONFIG: apu3
+    RTE_IP: $RTE_IP_APU3
+
 regression:apu3:
   <<: *run_regression
   variables:
@@ -205,6 +226,13 @@ publish:apu4:
   <<: *publish_rom
   variables:
     PLATFORM: apu4
+
+check_hw_matrix:apu4:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu4
+    CONFIG: apu4
+    RTE_IP: $RTE_IP_APU4
 
 regression:apu4:
   <<: *run_regression
@@ -230,6 +258,13 @@ publish:apu5:
   variables:
     PLATFORM: apu5
 
+check_hw_matrix:apu5:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu5
+    CONFIG: apu5
+    RTE_IP: $RTE_IP_APU5
+
 regression:apu5:
   <<: *run_regression
   variables:
@@ -253,6 +288,13 @@ publish:apu6:
   <<: *publish_rom
   variables:
     PLATFORM: apu6
+
+check_hw_matrix:apu6:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu6
+    CONFIG: apu6
+    RTE_IP: $RTE_IP_APU6
 
 regression:apu6:
   <<: *run_regression
