@@ -87,6 +87,7 @@ check_dependencies:
     PLATFORM:
     RTE_IP:
     CONFIG:
+    FIRMWARE_VERSION: $CI_COMMIT_REF_NAME
   stage: check_hw_matrix
   tags:
     - local
