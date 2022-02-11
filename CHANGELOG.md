@@ -12,7 +12,7 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
-## [v4.15.0.3] - 2022-02-16
+## [v4.15.0.3] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit 36425312ee
 - Added checking hardware matrix before regression tests
