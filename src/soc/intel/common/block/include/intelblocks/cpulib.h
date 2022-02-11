@@ -112,10 +112,13 @@ void cpu_burst_mode(bool burst_mode_status);
 void cpu_set_eist(bool eist_status);
 
 /*
- * Set Bit 6 (ENABLE_IA_UNTRUSTED_MODE) of MSR 0x120
- * UCODE_PCR_POWER_MISC MSR to enter IA Untrusted Mode.
+ * SoC specific implementation:
+ *
+ * Check CPU security level using ENABLE_IA_UNTRUSTED_MODE of CPU MSR.
+ * If bit is set, meaning CPU has dropped its security level by entering
+ * into `untrusted mode`. Otherwise, it's in `trusted mode`.
  */
-void cpu_enable_untrusted_mode(void *unused);
+bool cpu_soc_is_in_untrusted_mode(void);
 
 /*
  * This function fills in the number of Cores(physical) and Threads(virtual)

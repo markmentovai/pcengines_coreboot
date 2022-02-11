@@ -10,7 +10,7 @@ Scope (\_SB.PCI0.LPCB)
 	{
 		Name (_HID, EisaId ("PNP0C09"))
 		Name (_UID, 0x01)
-		Name (_GPE, EC_GPE_SCI)
+		Name (_GPE, CONFIG_EC_GPE_SCI)
 		Name (ECAV, 0x00)
 		Name (ECTK, 0x01)
 		Name (B2ST, 0x00)
@@ -126,7 +126,7 @@ Scope (\_SB.PCI0.LPCB)
 						}
 						Sleep (1)
 						Arg1 = Arg0
-						Add (Local1, 1, Local1)
+						Local1 += 1
 						If (Local1 == 0x03) {
 							Break
 						}

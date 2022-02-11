@@ -70,6 +70,7 @@ void sb800_cimx_config(AMDSBCFG *sb_config)
 	sb_config->SataClass = SATA_MODE;
 	sb_config->SataIdeMode = SATA_IDE_MODE;
 	sb_config->SataPortMultCap = SATA_PORT_MULT_CAP_RESERVED;
+	sb_config->SATAMODE.SataMode.SataSetMaxGen2 = 1; /* Up to Gen2 (3Gbps) for each port */
 	sb_config->SATAMODE.SataMode.SataController = SATA_CONTROLLER;
 	sb_config->SATAMODE.SataMode.SataIdeCombMdPriSecOpt = 0; //0 -IDE as primary, 1 -IDE as secondary.
 								//TODO: set to secondary not take effect.

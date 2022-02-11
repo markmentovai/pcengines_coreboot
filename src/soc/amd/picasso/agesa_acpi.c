@@ -4,7 +4,6 @@
 #include <acpi/acpi_crat.h>
 #include <acpi/acpi_ivrs.h>
 #include <arch/cpu.h>
-#include <console/console.h>
 #include <cpu/amd/cpuid.h>
 #include <cpu/amd/msr.h>
 #include <FspGuids.h>
@@ -19,7 +18,6 @@
 #include <amdblocks/ioapic.h>
 #include <soc/data_fabric.h>
 #include <soc/pci_devs.h>
-#include <stdlib.h>
 #include <arch/mmio.h>
 
 static unsigned long gen_crat_hsa_entry(struct acpi_crat_header *crat, unsigned long current)

@@ -4,27 +4,28 @@ ifeq ($(CONFIG_SOC_AMD_STONEYRIDGE),y)
 
 subdirs-y += ../../../cpu/amd/mtrr/
 
+bootblock-y += aoac.c
 bootblock-y += uart.c
 bootblock-y += BiosCallOuts.c
 bootblock-y += bootblock.c
+bootblock-y += early_fch.c
 bootblock-y += gpio.c
 bootblock-y += i2c.c
 bootblock-y += enable_usbdebug.c
 bootblock-y += monotonic_timer.c
 bootblock-y += tsc_freq.c
-bootblock-y += southbridge.c
 
 romstage-y += BiosCallOuts.c
 romstage-y += i2c.c
 romstage-y += romstage.c
 romstage-y += enable_usbdebug.c
+romstage-y += fch_agesa.c
 romstage-y += gpio.c
 romstage-y += monotonic_timer.c
 romstage-y += smbus_spd.c
 romstage-y += memmap.c
 romstage-y += uart.c
 romstage-y += tsc_freq.c
-romstage-y += southbridge.c
 romstage-y += psp.c
 
 verstage-y += gpio.c
@@ -46,9 +47,10 @@ ramstage-y += cpu.c
 ramstage-y += mca.c
 ramstage-y += enable_usbdebug.c
 ramstage-$(CONFIG_HAVE_ACPI_TABLES) += acpi.c
+ramstage-y += fch.c
+ramstage-y += fch_agesa.c
 ramstage-y += gpio.c
 ramstage-y += monotonic_timer.c
-ramstage-y += southbridge.c
 ramstage-y += northbridge.c
 ramstage-y += sata.c
 ramstage-y += memmap.c
@@ -66,7 +68,6 @@ smm-$(CONFIG_DEBUG_SMI) += uart.c
 smm-y += gpio.c
 smm-y += psp.c
 
-CPPFLAGS_common += -I$(src)/soc/amd/stoneyridge
 CPPFLAGS_common += -I$(src)/soc/amd/stoneyridge/include
 CPPFLAGS_common += -I$(src)/soc/amd/stoneyridge/acpi
 

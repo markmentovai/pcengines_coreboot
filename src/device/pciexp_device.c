@@ -10,7 +10,7 @@
 
 #include "mainboard/pcengines/apu2/bios_knobs.h"
 
-unsigned int pciexp_find_extended_cap(struct device *dev, unsigned int cap)
+unsigned int pciexp_find_extended_cap(const struct device *dev, unsigned int cap)
 {
 	unsigned int this_cap_offset, next_cap_offset;
 	unsigned int this_cap, cafe;
@@ -183,7 +183,7 @@ static void pciexp_enable_ltr(struct device *dev)
 	(void)_pciexp_enable_ltr(parent, parent_cap, dev, cap);
 }
 
-static bool pciexp_get_ltr_max_latencies(struct device *dev, u16 *max_snoop, u16 *max_nosnoop)
+bool pciexp_get_ltr_max_latencies(struct device *dev, u16 *max_snoop, u16 *max_nosnoop)
 {
 	/* Walk the hierarchy up to find get_ltr_max_latencies(). */
 	do {

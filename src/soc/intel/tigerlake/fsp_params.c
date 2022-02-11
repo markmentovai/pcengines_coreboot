@@ -402,6 +402,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 			config->PcieRpAdvancedErrorReporting[i];
 		params->PcieRpHotPlug[i] = config->PcieRpHotPlug[i];
 		params->PciePtm[i] = config->PciePtm[i];
+		params->PcieRpSlotImplemented[i] = config->PcieRpSlotImplemented[i];
 	}
 
 	/* Enable ClkReqDetect for enabled port */
@@ -530,10 +531,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *supd)
 	/* USB4/TBT */
 	for (i = 0; i < ARRAY_SIZE(params->ITbtPcieRootPortEn); i++) {
 		dev = pcidev_on_root(SA_DEV_SLOT_TBT, i);
-		if (dev)
-			params->ITbtPcieRootPortEn[i] = dev->enabled;
-		else
-			params->ITbtPcieRootPortEn[i] = 0;
+		params->ITbtPcieRootPortEn[i] = is_dev_enabled(dev);
 	}
 
 	/* PCH FIVR settings override */

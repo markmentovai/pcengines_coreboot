@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#define __SIMPLE_DEVICE__
+
 #include <assert.h>
 #include <bootstate.h>
 #include <console/console.h>
@@ -10,6 +12,7 @@
 #include <intelblocks/itss.h>
 #include <intelblocks/p2sb.h>
 #include <intelblocks/pcr.h>
+#include <soc/pci_devs.h>
 #include <soc/pm.h>
 #include <stdlib.h>
 #include <types.h>
@@ -469,6 +472,9 @@ int gpio_lock_pads(const struct gpio_lock_config *pad_list, const size_t count)
 	uint32_t data;
 	gpio_t pad;
 
+	if (!CONFIG(SOC_INTEL_COMMON_BLOCK_SMM_LOCK_GPIO_PADS))
+		return -1;
+
 	/*
 	 * FSP-S will unlock all the GPIO pads and hide the P2SB device.  With
 	 * the device hidden, we will not be able to send the sideband interface
@@ -500,7 +506,7 @@ int gpio_lock_pads(const struct gpio_lock_config *pad_list, const size_t count)
 	for (int x = 0; x < count; x++) {
 		int err;
 
-		pad = pad_list[x].gpio;
+		pad = pad_list[x].pad;
 		action = pad_list[x].action;
 
 		if (!(action & GPIO_LOCK_FULL)) {
@@ -517,29 +523,32 @@ int gpio_lock_pads(const struct gpio_lock_config *pad_list, const size_t count)
 					__func__, pad);
 			continue;
 		}
+		/* PADCFGLOCK and PADCFGLOCKTX registers for each community are contiguous */
 		offset += gpio_group_index_scaled(comm, rel_pad, 2 * sizeof(uint32_t));
 
-		data = gpio_bitmask_within_group(comm, rel_pad);
+		const uint32_t bit_mask = gpio_bitmask_within_group(comm, rel_pad);
 		msg.pid = comm->port;
 		msg.offset = offset;
 
-		if (action & GPIO_LOCK_CONFIG) {
+		if ((action & GPIO_LOCK_CONFIG) == GPIO_LOCK_CONFIG) {
 			if (CONFIG(DEBUG_GPIO))
 				printk(BIOS_INFO, "%s: Locking pad %d configuration\n",
 						__func__, pad);
-			status = pcr_execute_sideband_msg(&msg, &data, &response);
+			data = pcr_read32(msg.pid, msg.offset) | bit_mask;
+			status = pcr_execute_sideband_msg(PCH_DEV_P2SB, &msg, &data, &response);
 			if ((err = sideband_msg_err(status, response)) != 0) {
 				err_response = err;
 				continue;
 			}
 		}
 
-		if (action & GPIO_LOCK_TX) {
+		if ((action & GPIO_LOCK_TX) == GPIO_LOCK_TX) {
 			if (CONFIG(DEBUG_GPIO))
 				printk(BIOS_INFO, "%s: Locking pad %d TX state\n",
 						__func__, pad);
-			msg.offset += 4;
-			status = pcr_execute_sideband_msg(&msg, &data, &response);
+			msg.offset += sizeof(uint32_t);
+			data = pcr_read32(msg.pid, msg.offset) | bit_mask;
+			status = pcr_execute_sideband_msg(PCH_DEV_P2SB, &msg, &data, &response);
 			if ((err = sideband_msg_err(status, response)) != 0) {
 				err_response = err;
 				continue;
@@ -555,7 +564,7 @@ int gpio_lock_pads(const struct gpio_lock_config *pad_list, const size_t count)
 int gpio_lock_pad(const gpio_t pad, enum gpio_lock_action action)
 {
 	const struct gpio_lock_config pads = {
-		.gpio = pad,
+		.pad = pad,
 		.action = action
 	};
 

@@ -23,18 +23,14 @@ fw_config
 end
 
 chip soc/intel/alderlake
-	# This disabled autonomous GPIO power management, otherwise
-	# old cr50 FW only supports short pulses; need to clarify
-	# the minimum PCH IRQ pulse width with Intel, b/180111628
-	register "gpio_override_pm" = "1"
-	register "gpio_pm[COMM_0]" = "0"
-	register "gpio_pm[COMM_1]" = "0"
-	register "gpio_pm[COMM_2]" = "0"
-	register "gpio_pm[COMM_3]" = "0"
-	register "gpio_pm[COMM_4]" = "0"
-	register "gpio_pm[COMM_5]" = "0"
 	register "SaGv" = "SaGv_Enabled"
 	register "MaxDramSpeed" = "3733"
+	# Acoustic settings
+  	register "AcousticNoiseMitigation" = "1"
+  	register "SlowSlewRate[VR_DOMAIN_IA]" = "SLEW_FAST_8"
+  	register "SlowSlewRate[VR_DOMAIN_GT]" = "SLEW_FAST_8"
+  	register "FastPkgCRampDisable[VR_DOMAIN_IA]" = "1"
+  	register "FastPkgCRampDisable[VR_DOMAIN_GT]" = "1"
 
 	# Intel Common SoC Config
 	#+-------------------+---------------------------+
@@ -78,19 +74,22 @@ chip soc/intel/alderlake
 		device ref dtt on
 			chip drivers/intel/dptf
 				## sensor information
-				register "options.tsr[0].desc" = ""SSD""
-				register "options.tsr[1].desc" = ""CHARGER""
-				register "options.tsr[2].desc" = ""MEMORY""
-				register "options.tsr[3].desc" = ""TYPEC""
+				register "options.tsr[0].desc" = ""CPU""
+				register "options.tsr[1].desc" = ""SSD""
+				register "options.tsr[2].desc" = ""CHARGER""
+				register "options.tsr[3].desc" = ""MEMORY""
+				register "options.tsr[4].desc" = ""TYPEC""
 				# TODO: below values are initial reference values only
 
 				## Passive Policy
 				register "policies.passive" = "{
 					[0] = DPTF_PASSIVE(CPU,      CPU,               95, 5000),
 					[1] = DPTF_PASSIVE(CPU,      TEMP_SENSOR_0,     90, 5000),
-					[2] = DPTF_PASSIVE(CHARGER,  TEMP_SENSOR_1,     90, 5000),
+					[2] = DPTF_PASSIVE(CPU,      TEMP_SENSOR_1,     92, 5000),
 					[3] = DPTF_PASSIVE(CPU,      TEMP_SENSOR_2,     90, 5000),
 					[4] = DPTF_PASSIVE(CPU,      TEMP_SENSOR_3,     90, 5000),
+					[5] = DPTF_PASSIVE(CHARGER,  TEMP_SENSOR_4,     90, 5000),
+
 				}"
 
 				## Critical Policy
@@ -100,6 +99,7 @@ chip soc/intel/alderlake
 					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,      89, SHUTDOWN),
 					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,      85, SHUTDOWN),
 					[4] = DPTF_CRITICAL(TEMP_SENSOR_3,      85, SHUTDOWN),
+					[5] = DPTF_CRITICAL(TEMP_SENSOR_4,      85, SHUTDOWN),
 				}"
 
 				register "controls.power_limits" = "{
@@ -213,6 +213,7 @@ chip soc/intel/alderlake
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
 				register "generic.stop_off_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
+				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 0x10 on end
 			end
@@ -228,6 +229,7 @@ chip soc/intel/alderlake
 							"ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_C0)"
 				register "generic.enable_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
+				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 0x40 on end
 			end
@@ -292,13 +294,13 @@ chip soc/intel/alderlake
 			chip drivers/intel/pmc_mux
 				device generic 0 on
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "1"
-						register "usb3_port_number" = "1"
+						use usb2_port1 as usb2_port
+						use tcss_usb3_port1 as usb3_port
 						device generic 0 alias conn0 on end
 					end
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "3"
-						register "usb3_port_number" = "3"
+						use usb2_port3 as usb2_port
+						use tcss_usb3_port3 as usb3_port
 						device generic 1 alias conn1 on end
 					end
 				end

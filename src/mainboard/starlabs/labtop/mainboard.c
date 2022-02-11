@@ -1,47 +1,27 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <chip.h>
-#include <console/console.h>
 #include <device/device.h>
-#include <device/pci_def.h>
-#include <ec/starlabs/merlin/ec.h>
-#include <limits.h>
+#include <soc/ramstage.h>
 #include <option.h>
-#include <smbios.h>
-#include <types.h>
-#include <uuid.h>
 #include <variants.h>
 
-const char *smbios_mainboard_bios_version(void)
+enum cmos_power_profile get_power_profile(enum cmos_power_profile fallback)
 {
-	return "8";
+	const unsigned int power_profile = get_uint_option("power_profile", fallback);
+	return power_profile < NUM_POWER_PROFILES ? power_profile : fallback;
 }
 
-/* Get the Embedded Controller firmware version */
-void smbios_ec_revision(uint8_t *ec_major_revision, uint8_t *ec_minor_revision)
+static void init_mainboard(void *chip_info)
 {
-	u16 ec_version = it_get_version();
+	const struct pad_config *pads;
+	size_t num;
 
-	*ec_major_revision = ec_version >> 8;
-	*ec_minor_revision = ec_version & 0xff;
+	pads = variant_gpio_table(&num);
+	gpio_configure_pads(pads, num);
+
+	devtree_update();
 }
 
-const char *smbios_system_sku(void)
-{
-	return CONFIG_MAINBOARD_FAMILY;
-}
-
-u8 smbios_mainboard_feature_flags(void)
-{
-	return SMBIOS_FEATURE_FLAGS_HOSTING_BOARD | SMBIOS_FEATURE_FLAGS_REPLACEABLE;
-}
-
-const char *smbios_chassis_version(void)
-{
-	return smbios_mainboard_version();
-}
-
-const char *smbios_chassis_serial_number(void)
-{
-	return smbios_mainboard_serial_number();
-}
+struct chip_operations mainboard_ops = {
+	.init = init_mainboard,
+};

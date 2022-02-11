@@ -4,10 +4,14 @@ fw_config
 		option USB3_PS8815		1
 		option USB4_KB8001		2
 	end
+	field STYLUS 5
+		option STYLUS_ABSENT		0
+		option STYLUS_PRESENT		1
+	end
 	field AUDIO_AMP 7 9
 		option UNPROVISIONED		0
 		option MAX98360_ALC5682I_I2S	1
-		option MAX98360_ALC5682VS_I2S	2
+		option MAX98360_ALC5682VS_I2S_2WAY	2
 	end
 end
 
@@ -228,7 +232,7 @@ chip soc/intel/alderlake
 				register "property_list[0].name" = ""realtek,jd-src""
 				register "property_list[0].integer" = "1"
 				device i2c 1a on
-					probe AUDIO_AMP MAX98360_ALC5682VS_I2S
+					probe AUDIO_AMP MAX98360_ALC5682VS_I2S_2WAY
 				end
 			end
 		end #I2C0
@@ -241,7 +245,7 @@ chip soc/intel/alderlake
 		end #I2C1
 		device ref i2c3 on
 			chip drivers/i2c/hid
-				register "generic.hid" = ""ELAN9050""
+				register "generic.hid" = ""ELAN9008""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
 				register "generic.probed" = "1"
@@ -256,6 +260,7 @@ chip soc/intel/alderlake
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
 				register "generic.stop_off_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
+				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 10 on end
 			end
@@ -269,7 +274,9 @@ chip soc/intel/alderlake
 				register "key.linux_code" = "SW_PEN_INSERTED"
 				register "key.linux_input_type" = "EV_SW"
 				register "key.label" = ""pen_eject""
-				device generic 0 on end
+				device generic 0 on
+					probe STYLUS STYLUS_PRESENT
+				end
 			end
 		end #I2C3
 		device ref i2c5 on
@@ -302,13 +309,13 @@ chip soc/intel/alderlake
 			chip drivers/intel/pmc_mux
 				device generic 0 on
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "3"
-						register "usb3_port_number" = "3"
+						use usb2_port3 as usb2_port
+						use tcss_usb3_port3 as usb3_port
 						device generic 2 alias conn2 on end
 					end
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "2"
-						register "usb3_port_number" = "2"
+						use usb2_port2 as usb2_port
+						use tcss_usb3_port2 as usb3_port
 						device generic 1 alias conn1 on end
 					end
 				end
@@ -320,13 +327,13 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-C Port C1 (DB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(2, 1)"
+						register "group" = "ACPI_PLD_GROUP(1, 1)"
 						device ref tcss_usb3_port2 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-C Port C2 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(3, 1)"
+						register "group" = "ACPI_PLD_GROUP(2, 1)"
 						device ref tcss_usb3_port3 on end
 					end
 				end
@@ -338,13 +345,13 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-C Port C1 (DB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(2, 1)"
+						register "group" = "ACPI_PLD_GROUP(1, 1)"
 						device ref usb2_port2 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-C Port C2 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(3, 1)"
+						register "group" = "ACPI_PLD_GROUP(2, 1)"
 						device ref usb2_port3 on end
 					end
 					chip drivers/usb/acpi

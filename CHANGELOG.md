@@ -12,6 +12,14 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
+## [v4.15.0.3] - 2022-02-11
+### Changed
+- Rebased with official coreboot repository commit 36425312ee
+- Added checking hardware matrix before regression tests
+
+### Fixed
+- The hard disk not visible in the Seabios Boot Menu
+
 ## [v4.15.0.2] - 2021-12-27
 ### Changed
 - rebased with official coreboot repository commit 3990da0b

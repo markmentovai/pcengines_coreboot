@@ -307,6 +307,10 @@ void cbfs_preload(const char *name)
 	if (!CONFIG(CBFS_PRELOAD))
 		dead_code();
 
+	/* We don't want to cross the vboot boundary */
+	if (ENV_ROMSTAGE && CONFIG(VBOOT_STARTS_IN_ROMSTAGE))
+		return;
+
 	DEBUG("%s(name='%s')\n", __func__, name);
 
 	if (_cbfs_boot_lookup(name, force_ro, &mdata, &rdev))
@@ -359,7 +363,7 @@ static enum cb_err get_preload_rdev(struct region_device *rdev, const char *name
 	enum cb_err err;
 	struct cbfs_preload_context *context;
 
-	if (!CONFIG(CBFS_PRELOAD) || (!ENV_RAMSTAGE && !ENV_ROMSTAGE))
+	if (!CONFIG(CBFS_PRELOAD) || !ENV_STAGE_SUPPORTS_COOP)
 		return CB_ERR_ARG;
 
 	context = find_cbfs_preload_context(name);

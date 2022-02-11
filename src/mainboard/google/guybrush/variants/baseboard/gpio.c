@@ -1,14 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <acpi/acpi.h>
 #include <baseboard/gpio.h>
 #include <baseboard/variants.h>
 #include <commonlib/helpers.h>
-#include <delay.h>
 #include <gpio.h>
 #include <soc/gpio.h>
 
-/* GPIO configuration in ramstage*/
+/* GPIO configuration in ramstage */
 /* Please make sure that *ALL* GPIOs are configured in this table */
 static const struct soc_amd_gpio base_gpio_table[] = {
 	/* PWR_BTN_L */

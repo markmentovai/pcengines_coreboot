@@ -10,6 +10,7 @@ all-y		+= aoac.c
 
 bootblock-y	+= bootblock.c
 bootblock-y	+= early_fch.c
+bootblock-y	+= espi_util.c
 bootblock-y	+= gpio.c
 bootblock-y	+= i2c.c
 bootblock-y	+= reset.c
@@ -111,7 +112,7 @@ PSP_SOFTFUSE_BITS += 29
 endif
 
 ifeq ($(CONFIG_PSP_S0I3_RESUME_VERSTAGE),y)
-PSP_SOFTFUSE_BITS += 40
+PSP_SOFTFUSE_BITS += 58
 endif
 
 # Use additional Soft Fuse bits specified in Kconfig

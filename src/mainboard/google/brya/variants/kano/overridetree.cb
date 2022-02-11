@@ -11,6 +11,10 @@ fw_config
 		option UFC_USB			0
 		option UFC_MIPI_OVTI2740	1
 	end
+	field STYLUS 6
+		option STYLUS_ABSENT		0
+		option STYLUS_PRESENT		1
+	end
 end
 chip soc/intel/alderlake
 	register "SaGv" = "SaGv_Enabled"
@@ -178,6 +182,7 @@ chip soc/intel/alderlake
 			register "cpu_pcie_rp[CPU_RP(1)]" = "{
 				.clk_req = 0,
 				.clk_src = 0,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
 		device ref tcss_dma0 on
@@ -363,6 +368,7 @@ chip soc/intel/alderlake
 				register "num_freq_entries" = "1"
 				register "link_freq[0]" = "360 * MHz"
 				register "remote_name" = ""IPU0""
+				register "max_dstate_for_probe" = "ACPI_DEVICE_SLEEP_D3_COLD"
 
 				#Controls
 				register "clk_panel.clks[0].clknum" = "IMGCLKOUT_3"
@@ -395,8 +401,6 @@ chip soc/intel/alderlake
 				register "chip_name" = ""AT24 EEPROM""
 				register "device_type" = "INTEL_ACPI_CAMERA_NVM"
 
-				register "pr0" = ""\\_SB.PCI0.I2C2.CAM0.PRIC""
-
 				register "nvm_size" = "0x2000"
 				register "nvm_pagesize" = "1"
 				register "nvm_readonly" = "1"
@@ -425,6 +429,7 @@ chip soc/intel/alderlake
 							"ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_C6)"
 				register "generic.stop_off_delay_ms" = "1"
 				register "generic.has_power_resource" = "1"
+				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
 				device i2c 0x10 on end
 			end
@@ -439,7 +444,9 @@ chip soc/intel/alderlake
 				register "key.linux_code" = "SW_PEN_INSERTED"
 				register "key.linux_input_type" = "EV_SW"
 				register "key.label" = ""pen_eject""
-				device generic 0 on end
+				device generic 0 on
+					probe STYLUS STYLUS_PRESENT
+				end
 			end
 		end
 		device ref i2c5 on
@@ -486,13 +493,13 @@ chip soc/intel/alderlake
 			chip drivers/intel/pmc_mux
 				device generic 0 on
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "1"
-						register "usb3_port_number" = "1"
+						use usb2_port1 as usb2_port
+						use tcss_usb3_port1 as usb3_port
 						device generic 0 alias conn0 on end
 					end
 					chip drivers/intel/pmc_mux/conn
-						register "usb2_port_number" = "3"
-						register "usb3_port_number" = "3"
+						use usb2_port3 as usb2_port
+						use tcss_usb3_port3 as usb3_port
 						device generic 1 alias conn1 on end
 					end
 				end
