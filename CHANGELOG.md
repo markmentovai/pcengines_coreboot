@@ -12,6 +12,9 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
+## [v4.15.0.4] - 2022-02-11
+### Changed
+- Rebased with official coreboot repository commit b4ba289f
 ## [v4.15.0.3] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit 36425312ee
