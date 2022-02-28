@@ -47,6 +47,9 @@ static struct {
 	{ PCI_DEVICE_ID_INTEL_ADL_M_ID_2, "Alderlake-M" },
 	{ PCI_DEVICE_ID_INTEL_ADL_N_ID_1, "Alderlake-N" },
 	{ PCI_DEVICE_ID_INTEL_ADL_N_ID_2, "Alderlake-N" },
+	{ PCI_DEVICE_ID_INTEL_ADL_N_ID_3, "Alderlake-N" },
+	{ PCI_DEVICE_ID_INTEL_ADL_N_ID_4, "Alderlake-N" },
+
 };
 
 static struct {
@@ -88,6 +91,8 @@ static struct {
 	{ PCI_DEVICE_ID_INTEL_ADP_P_ESPI_32, "Alderlake-P SKU" },
 	{ PCI_DEVICE_ID_INTEL_ADP_P_ESPI_33, "Alderlake-P SKU" },
 	{ PCI_DEVICE_ID_INTEL_ADP_M_ESPI_32, "Alderlake-M SKU" },
+	{ PCI_DEVICE_ID_INTEL_ADP_M_N_ESPI_1, "Alderlake-N SKU" },
+	{ PCI_DEVICE_ID_INTEL_ADP_M_N_ESPI_2, "Alderlake-N SKU" },
 };
 
 static struct {
@@ -112,6 +117,9 @@ static struct {
 	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_4, "Alderlake P GT2" },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_5, "Alderlake P GT2" },
 	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_6, "Alderlake P GT2" },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_7, "Alderlake P GT2" },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_8, "Alderlake P GT2" },
+	{ PCI_DEVICE_ID_INTEL_ADL_P_GT2_9, "Alderlake P GT2" },
 	{ PCI_DEVICE_ID_INTEL_ADL_M_GT1, "Alderlake M GT1" },
 	{ PCI_DEVICE_ID_INTEL_ADL_M_GT2, "Alderlake M GT2" },
 	{ PCI_DEVICE_ID_INTEL_ADL_M_GT3, "Alderlake M GT3" },
@@ -142,7 +150,7 @@ static void report_cache_info(void)
 	printk(BIOS_INFO, "Associativity = %zd Partitions = %zd Line Size = %zd Sets = %zd\n",
 		info.num_ways, info.physical_partitions, info.line_size, info.num_sets);
 
-	printk(BIOS_INFO, "Cache size = %ld MiB\n", get_cache_size(&info)/MiB);
+	printk(BIOS_INFO, "Cache size = %zu MiB\n", get_cache_size(&info)/MiB);
 }
 
 static void report_cpu_info(void)

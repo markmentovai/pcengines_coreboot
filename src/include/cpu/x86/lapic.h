@@ -18,9 +18,9 @@ static __always_inline void xapic_write(unsigned int reg, uint32_t v)
 	write32((volatile void *)(uintptr_t)(LAPIC_DEFAULT_BASE + reg), v);
 }
 
-static __always_inline void xapic_send_ipi(uint32_t icrlow, uint32_t apicid)
+static __always_inline void xapic_send_ipi(uint32_t icrlow, uint32_t icrhi)
 {
-	xapic_write(LAPIC_ICR2, SET_LAPIC_DEST_FIELD(apicid));
+	xapic_write(LAPIC_ICR2, icrhi);
 	xapic_write(LAPIC_ICR, icrlow);
 }
 
@@ -51,15 +51,15 @@ static __always_inline void x2apic_write(unsigned int reg, uint32_t v)
 	wrmsr(index, msr);
 }
 
-static __always_inline void x2apic_send_ipi(uint32_t icrlow, uint32_t apicid)
+static __always_inline void x2apic_send_ipi(uint32_t icrlow, uint32_t icrhi)
 {
 	msr_t icr;
-	icr.hi = apicid;
+	icr.hi = icrhi;
 	icr.lo = icrlow;
 	wrmsr(X2APIC_MSR_ICR_ADDRESS, icr);
 }
 
-static inline bool is_x2apic_mode(void)
+static __always_inline bool is_x2apic_mode(void)
 {
 	if (CONFIG(XAPIC_ONLY))
 		return false;
@@ -112,7 +112,7 @@ static __always_inline void lapic_send_ipi(uint32_t icrlow, uint32_t apicid)
 	if (is_x2apic_mode())
 		x2apic_send_ipi(icrlow, apicid);
 	else
-		xapic_send_ipi(icrlow, apicid);
+		xapic_send_ipi(icrlow, SET_LAPIC_DEST_FIELD(apicid));
 }
 
 static __always_inline int lapic_busy(void)
@@ -143,6 +143,25 @@ static __always_inline unsigned int lapicid(void)
 	return lapicid;
 }
 
+static __always_inline void lapic_send_ipi_self(uint32_t icrlow)
+{
+	int i = 1000;
+
+	/* LAPIC_DEST_SELF does not support all delivery mode -fields. */
+	lapic_send_ipi(icrlow, lapicid());
+
+	/* In case of X2APIC force a short delay, to prevent deadlock in a case
+	 * the immediately following code acquires some lock, like with printk().
+	 */
+	while (CONFIG(X2APIC_ONLY) && i--)
+		cpu_relax();
+}
+
+static __always_inline void lapic_send_ipi_others(uint32_t icrlow)
+{
+	lapic_send_ipi(LAPIC_DEST_ALLBUT | icrlow, 0);
+}
+
 #if !CONFIG(AP_IN_SIPI_WAIT)
 /* If we need to go back to sipi wait, we use the long non-inlined version of
  * this function in lapic_cpu_stop.c
@@ -158,6 +177,6 @@ void stop_this_cpu(void);
 
 void enable_lapic(void);
 void disable_lapic(void);
-void setup_lapic(void);
+void setup_lapic_interrupts(void);
 
 #endif /* CPU_X86_LAPIC_H */

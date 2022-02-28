@@ -9,7 +9,6 @@
 #include <console/console.h>
 #include <device/pci.h>
 #include <device/pci_ids.h>
-#include <cpu/x86/lapic.h>
 #include <cpu/x86/mp.h>
 #include <cpu/x86/msr.h>
 #include <cpu/intel/smm_reloc.h>
@@ -90,6 +89,17 @@ enum core_type get_soc_cpu_type(void)
 		return CPUID_CORE_TYPE_INTEL_CORE;
 }
 
+void soc_get_scaling_factor(u16 *big_core_scal_factor, u16 *small_core_scal_factor)
+{
+	*big_core_scal_factor = 127;
+	*small_core_scal_factor = 100;
+}
+
+bool soc_is_nominal_freq_supported(void)
+{
+	return true;
+}
+
 /* All CPUs including BSP will run the following function. */
 void soc_core_init(struct device *cpu)
 {
@@ -99,9 +109,7 @@ void soc_core_init(struct device *cpu)
 	 * every bank. */
 	mca_configure();
 
-	/* Enable the local CPU apics */
 	enable_lapic_tpr();
-	setup_lapic();
 
 	/* Configure Enhanced SpeedStep and Thermal Sensors */
 	configure_misc();
@@ -201,6 +209,8 @@ enum adl_cpu_type get_adl_cpu_type(void)
 	const uint16_t adl_n_mch_ids[] = {
 		PCI_DEVICE_ID_INTEL_ADL_N_ID_1,
 		PCI_DEVICE_ID_INTEL_ADL_N_ID_2,
+		PCI_DEVICE_ID_INTEL_ADL_N_ID_3,
+		PCI_DEVICE_ID_INTEL_ADL_N_ID_4,
 	};
 
 	const uint16_t mchid = pci_s_read_config16(PCI_DEV(0, PCI_SLOT(SA_DEVFN_ROOT),

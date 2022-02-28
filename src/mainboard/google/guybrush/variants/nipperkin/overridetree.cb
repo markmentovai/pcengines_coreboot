@@ -178,6 +178,19 @@ chip soc/amd/cezanne
 			probe STORAGE STORAGE_SSD
 		end # NVMe
 		device ref gpp_bridge_a on  # Internal GPP Bridge 0 to Bus A
+			device ref gfx on
+				chip drivers/gfx/generic
+					register "device_count" = "1"
+					register "device[0].name" = ""LCD""
+					# Use Chrome OS privacy screen _HID
+					register "device[0].hid" = ""GOOG0010""
+					# Internal panel on the first port of the graphics chip
+					register "device[0].addr" = "0x80010400"
+					register "device[0].privacy.enabled" = "1"
+					register "device[0].privacy.gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_5)"
+					device generic 0.0 on end
+				end
+			end
 			device ref acp on
 				chip drivers/amd/i2s_machine_dev
 					register "hid" = ""10029836""
@@ -223,6 +236,19 @@ chip soc/amd/cezanne
 	register "i2c[3]" = "{
 		.speed = I2C_SPEED_FAST,
 		.early_init = true,
+	}"
+
+	register "edp_phy_override" = "1"
+
+	# bit vector of phy, bit0=1: DP0, bit1=1: DP1, bit2=1: DP2, bit3=1: DP3
+	register "edp_physel" = "0x1"
+
+	register "edp_tuningset" = "{
+		.dp_vs_pemph_level = 0x00,
+		.tx_eq_main = 0x1f,
+		.tx_eq_pre = 0x0,
+		.tx_eq_post = 0x0,
+		.tx_vboost_lvl = 0x5,
 	}"
 
 	device ref i2c_0 on

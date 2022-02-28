@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <assert.h>
 #include <cpu/cpu.h>
 #include <cpu/x86/lapic.h>
 #include <cpu/x86/lapic_def.h>
@@ -10,23 +11,52 @@
 
 void enable_lapic(void)
 {
+	uintptr_t apic_base;
+	bool use_x2apic;
 	msr_t msr;
 
 	msr = rdmsr(LAPIC_BASE_MSR);
-	msr.hi &= 0xffffff00;
-	msr.lo &= ~LAPIC_BASE_MSR_ADDR_MASK;
-	msr.lo |= LAPIC_DEFAULT_BASE;
-	msr.lo |= LAPIC_BASE_MSR_ENABLE;
-	wrmsr(LAPIC_BASE_MSR, msr);
+	if (!(msr.lo & LAPIC_BASE_MSR_ENABLE)) {
+		msr.hi &= 0xffffff00;
+		msr.lo &= ~LAPIC_BASE_MSR_ADDR_MASK;
+		msr.lo |= LAPIC_DEFAULT_BASE;
+		msr.lo |= LAPIC_BASE_MSR_ENABLE;
+		wrmsr(LAPIC_BASE_MSR, msr);
+		msr = rdmsr(LAPIC_BASE_MSR);
+	}
 
-	printk(BIOS_INFO, "Setting up local APIC 0x%x\n", lapicid());
+	ASSERT(msr.lo & LAPIC_BASE_MSR_ENABLE);
+
+	apic_base = msr.lo & LAPIC_BASE_MSR_ADDR_MASK;
+	ASSERT(apic_base == LAPIC_DEFAULT_BASE);
+
+	if (CONFIG(XAPIC_ONLY)) {
+		use_x2apic = false;
+	} else {
+		use_x2apic = !!(cpu_get_feature_flags_ecx() & CPUID_X2APIC);
+		ASSERT(CONFIG(X2APIC_RUNTIME) || use_x2apic);
+	}
+
+	if (use_x2apic == !!(msr.lo & LAPIC_BASE_MSR_X2APIC_MODE)) {
+		printk(BIOS_INFO, "LAPIC 0x%x in %s mode.\n", lapicid(),
+				  use_x2apic ? "X2APIC" : "XAPIC");
+	} else if (use_x2apic) {
+		msr.lo |= LAPIC_BASE_MSR_X2APIC_MODE;
+		wrmsr(LAPIC_BASE_MSR, msr);
+		msr = rdmsr(LAPIC_BASE_MSR);
+		ASSERT(!!(msr.lo & LAPIC_BASE_MSR_X2APIC_MODE));
+		printk(BIOS_INFO, "LAPIC 0x%x switched to X2APIC mode.\n", lapicid());
+	} else {
+		die("Switching from X2APIC to XAPIC mode is not implemented.");
+	}
+
 }
 
 void disable_lapic(void)
 {
 	msr_t msr;
 	msr = rdmsr(LAPIC_BASE_MSR);
-	msr.lo &= ~LAPIC_BASE_MSR_ENABLE;
+	msr.lo &= ~(LAPIC_BASE_MSR_ENABLE | LAPIC_BASE_MSR_X2APIC_MODE);
 	wrmsr(LAPIC_BASE_MSR, msr);
 }
 
@@ -35,13 +65,7 @@ uintptr_t cpu_get_lapic_addr(void)
 	return LAPIC_DEFAULT_BASE;
 }
 
-/* See if I need to initialize the local APIC */
-static int need_lapic_init(void)
-{
-	return CONFIG(SMP) || CONFIG(IOAPIC);
-}
-
-static void lapic_virtual_wire_mode_init(void)
+void setup_lapic_interrupts(void)
 {
 	/*
 	 * Set Task Priority to 'accept all'.
@@ -63,18 +87,4 @@ static void lapic_virtual_wire_mode_init(void)
 						  LAPIC_DELIVERY_MODE_EXTINT);
 
 	lapic_update32(LAPIC_LVT1, ~mask, LAPIC_DELIVERY_MODE_NMI);
-}
-
-void setup_lapic(void)
-{
-	/* Enable the local APIC */
-	if (need_lapic_init())
-		enable_lapic();
-	else if (!CONFIG(UDELAY_LAPIC))
-		disable_lapic();
-
-	/* This programming is for PIC mode i8259 interrupts to be delivered to CPU
-	   while LAPIC is enabled. */
-	if (need_lapic_init())
-		lapic_virtual_wire_mode_init();
 }

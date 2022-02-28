@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <arch/hpet.h>
 #include <console/console.h>
 #include <console/usb.h>
 #include <cf9_reset.h>
 #include <string.h>
 #include <device/device.h>
+#include <device/dram/ddr3.h>
 #include <device/pci_ops.h>
 #include <arch/cpu.h>
 #include <cbmem.h>
@@ -14,6 +16,8 @@
 #include <device/pci_def.h>
 #include <lib.h>
 #include <mrc_cache.h>
+#include <spd.h>
+#include <smbios.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <timestamp.h>
@@ -232,7 +236,7 @@ static void northbridge_fill_pei_data(struct pei_data *pei_data)
 	pei_data->dmibar       = CONFIG_FIXED_DMIBAR_MMIO_BASE;
 	pei_data->epbar        = CONFIG_FIXED_EPBAR_MMIO_BASE;
 	pei_data->pciexbar     = CONFIG_ECAM_MMCONF_BASE_ADDRESS;
-	pei_data->hpet_address = CONFIG_HPET_ADDRESS;
+	pei_data->hpet_address = HPET_BASE_ADDRESS;
 	pei_data->thermalbase  = 0xfed08000;
 	pei_data->system_type  = !(get_platform_type() == PLATFORM_MOBILE);
 	pei_data->tseg_size    = CONFIG_SMM_TSEG_SIZE;
@@ -272,7 +276,7 @@ static void devicetree_fill_pei_data(struct pei_data *pei_data)
 	/* MRC only supports fixed numbers of frequencies */
 	default:
 		printk(BIOS_WARNING, "RAMINIT: Limiting DDR3 clock to 800 Mhz\n");
-		/* fallthrough */
+		__fallthrough;
 	case 400:
 		pei_data->max_ddr3_freq = 800;
 		break;
@@ -413,23 +417,23 @@ void setup_sdram_meminfo(struct pei_data *pei_data)
 		if (dimm_size) {
 			dimm = &mem_info->dimm[dimm_cnt];
 			dimm->dimm_size = dimm_size;
-			dimm->ddr_type = 0x18;				/* DDR3 */
+			dimm->ddr_type = MEMORY_TYPE_DDR3;
 			dimm->ddr_frequency = ddr_frequency;
 			dimm->rank_per_dimm = 1 + ((ch_conf >> 17) & 1);
 			dimm->channel_num = i;
 			dimm->dimm_num = 0;
 			dimm->bank_locator = i * 2;
 			memcpy(dimm->serial,				/* bytes 122-125 */
-				&pei_data->spd_data[0][122],
-				sizeof(uint8_t) * 4);
+				&pei_data->spd_data[0][SPD_DIMM_SERIAL_NUM],
+				sizeof(uint8_t) * SPD_DIMM_SERIAL_LEN);
 			memcpy(dimm->module_part_number,		/* bytes 128-145 */
-				&pei_data->spd_data[0][128],
-				sizeof(uint8_t) * 18);
+				&pei_data->spd_data[0][SPD_DIMM_PART_NUM],
+				sizeof(uint8_t) * SPD_DIMM_PART_LEN);
 			dimm->mod_id =					/* bytes 117/118 */
-				(pei_data->spd_data[0][118] << 8) |
-				(pei_data->spd_data[0][117] & 0xFF);
-			dimm->mod_type = 3;				/* SPD_SODIMM */
-			dimm->bus_width = 0x3;				/* 64-bit */
+				(pei_data->spd_data[0][SPD_DIMM_MOD_ID2] << 8) |
+				(pei_data->spd_data[0][SPD_DIMM_MOD_ID1] & 0xFF);
+			dimm->mod_type = DDR3_SPD_SODIMM;
+			dimm->bus_width = MEMORY_BUS_WIDTH_64;
 			dimm_cnt++;
 		}
 		/* DIMM-B */
@@ -437,23 +441,23 @@ void setup_sdram_meminfo(struct pei_data *pei_data)
 		if (dimm_size) {
 			dimm = &mem_info->dimm[dimm_cnt];
 			dimm->dimm_size = dimm_size;
-			dimm->ddr_type = 0x18;				/* DDR3 */
+			dimm->ddr_type = MEMORY_TYPE_DDR3;
 			dimm->ddr_frequency = ddr_frequency;
 			dimm->rank_per_dimm =  1 + ((ch_conf >> 18) & 1);
 			dimm->channel_num = i;
 			dimm->dimm_num = 1;
 			dimm->bank_locator = i * 2;
 			memcpy(dimm->serial,				/* bytes 122-125 */
-				&pei_data->spd_data[0][122],
-				sizeof(uint8_t) * 4);
+				&pei_data->spd_data[0][SPD_DIMM_SERIAL_NUM],
+				sizeof(uint8_t) * SPD_DIMM_SERIAL_LEN);
 			memcpy(dimm->module_part_number,		/* bytes 128-145 */
-				&pei_data->spd_data[0][128],
-				sizeof(uint8_t) * 18);
+				&pei_data->spd_data[0][SPD_DIMM_PART_NUM],
+				sizeof(uint8_t) * SPD_DIMM_PART_LEN);
 			dimm->mod_id =					/* bytes 117/118 */
-				(pei_data->spd_data[0][118] << 8) |
-				(pei_data->spd_data[0][117] & 0xFF);
-			dimm->mod_type = 3;				/* SPD_SODIMM */
-			dimm->bus_width = 0x3;				/* 64-bit */
+				(pei_data->spd_data[0][SPD_DIMM_MOD_ID2] << 8) |
+				(pei_data->spd_data[0][SPD_DIMM_MOD_ID1] & 0xFF);
+			dimm->mod_type = DDR3_SPD_SODIMM;
+			dimm->bus_width = MEMORY_BUS_WIDTH_64;
 			dimm_cnt++;
 		}
 	}

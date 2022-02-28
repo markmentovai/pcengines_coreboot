@@ -18,6 +18,8 @@
 #include <acpi/acpi.h>
 #include <acpi/acpi_ivrs.h>
 #include <acpi/acpigen.h>
+#include <arch/hpet.h>
+#include <arch/mmio.h>
 #include <device/pci.h>
 #include <cbmem.h>
 #include <commonlib/helpers.h>
@@ -847,10 +849,10 @@ void acpi_create_hpet(acpi_hpet_t *hpet)
 	addr->space_id = ACPI_ADDRESS_SPACE_MEMORY;
 	addr->bit_width = 64;
 	addr->bit_offset = 0;
-	addr->addrl = CONFIG_HPET_ADDRESS & 0xffffffff;
-	addr->addrh = ((unsigned long long)CONFIG_HPET_ADDRESS) >> 32;
+	addr->addrl = HPET_BASE_ADDRESS & 0xffffffff;
+	addr->addrh = ((unsigned long long)HPET_BASE_ADDRESS) >> 32;
 
-	hpet->id = *(unsigned int *)CONFIG_HPET_ADDRESS;
+	hpet->id = read32p(HPET_BASE_ADDRESS);
 	hpet->number = 0;
 	hpet->min_tick = CONFIG_HPET_MIN_TICKS;
 
@@ -1507,6 +1509,7 @@ void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
 	memcpy(header->asl_compiler_id, ASLC, 4);
 	header->asl_compiler_revision = asl_revision;
 
+	fadt->FADT_MinorVersion = get_acpi_fadt_minor_version();
 	fadt->firmware_ctrl = (unsigned long) facs;
 	fadt->x_firmware_ctl_l = (unsigned long)facs;
 	fadt->x_firmware_ctl_h = 0;
@@ -1944,11 +1947,16 @@ __weak int acpi_get_gpe(int gpe)
 	return -1; /* implemented by SOC */
 }
 
+u8 get_acpi_fadt_minor_version(void)
+{
+	return ACPI_FADT_MINOR_VERSION_0;
+}
+
 int get_acpi_table_revision(enum acpi_tables table)
 {
 	switch (table) {
 	case FADT:
-		return ACPI_FADT_REV_ACPI_6_0;
+		return ACPI_FADT_REV_ACPI_6;
 	case MADT: /* ACPI 3.0: 2, ACPI 4.0/5.0: 3, ACPI 6.2b/6.3: 5 */
 		return 3;
 	case MCFG:

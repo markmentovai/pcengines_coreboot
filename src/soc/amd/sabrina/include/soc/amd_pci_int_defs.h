@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
 #ifndef AMD_SABRINA_AMD_PCI_INT_DEFS_H
 #define AMD_SABRINA_AMD_PCI_INT_DEFS_H
 
@@ -40,9 +38,7 @@
 #define PIRQ_GPIOA	0x21	/* GPIOa from PAD_FANIN0 */
 #define PIRQ_GPIOB	0x22	/* GPIOb from PAD_FANOUT0 */
 #define PIRQ_GPIOC	0x23	/* GPIOc no IRQ connected */
-/* 0x24-0x40 reserved */
-#define PIRQ_SATA	0x41	/* SATA */
-/* 0x42 reserved */
+/* 0x24-0x42 reserved */
 #define PIRQ_EMMC	0x43	/* eMMC */
 /* 0x44-0x4f reserved */
 #define PIRQ_GPP0	0x50	/* GPPInt0 */
@@ -59,7 +55,8 @@
 #define PIRQ_UART0	0x74	/* UART0 */
 #define PIRQ_UART1	0x75	/* UART1 */
 #define PIRQ_I2C4	0x76	/* I2C4 */
-#define PIRQ_I2C5	0x77	/* I2C5 */
-/* 0x78-0x7f reserved */
+#define PIRQ_UART4	0x77	/* UART4 */
+#define PIRQ_UART2	0x78	/* UART2 */
+#define PIRQ_UART3	0x79	/* UART3 */
 
 #endif /* AMD_SABRINA_AMD_PCI_INT_DEFS_H */

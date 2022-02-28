@@ -314,10 +314,6 @@ struct soc_intel_alderlake_config {
 	} IgdDvmt50PreAlloc;
 	uint8_t SkipExtGfxScan;
 
-	/* HeciEnabled decides the state of Heci1 at end of boot
-	 * Setting to 0 (default) disables Heci1 and hides the device from OS */
-	uint8_t HeciEnabled;
-
 	/* Enable/Disable EIST. 1b:Enabled, 0b:Disabled */
 	uint8_t eist_enable;
 
@@ -422,6 +418,11 @@ struct soc_intel_alderlake_config {
 	 * This mode makes FSP detect Optane and NVME and set PCIe lane mode
 	 * accordingly */
 	uint8_t HybridStorageMode;
+
+#if CONFIG(SOC_INTEL_ALDERLAKE_PCH_N)
+	/* eMMC HS400 mode */
+	uint8_t emmc_enable_hs400_mode;
+#endif
 
 	/*
 	 * Override CPU flex ratio value:

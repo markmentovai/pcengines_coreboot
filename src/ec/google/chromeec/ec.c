@@ -975,7 +975,7 @@ int google_chromeec_vbnv_context(int is_read, uint8_t *data, int len)
 retry:
 
 	if (google_chromeec_command(&cmd)) {
-		printk(BIOS_ERR, "ERROR: failed to %s vbnv_ec context: %d\n",
+		printk(BIOS_ERR, "failed to %s vbnv_ec context: %d\n",
 			is_read ? "read" : "write", (int)cmd.cmd_code);
 		mdelay(10);	/* just in case */
 		if (--retries)
@@ -1775,7 +1775,6 @@ int google_chromeec_regulator_enable(uint32_t index, uint8_t enable)
 
 int google_chromeec_regulator_is_enabled(uint32_t index, uint8_t *enabled)
 {
-
 	struct ec_params_regulator_is_enabled params = {
 		.index = index,
 	};

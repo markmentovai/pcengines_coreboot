@@ -78,18 +78,18 @@ void compile_reg_expr(int cflags, const char *expr, regex_t *reg)
 	}
 }
 
-#define SET_LEVEL(tableptr, l, TABLE)                    \
+#define SET_LEVEL(tableptr, l, TABLE, ab)     \
 	do {                                             \
 		switch ((l)) {                           \
 		case '1':				 \
-			(tableptr)->level = TABLE##_LVL1;\
+			(tableptr)->level = ab ? TABLE##_LVL1_AB : TABLE##_LVL1; \
 			break;                           \
 		case '2':                                \
-			(tableptr)->level = TABLE##_LVL2;\
+			(tableptr)->level = ab ? TABLE##_LVL2_AB : TABLE##_LVL2; \
 			break;                           \
 		case 'b':                                \
 		case 'B':                                \
-			(tableptr)->level = TABLE##_BOTH;\
+			(tableptr)->level = ab ? TABLE##_BOTH_AB : TABLE##_BOTH; \
 			break;                           \
 		default:                                 \
 			/* use default value */          \
@@ -114,9 +114,20 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 		} else {
 			fw_type = AMD_FW_SKIP;
 		}
+	} else if (strcmp(fw_name, "PSPBTLDR_AB_STAGE1_FILE") == 0) {
+		if (cb_config->recovery_ab) {
+			fw_type = AMD_FW_PSP_BOOTLOADER;
+			subprog = 0;
+		} else {
+			fw_type = AMD_FW_SKIP;
+		}
 	} else if (strcmp(fw_name, "PSPBTLDR_FILE") == 0) {
-		fw_type = AMD_FW_PSP_BOOTLOADER;
-		subprog = 0;
+		if (!cb_config->recovery_ab) {
+			fw_type = AMD_FW_PSP_BOOTLOADER;
+			subprog = 0;
+		} else {
+			fw_type = AMD_FW_SKIP;
+		}
 	} else if (strcmp(fw_name, "AMD_PUBKEY_FILE") == 0) {
 		fw_type = AMD_FW_PSP_PUBKEY;
 		subprog = 0;
@@ -282,6 +293,13 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 	} else if (strcmp(fw_name, "KEYDB_TOS_FILE") == 0) {
 		fw_type = AMD_FW_KEYDB_TOS;
 		subprog = 0;
+	} else if (strcmp(fw_name, "SPL_TABLE_FILE") == 0) {
+		if (cb_config->have_mb_spl) {
+			fw_type = AMD_FW_SPL;
+			subprog = 0;
+		} else {
+			fw_type = AMD_FW_SKIP;
+		}
 	} else if (strcmp(fw_name, "DMCUERAMDCN21_FILE") == 0) {
 		fw_type = AMD_FW_DMCU_ERAM;
 		subprog = 0;
@@ -295,7 +313,7 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 		fw_type = AMD_RPMC_NVRAM;
 		subprog = 0;
 	} else if (strcmp(fw_name, "PSPBTLDR_AB_FILE") == 0) {
-		if (!cb_config->have_whitelist) {
+		if (!cb_config->have_whitelist || cb_config->recovery_ab) {
 			fw_type = AMD_FW_PSP_BOOTLOADER_AB;
 			subprog = 0;
 		} else {
@@ -313,7 +331,8 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 			/* instance are not used in PSP table */
 			if (psp_tableptr->type == fw_type && psp_tableptr->subprog == subprog) {
 				psp_tableptr->filename = filename;
-				SET_LEVEL(psp_tableptr, level_to_set, PSP);
+				SET_LEVEL(psp_tableptr, level_to_set, PSP,
+					cb_config->recovery_ab);
 				break;
 			}
 			psp_tableptr++;
@@ -324,6 +343,12 @@ static uint8_t find_register_fw_filename_psp_dir(char *fw_name, char *filename,
 	else
 		return 1;
 }
+#define PMUI_STR_BASE	"PSP_PMUI_FILE"
+#define PMUD_STR_BASE	"PSP_PMUD_FILE"
+#define PMU_STR_BASE_LEN strlen(PMUI_STR_BASE)
+#define PMU_STR_SUB_INDEX strlen(PMUI_STR_BASE"_SUB")
+#define PMU_STR_INS_INDEX strlen(PMUI_STR_BASE"_SUBx_INS")
+#define PMU_STR_ALL_LEN  strlen(PMUI_STR_BASE"_SUBx_INSx")
 
 static uint8_t find_register_fw_filename_bios_dir(char *fw_name, char *filename,
 		char level_to_set, amd_cb_config *cb_config)
@@ -335,38 +360,16 @@ static uint8_t find_register_fw_filename_bios_dir(char *fw_name, char *filename,
 
 	(void) (cb_config);	/* Remove warning and reserved for future. */
 
-	if (strcmp(fw_name, "PSP_PMUI_FILE1") == 0) {
+	if (strncmp(fw_name, PMUI_STR_BASE, PMU_STR_BASE_LEN) == 0) {
+		assert(strlen(fw_name) == PMU_STR_ALL_LEN);
 		fw_type = AMD_BIOS_PMUI;
-		subprog = 0;
-		instance = 1;
-	} else if (strcmp(fw_name, "PSP_PMUI_FILE2") == 0) {
-		fw_type = AMD_BIOS_PMUI;
-		subprog = 0;
-		instance = 4;
-	} else if (strcmp(fw_name, "PSP_PMUI_FILE3") == 0) {
-		fw_type = AMD_BIOS_PMUI;
-		subprog = 1;
-		instance = 1;
-	} else if (strcmp(fw_name, "PSP_PMUI_FILE4") == 0) {
-		fw_type = AMD_BIOS_PMUI;
-		subprog = 1;
-		instance = 4;
-	} else if (strcmp(fw_name, "PSP_PMUD_FILE1") == 0) {
+		subprog = fw_name[PMU_STR_SUB_INDEX] - '0';
+		instance = fw_name[PMU_STR_INS_INDEX] - '0';
+	} else if (strncmp(fw_name, PMUD_STR_BASE, PMU_STR_BASE_LEN) == 0) {
+		assert(strlen(fw_name) == PMU_STR_ALL_LEN);
 		fw_type = AMD_BIOS_PMUD;
-		subprog = 0;
-		instance = 1;
-	} else if (strcmp(fw_name, "PSP_PMUD_FILE2") == 0) {
-		fw_type = AMD_BIOS_PMUD;
-		subprog = 0;
-		instance = 4;
-	} else if (strcmp(fw_name, "PSP_PMUD_FILE3") == 0) {
-		fw_type = AMD_BIOS_PMUD;
-		subprog = 1;
-		instance = 1;
-	} else if (strcmp(fw_name, "PSP_PMUD_FILE4") == 0) {
-		fw_type = AMD_BIOS_PMUD;
-		subprog = 1;
-		instance = 4;
+		subprog = fw_name[PMU_STR_SUB_INDEX] - '0';
+		instance = fw_name[PMU_STR_INS_INDEX] - '0';
 	} else if (strcmp(fw_name, "RTM_PUBKEY_FILE") == 0) {
 		fw_type = AMD_BIOS_RTM_PUBKEY;
 		subprog = 0;
@@ -390,7 +393,8 @@ static uint8_t find_register_fw_filename_bios_dir(char *fw_name, char *filename,
 					bhd_tableptr->subpr == subprog &&
 					bhd_tableptr->inst  == instance) {
 				bhd_tableptr->filename = filename;
-				SET_LEVEL(bhd_tableptr, level_to_set, BDT);
+				SET_LEVEL(bhd_tableptr, level_to_set, BDT,
+					cb_config->recovery_ab);
 				break;
 			}
 			bhd_tableptr++;
@@ -524,7 +528,10 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 				/* If the optional level field is present,
 				   extract the level char. */
 				if (match[3].rm_so != 0) {
-					ch_lvl = oneline[match[3].rm_so + 1];
+					if (cb_config->recovery_ab == 0)
+						ch_lvl = oneline[match[3].rm_so + 1];
+					else
+						ch_lvl = oneline[match[3].rm_so + 2];
 				}
 
 				if (find_register_fw_filename_psp_dir(

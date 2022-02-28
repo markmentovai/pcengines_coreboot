@@ -11,6 +11,7 @@
 #include <device/pci_ids.h>
 #include <device/pci_ops.h>
 #include <intelblocks/cse.h>
+#include <intelblocks/pmclib.h>
 #include <option.h>
 #include <security/vboot/misc.h>
 #include <security/vboot/vboot_common.h>
@@ -93,6 +94,10 @@ void heci_init(uintptr_t tempbar)
 	pci_devfn_t dev = PCH_DEV_CSE;
 
 	u16 pcireg;
+
+	/* Check if device enabled */
+	if (!is_cse_enabled())
+		return;
 
 	/* Assume it is already initialized, nothing else to do */
 	if (get_cse_bar(dev))
@@ -984,6 +989,45 @@ bool set_cse_device_state(unsigned int devfn, enum cse_device_state requested_st
 	return true;
 }
 
+void cse_set_to_d0i3(void)
+{
+	if (!is_cse_devfn_visible(PCH_DEVFN_CSE))
+		return;
+
+	set_cse_device_state(PCH_DEVFN_CSE, DEV_IDLE);
+}
+
+/* Function to set D0I3 for all HECI devices */
+void heci_set_to_d0i3(void)
+{
+	for (int i = 0; i < CONFIG_MAX_HECI_DEVICES; i++) {
+		pci_devfn_t dev = PCI_DEV(0, PCI_SLOT(PCH_DEV_SLOT_CSE), PCI_FUNC(i));
+		if (!is_cse_devfn_visible(dev))
+			continue;
+
+		set_cse_device_state(dev, DEV_IDLE);
+	}
+}
+
+void cse_control_global_reset_lock(void)
+{
+	/*
+	 * As per ME BWG recommendation the BIOS should not lock down CF9GR bit during
+	 * manufacturing and re-manufacturing environment if HFSTS1 [4] is set. Note:
+	 * this recommendation is not applicable for CSE-Lite SKUs where BIOS should set
+	 * CF9LOCK bit irrespectively.
+	 *
+	 * Other than that, make sure payload/OS can't trigger global reset.
+	 *
+	 * BIOS must also ensure that CF9GR is cleared and locked (Bit31 of ETR3)
+	 * prior to transferring control to the OS.
+	 */
+	if (CONFIG(SOC_INTEL_CSE_LITE_SKU) || cse_is_hfs1_spi_protected())
+		pmc_global_reset_disable_and_lock();
+	else
+		pmc_global_reset_enable(false);
+}
+
 #if ENV_RAMSTAGE
 
 /*
@@ -1027,7 +1071,7 @@ static void me_reset_with_count(void)
 			 * If the (CS)ME fails to change states after 3 attempts, it will
 			 * likely need a cold boot, or recovering.
 			 */
-			printk(BIOS_ERR, "Error: Failed to change ME state in %u attempts!\n",
+			printk(BIOS_ERR, "Failed to change ME state in %u attempts!\n",
 									 ME_DISABLE_ATTEMPTS);
 
 		}
@@ -1140,6 +1184,68 @@ static void cse_set_state(struct device *dev)
 		me_reset_with_count();
 }
 
+struct cse_notify_phase_data {
+	bool skip;
+	void (*notify_func)(void);
+};
+
+/*
+ * `cse_final_ready_to_boot` function is native implementation of equivalent events
+ * performed by FSP NotifyPhase(Ready To Boot) API invocations.
+ *
+ * Operations are:
+ * 1. Send EOP to CSE if not done.
+ * 2. Perform global reset lock.
+ * 3. Put HECI1 to D0i3 and disable the HECI1 if the user selects
+ *      DISABLE_HECI1_AT_PRE_BOOT config.
+ */
+static void cse_final_ready_to_boot(void)
+{
+	cse_send_end_of_post();
+
+	cse_control_global_reset_lock();
+
+	if (CONFIG(DISABLE_HECI1_AT_PRE_BOOT)) {
+		cse_set_to_d0i3();
+		heci1_disable();
+	}
+}
+
+/*
+ * `cse_final_end_of_firmware` function is native implementation of equivalent events
+ * performed by FSP NotifyPhase(End of Firmware) API invocations.
+ *
+ * Operations are:
+ * 1. Set D0I3 for all HECI devices.
+ */
+static void cse_final_end_of_firmware(void)
+{
+	heci_set_to_d0i3();
+}
+
+static const struct cse_notify_phase_data notify_data[] = {
+	{
+		.skip         = CONFIG(USE_FSP_NOTIFY_PHASE_READY_TO_BOOT),
+		.notify_func  = cse_final_ready_to_boot,
+	},
+	{
+		.skip         = CONFIG(USE_FSP_NOTIFY_PHASE_END_OF_FIRMWARE),
+		.notify_func  = cse_final_end_of_firmware,
+	},
+};
+
+/*
+ * `cse_final` function is native implementation of equivalent events performed by
+ * each FSP NotifyPhase() API invocations.
+ */
+static void cse_final(struct device *dev)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(notify_data); i++) {
+		if (!notify_data[i].skip)
+			return notify_data[i].notify_func();
+	}
+}
+
 static struct device_operations cse_ops = {
 	.set_resources		= pci_dev_set_resources,
 	.read_resources		= pci_dev_read_resources,
@@ -1147,6 +1253,7 @@ static struct device_operations cse_ops = {
 	.init			= pci_dev_init,
 	.ops_pci		= &pci_dev_ops_pci,
 	.enable			= cse_set_state,
+	.final			= cse_final,
 };
 
 static const unsigned short pci_device_ids[] = {

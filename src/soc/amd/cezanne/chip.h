@@ -4,6 +4,7 @@
 #define CEZANNE_CHIP_H
 
 #include <amdblocks/chip.h>
+#include <amdblocks/i2c.h>
 #include <gpio.h>
 #include <soc/i2c.h>
 #include <soc/southbridge.h>
@@ -15,7 +16,7 @@ struct soc_amd_cezanne_config {
 	struct soc_amd_common_config common_config;
 	u8 i2c_scl_reset;
 	struct dw_i2c_bus_config i2c[I2C_CTRLR_COUNT];
-	u8 i2c_pad_ctrl_rx_sel[I2C_CTRLR_COUNT];
+	struct i2c_pad_control i2c_pad[I2C_CTRLR_COUNT];
 
 	/* Enable S0iX support */
 	bool s0ix_enable;
@@ -106,6 +107,19 @@ struct soc_amd_cezanne_config {
 
 	uint8_t usb_phy_custom;
 	struct usb_phy_config usb_phy;
+
+	/* eDP phy tuning settings */
+	uint8_t edp_phy_override;
+	/* bit vector of phy, bit0=1: DP0, bit1=1: DP1, bit2=1: DP2 bit3=1: DP3 */
+	uint8_t edp_physel;
+
+	struct {
+		uint8_t dp_vs_pemph_level;
+		uint8_t tx_eq_main;
+		uint8_t tx_eq_pre;
+		uint8_t tx_eq_post;
+		uint8_t tx_vboost_lvl;
+	} edp_tuningset;
 };
 
 #endif /* CEZANNE_CHIP_H */

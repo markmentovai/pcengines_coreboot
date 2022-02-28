@@ -18,15 +18,15 @@
 #include "chip.h"
 
 static const struct pcie_rp_group pch_lp_rp_groups[] = {
-	{ .slot = PCH_DEV_SLOT_PCIE,	.count = 8 },
-	{ .slot = PCH_DEV_SLOT_PCIE_1,	.count = 8 },
+	{ .slot = PCH_DEV_SLOT_PCIE,	.count = 8, .lcap_port_base = 1 },
+	{ .slot = PCH_DEV_SLOT_PCIE_1,	.count = 8, .lcap_port_base = 1 },
 	{ 0 }
 };
 
 static const struct pcie_rp_group pch_h_rp_groups[] = {
-	{ .slot = PCH_DEV_SLOT_PCIE,	.count = 8 },
-	{ .slot = PCH_DEV_SLOT_PCIE_1,	.count = 8 },
-	{ .slot = PCH_DEV_SLOT_PCIE_2,	.count = 8 },
+	{ .slot = PCH_DEV_SLOT_PCIE,	.count = 8, .lcap_port_base = 1 },
+	{ .slot = PCH_DEV_SLOT_PCIE_1,	.count = 8, .lcap_port_base = 1 },
+	{ .slot = PCH_DEV_SLOT_PCIE_2,	.count = 8, .lcap_port_base = 1 },
 	{ 0 }
 };
 
@@ -162,7 +162,7 @@ static void cpu_fill_ssdt(const struct device *dev)
 	generate_cpu_entries(dev);
 
 	if (!generate_pin_irq_map())
-		printk(BIOS_ERR, "ERROR: Failed to generate ACPI _PRT table!\n");
+		printk(BIOS_ERR, "Failed to generate ACPI _PRT table!\n");
 }
 
 static void cpu_set_north_irqs(struct device *dev)

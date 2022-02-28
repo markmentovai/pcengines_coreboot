@@ -6,6 +6,7 @@ bootblock-y += early_gpio.c
 romstage-y += port_descriptors.c
 
 ramstage-y += chromeos.c
+ramstage-y += gpio.c
 
 #TODO: add APCB binaries
 #APCB_SOURCES = $(MAINBOARD_BLOBS_DIR)/APCB_CZN_D4.bin
@@ -13,7 +14,18 @@ ramstage-y += chromeos.c
 
 ifeq ($(CONFIG_CHAUSIE_HAVE_MCHP_FW),y)
 $(call add_intermediate, add_mchp_fw)
-	$(CBFSTOOL) $(obj)/coreboot.pre write -r EC -f $(CONFIG_CHAUSIE_MCHP_FW_FILE) --fill-upward
+	$(CBFSTOOL) $(obj)/coreboot.pre write -r EC -f $(CONFIG_CHAUSIE_MCHP_SIG_FILE) --fill-upward
+
+# calculate the absolute position from the config offset
+CHAUSIE_EC_POSITION=$(call int-add, \
+	$(call int-subtract, 0xffffffff \
+	$(CONFIG_ROM_SIZE)) $(CONFIG_CHAUSIE_MCHP_FW_OFFSET) 1)
+
+cbfs-files-y += apu/ecfw
+apu/ecfw-file := $(CONFIG_CHAUSIE_MCHP_FW_FILE)
+apu/ecfw-position := $(CHAUSIE_EC_POSITION)
+apu/ecfw-type := raw
+
 else
 files_added:: warn_no_mchp
 endif # CONFIG_CHAUSIE_HAVE_MCHP_FW
