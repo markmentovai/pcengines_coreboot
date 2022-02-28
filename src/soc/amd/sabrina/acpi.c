@@ -21,7 +21,6 @@
 #include <soc/msr.h>
 #include <types.h>
 #include "chip.h"
-#include <soc/cppc.h>
 
 unsigned long acpi_fill_madt(unsigned long current)
 {
@@ -322,9 +321,7 @@ void generate_cpu_entries(const struct device *device)
 		},
 	};
 
-	threads_per_core = ((cpuid_ebx(CPUID_EBX_CORE_ID) & CPUID_EBX_THREADS_MASK)
-			    >> CPUID_EBX_THREADS_SHIFT)
-			   + 1;
+	threads_per_core = get_threads_per_core();
 	pstate_count = get_pstate_info(pstate_values, pstate_xpss_values);
 	logical_cores = get_cpu_count();
 
@@ -360,8 +357,6 @@ void generate_cpu_entries(const struct device *device)
 
 		acpigen_write_CSD_package(cpu / threads_per_core, threads_per_core,
 					  CSD_HW_ALL, 0);
-
-		generate_cppc_entries(cpu);
 
 		acpigen_pop_len();
 	}

@@ -207,9 +207,6 @@ static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 	/* Skip GPIO configuration from FSP */
 	m_cfg->GpioOverride = 0x1;
 
-	/* Skip generation of MBP HOB from FSP. coreboot doesn't consume it */
-	m_cfg->SkipMbpHob = 1;
-
 	/* CNVi DDR RFI Mitigation */
 	m_cfg->CnviDdrRfim = config->CnviDdrRfim;
 }
@@ -284,17 +281,17 @@ static void fill_fspm_vtd_params(FSP_M_CONFIG *m_cfg,
 
 	if (m_cfg->VtdIgdEnable && m_cfg->VtdBaseAddress[VTD_GFX] == 0) {
 		m_cfg->VtdIgdEnable = 0;
-		printk(BIOS_ERR, "ERROR: Requested IGD VT-d, but GFXVT_BASE_ADDRESS is 0\n");
+		printk(BIOS_ERR, "Requested IGD VT-d, but GFXVT_BASE_ADDRESS is 0\n");
 	}
 
 	if (m_cfg->VtdIpuEnable && m_cfg->VtdBaseAddress[VTD_IPU] == 0) {
 		m_cfg->VtdIpuEnable = 0;
-		printk(BIOS_ERR, "ERROR: Requested IPU VT-d, but IPUVT_BASE_ADDRESS is 0\n");
+		printk(BIOS_ERR, "Requested IPU VT-d, but IPUVT_BASE_ADDRESS is 0\n");
 	}
 
 	if (!m_cfg->VtdDisable && m_cfg->VtdBaseAddress[VTD_VTVCO] == 0) {
 		m_cfg->VtdDisable = 1;
-		printk(BIOS_ERR, "ERROR: Requested VT-d, but VTVCO_BASE_ADDRESS is 0\n");
+		printk(BIOS_ERR, "Requested VT-d, but VTVCO_BASE_ADDRESS is 0\n");
 	}
 
 	if (m_cfg->TcssDma0En || m_cfg->TcssDma1En)
@@ -333,7 +330,7 @@ static void fill_fspm_trace_params(FSP_M_CONFIG *m_cfg,
 static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
-	const void (*fill_fspm_params[])(FSP_M_CONFIG *m_cfg,
+	void (*const fill_fspm_params[])(FSP_M_CONFIG *m_cfg,
 			const struct soc_intel_alderlake_config *config) = {
 		fill_fspm_igd_params,
 		fill_fspm_mrc_params,
@@ -364,10 +361,10 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 	config = config_of_soc();
 
 	soc_memory_init_params(m_cfg, config);
-	mainboard_memory_init_params(m_cfg);
+	mainboard_memory_init_params(mupd);
 }
 
-__weak void mainboard_memory_init_params(FSP_M_CONFIG *m_cfg)
+__weak void mainboard_memory_init_params(FSPM_UPD *memupd)
 {
 	printk(BIOS_DEBUG, "WEAK: %s/%s called\n", __FILE__, __func__);
 }

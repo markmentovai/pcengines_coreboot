@@ -7,7 +7,7 @@ TLCL_LIB = $(VBOOT_BUILD_DIR)/tlcl.a
 vboot_fw-objs += $(VBOOT_FW_LIB)
 tlcl-objs += $(TLCL_LIB)
 
-kconfig-to-binary=$(if $(1),1,0)
+kconfig-to-binary=$(if $(strip $(1)),1,0)
 vboot-fixup-includes = $(patsubst -I%,-I$(top)/%,\
 		       $(patsubst include/%.h,$(top)/include/%.h,\
 		       $(filter-out -I$(obj),$(1))))
@@ -30,14 +30,14 @@ endif
 
 $(VBOOT_FW_LIB): $(obj)/libpayload-config.h
 	@printf "    MAKE       $(subst $(obj)/,,$(@))\n"
-	+$(Q) FIRMWARE_ARCH=$(VBOOT_FIRMWARE_ARCH-y) \
-		CC=$(CC) \
+	+$(Q) FIRMWARE_ARCH="$(VBOOT_FIRMWARE_ARCH-y)" \
+		CC="$(CC)" \
 		CFLAGS="$(VBOOT_CFLAGS)" \
 		$(MAKE) -C "$(VBOOT_SOURCE)" \
 		TPM2_MODE=$(call kconfig-to-binary, $(CONFIG_LP_VBOOT_TPM2_MODE)) \
 		X86_SHA_EXT=$(call kconfig-to-binary, $(CONFIG_LP_VBOOT_X86_SHA_EXT)) \
 		UNROLL_LOOPS=1 \
-		BUILD=$(VBOOT_BUILD_DIR) \
+		BUILD="$(VBOOT_BUILD_DIR)" \
 		V=$(V) \
 		$(VBOOT_BUILD_DIR)/vboot_fw.a tlcl
 

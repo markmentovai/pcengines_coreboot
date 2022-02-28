@@ -13,11 +13,14 @@ chip soc/amd/sabrina
 		.flash_ch_en = 0,
 	}"
 
+	register "i2c_scl_reset" = "GPIO_I2C0_SCL | GPIO_I2C1_SCL |
+					GPIO_I2C2_SCL | GPIO_I2C3_SCL"
+
 	# I2C Pad Control RX Select Configuration
-	register "i2c_pad_ctrl_rx_sel[0]" = "I2C_PAD_CTRL_RX_SEL_3_3V"
-	register "i2c_pad_ctrl_rx_sel[1]" = "I2C_PAD_CTRL_RX_SEL_3_3V"
-	register "i2c_pad_ctrl_rx_sel[2]" = "I2C_PAD_CTRL_RX_SEL_3_3V"
-	register "i2c_pad_ctrl_rx_sel[3]" = "I2C_PAD_CTRL_RX_SEL_3_3V"
+	register "i2c_pad[0].rx_level" = "I2C_PAD_RX_1_8V"
+	register "i2c_pad[1].rx_level" = "I2C_PAD_RX_1_8V"
+	register "i2c_pad[2].rx_level" = "I2C_PAD_RX_1_8V"
+	register "i2c_pad[3].rx_level" = "I2C_PAD_RX_1_8V"
 
 	register "s0ix_enable" = "true"
 
@@ -25,7 +28,6 @@ chip soc/amd/sabrina
 
 	device domain 0 on
 		device ref iommu on end
-		device ref gpp_gfx_bridge_0 on end # MXM
 		device ref gpp_bridge_0 on end # NVMe
 		device ref gpp_bridge_1 on end
 		device ref gpp_bridge_2 on end # WWAN
@@ -42,19 +44,10 @@ chip soc/amd/sabrina
 							device ref usb3_port0 on end
 						end
 						chip drivers/usb/acpi
-							device ref usb3_port1 on end
-						end
-						chip drivers/usb/acpi
 							device ref usb2_port0 on end
 						end
 						chip drivers/usb/acpi
 							device ref usb2_port1 on end
-						end
-						chip drivers/usb/acpi
-							device ref usb2_port2 on end
-						end
-						chip drivers/usb/acpi
-							device ref usb2_port3 on end
 						end
 					end
 				end
@@ -63,22 +56,19 @@ chip soc/amd/sabrina
 				chip drivers/usb/acpi
 					device ref xhci_1_root_hub on
 						chip drivers/usb/acpi
-							device ref usb3_port4 on end
+							device ref usb3_port2 on end
 						end
 						chip drivers/usb/acpi
-							device ref usb3_port5 on end
+							device ref usb3_port3 on end
+						end
+						chip drivers/usb/acpi
+							device ref usb2_port2 on end
+						end
+						chip drivers/usb/acpi
+							device ref usb2_port3 on end
 						end
 						chip drivers/usb/acpi
 							device ref usb2_port4 on end
-						end
-						chip drivers/usb/acpi
-							device ref usb2_port5 on end
-						end
-						chip drivers/usb/acpi
-							device ref usb2_port6 on end
-						end
-						chip drivers/usb/acpi
-							device ref usb2_port7 on end
 						end
 					end
 				end
@@ -86,6 +76,10 @@ chip soc/amd/sabrina
 		end
 	end
 
+	device ref i2c_0 on end
+	device ref i2c_1 on end
+	device ref i2c_2 on end
+	device ref i2c_3 on end
 	device ref uart_0 on end # UART0
 
 end

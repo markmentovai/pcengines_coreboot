@@ -26,6 +26,9 @@
 /* Unique ID for the WIFI _DSM */
 #define ACPI_DSM_OEM_WIFI_UUID    "F21202BF-8F78-4DC6-A5B3-1F738E285ADE"
 
+/* Unique ID for the Wifi _DSD */
+#define ACPI_DSD_UNTRUSTED_UUID	  "88566a92-1a61-466d-949a-6d12809d480c"
+
 __weak int get_wifi_sar_limits(union wifi_sar_limits *sar_limits)
 {
 	return -1;
@@ -209,7 +212,7 @@ static void sar_emit_wrds(const struct sar_profile *sar)
 	 * })
 	 */
 	if (sar->revision > MAX_SAR_REVISION) {
-		printk(BIOS_ERR, "ERROR: Invalid SAR table revision: %d\n", sar->revision);
+		printk(BIOS_ERR, "Invalid SAR table revision: %d\n", sar->revision);
 		return;
 	}
 
@@ -255,12 +258,12 @@ static void sar_emit_ewrd(const struct sar_profile *sar)
 	 * })
 	 */
 	if (sar->revision > MAX_SAR_REVISION) {
-		printk(BIOS_ERR, "ERROR: Invalid SAR table revision: %d\n", sar->revision);
+		printk(BIOS_ERR, "Invalid SAR table revision: %d\n", sar->revision);
 		return;
 	}
 
 	if (sar->dsar_set_count == 0) {
-		printk(BIOS_WARNING, "WARNING: DSAR set count is 0\n");
+		printk(BIOS_WARNING, "DSAR set count is 0\n");
 		return;
 	}
 
@@ -338,7 +341,7 @@ static void sar_emit_wgds(struct geo_profile *wgds)
 	 * })
 	 */
 	if (wgds->revision > MAX_GEO_OFFSET_REVISION) {
-		printk(BIOS_ERR, "ERROR: Invalid WGDS revision: %d\n", wgds->revision);
+		printk(BIOS_ERR, "Invalid WGDS revision: %d\n", wgds->revision);
 		return;
 	}
 
@@ -472,7 +475,7 @@ static void emit_sar_acpi_structures(const struct device *dev)
 
 	/* Retrieve the sar limits data */
 	if (get_wifi_sar_limits(&sar_limits) < 0) {
-		printk(BIOS_ERR, "ERROR: failed getting SAR limits!\n");
+		printk(BIOS_ERR, "failed getting SAR limits!\n");
 		return;
 	}
 
@@ -508,9 +511,21 @@ static void wifi_ssdt_write_properties(const struct device *dev, const char *sco
 	/* Scope */
 	acpigen_write_scope(scope);
 
-	/* Wake capabilities */
-	if (config)
+	if (config) {
+		/* Wake capabilities */
 		acpigen_write_PRW(config->wake, ACPI_S3);
+
+		/* Add _DSD for UntrustedDevice property. */
+		if (config->is_untrusted) {
+			struct acpi_dp *dsd, *pkg;
+
+			dsd = acpi_dp_new_table("_DSD");
+			pkg = acpi_dp_new_table(ACPI_DSD_UNTRUSTED_UUID);
+			acpi_dp_add_integer(pkg, "UntrustedDevice", 1);
+			acpi_dp_add_package(dsd, pkg);
+			acpi_dp_write(dsd);
+		}
+	}
 
 	/* Fill regulatory domain structure */
 	if (CONFIG(HAVE_REGULATORY_DOMAIN)) {

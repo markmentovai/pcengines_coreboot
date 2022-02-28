@@ -43,11 +43,15 @@ typedef enum _amd_fw_type {
 	AMD_FW_USB_PHY = 0x44,
 	AMD_FW_TOS_SEC_POLICY = 0x45,
 	AMD_FW_DRTM_TA = 0x47,
+	AMD_FW_RECOVERYAB_A = 0x48,
+	AMD_FW_RECOVERYAB_B = 0x4A,
+	AMD_FW_BIOS_TABLE = 0x49,
 	AMD_FW_KEYDB_BL = 0x50,
 	AMD_FW_KEYDB_TOS = 0x51,
 	AMD_FW_PSP_VERSTAGE = 0x52,
 	AMD_FW_VERSTAGE_SIG = 0x53,
 	AMD_RPMC_NVRAM = 0x54,
+	AMD_FW_SPL = 0x55,
 	AMD_FW_DMCU_ERAM = 0x58,
 	AMD_FW_DMCU_ISR = 0x59,
 	AMD_FW_PSP_BOOTLOADER_AB = 0x73,
@@ -208,7 +212,10 @@ typedef struct _bios_directory_table {
 
 #define BDT_LVL1 (1 << 0)
 #define BDT_LVL2 (1 << 1)
+#define BDT_LVL1_AB (1 << 2)
+#define BDT_LVL2_AB (1 << 3)
 #define BDT_BOTH (BDT_LVL1 | BDT_LVL2)
+#define BDT_BOTH_AB (BDT_LVL1_AB | BDT_LVL2_AB)
 typedef struct _amd_bios_entry {
 	amd_bios_type type;
 	char *filename;
@@ -234,7 +241,10 @@ typedef struct _amd_bios_entry {
 
 #define PSP_LVL1 (1 << 0)
 #define PSP_LVL2 (1 << 1)
+#define PSP_LVL1_AB (1 << 2)
+#define PSP_LVL2_AB (1 << 3)
 #define PSP_BOTH (PSP_LVL1 | PSP_LVL2)
+#define PSP_BOTH_AB (PSP_LVL1_AB | PSP_LVL2_AB)
 typedef struct _amd_fw_entry {
 	amd_fw_type type;
 	char *filename;
@@ -250,6 +260,8 @@ typedef struct _amd_cb_config {
 	bool load_mp2_fw;
 	bool multi_level;
 	bool s0i3;
+	bool have_mb_spl;
+	bool recovery_ab;
 } amd_cb_config;
 
 void register_fw_fuse(char *str);

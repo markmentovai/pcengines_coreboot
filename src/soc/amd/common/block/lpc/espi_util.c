@@ -60,6 +60,36 @@ static void espi_write8(unsigned int reg, uint8_t val)
 	write8((void *)(espi_get_bar() + reg), val);
 }
 
+static inline uint32_t espi_decode_io_range_en_bit(unsigned int idx)
+{
+	return ESPI_DECODE_IO_RANGE_EN(idx);
+}
+
+static inline uint32_t espi_decode_mmio_range_en_bit(unsigned int idx)
+{
+	return ESPI_DECODE_MMIO_RANGE_EN(idx);
+}
+
+static inline unsigned int espi_io_range_base_reg(unsigned int idx)
+{
+	return ESPI_IO_RANGE_BASE(idx);
+}
+
+static inline unsigned int espi_io_range_size_reg(unsigned int idx)
+{
+	return ESPI_IO_RANGE_SIZE(idx);
+}
+
+static inline unsigned int espi_mmio_range_base_reg(unsigned int idx)
+{
+	return ESPI_MMIO_RANGE_BASE(idx);
+}
+
+static inline unsigned int espi_mmio_range_size_reg(unsigned int idx)
+{
+	return ESPI_MMIO_RANGE_SIZE(idx);
+}
+
 static void espi_enable_decode(uint32_t decode_en)
 {
 	uint32_t val;
@@ -82,10 +112,10 @@ static int espi_find_io_window(uint16_t win_base)
 	int i;
 
 	for (i = 0; i < ESPI_GENERIC_IO_WIN_COUNT; i++) {
-		if (!espi_is_decode_enabled(ESPI_DECODE_IO_RANGE_EN(i)))
+		if (!espi_is_decode_enabled(espi_decode_io_range_en_bit(i)))
 			continue;
 
-		if (espi_read16(ESPI_IO_RANGE_BASE(i)) == win_base)
+		if (espi_read16(espi_io_range_base_reg(i)) == win_base)
 			return i;
 	}
 
@@ -97,7 +127,7 @@ static int espi_get_unused_io_window(void)
 	int i;
 
 	for (i = 0; i < ESPI_GENERIC_IO_WIN_COUNT; i++) {
-		if (!espi_is_decode_enabled(ESPI_DECODE_IO_RANGE_EN(i)))
+		if (!espi_is_decode_enabled(espi_decode_io_range_en_bit(i)))
 			return i;
 	}
 
@@ -112,12 +142,12 @@ static void espi_clear_decodes(void)
 	espi_write16(ESPI_DECODE, 0);
 
 	for (idx = 0; idx < ESPI_GENERIC_IO_WIN_COUNT; idx++) {
-		espi_write16(ESPI_IO_RANGE_BASE(idx), 0);
-		espi_write8(ESPI_IO_RANGE_SIZE(idx), 0);
+		espi_write16(espi_io_range_base_reg(idx), 0);
+		espi_write8(espi_io_range_size_reg(idx), 0);
 	}
 	for (idx = 0; idx < ESPI_GENERIC_MMIO_WIN_COUNT; idx++) {
-		espi_write32(ESPI_MMIO_RANGE_BASE(idx), 0);
-		espi_write16(ESPI_MMIO_RANGE_SIZE(idx), 0);
+		espi_write32(espi_mmio_range_base_reg(idx), 0);
+		espi_write16(espi_mmio_range_size_reg(idx), 0);
 	}
 }
 
@@ -149,13 +179,13 @@ static int espi_std_io_decode(uint16_t base, size_t size)
 
 static size_t espi_get_io_window_size(int idx)
 {
-	return espi_read8(ESPI_IO_RANGE_SIZE(idx)) + 1;
+	return espi_read8(espi_io_range_size_reg(idx)) + 1;
 }
 
 static void espi_write_io_window(int idx, uint16_t base, size_t size)
 {
-	espi_write16(ESPI_IO_RANGE_BASE(idx), base);
-	espi_write8(ESPI_IO_RANGE_SIZE(idx), size - 1);
+	espi_write16(espi_io_range_base_reg(idx), base);
+	espi_write8(espi_io_range_size_reg(idx), size - 1);
 }
 
 static enum cb_err espi_open_generic_io_window(uint16_t base, size_t size)
@@ -187,12 +217,12 @@ static enum cb_err espi_open_generic_io_window(uint16_t base, size_t size)
 		if (idx == -1) {
 			printk(BIOS_ERR, "Cannot open IO window base %x size %zx\n", base,
 			       size);
-			printk(BIOS_ERR, "ERROR: No more available IO windows!\n");
+			printk(BIOS_ERR, "No more available IO windows!\n");
 			return CB_ERR;
 		}
 
 		espi_write_io_window(idx, base, win_size);
-		espi_enable_decode(ESPI_DECODE_IO_RANGE_EN(idx));
+		espi_enable_decode(espi_decode_io_range_en_bit(idx));
 	}
 
 	return CB_SUCCESS;
@@ -216,10 +246,10 @@ static int espi_find_mmio_window(uint32_t win_base)
 	int i;
 
 	for (i = 0; i < ESPI_GENERIC_MMIO_WIN_COUNT; i++) {
-		if (!espi_is_decode_enabled(ESPI_DECODE_MMIO_RANGE_EN(i)))
+		if (!espi_is_decode_enabled(espi_decode_mmio_range_en_bit(i)))
 			continue;
 
-		if (espi_read32(ESPI_MMIO_RANGE_BASE(i)) == win_base)
+		if (espi_read32(espi_mmio_range_base_reg(i)) == win_base)
 			return i;
 	}
 
@@ -231,7 +261,7 @@ static int espi_get_unused_mmio_window(void)
 	int i;
 
 	for (i = 0; i < ESPI_GENERIC_MMIO_WIN_COUNT; i++) {
-		if (!espi_is_decode_enabled(ESPI_DECODE_MMIO_RANGE_EN(i)))
+		if (!espi_is_decode_enabled(espi_decode_mmio_range_en_bit(i)))
 			return i;
 	}
 
@@ -241,13 +271,13 @@ static int espi_get_unused_mmio_window(void)
 
 static size_t espi_get_mmio_window_size(int idx)
 {
-	return espi_read16(ESPI_MMIO_RANGE_SIZE(idx)) + 1;
+	return espi_read16(espi_mmio_range_size_reg(idx)) + 1;
 }
 
 static void espi_write_mmio_window(int idx, uint32_t base, size_t size)
 {
-	espi_write32(ESPI_MMIO_RANGE_BASE(idx), base);
-	espi_write16(ESPI_MMIO_RANGE_SIZE(idx), size - 1);
+	espi_write32(espi_mmio_range_base_reg(idx), base);
+	espi_write16(espi_mmio_range_size_reg(idx), size - 1);
 }
 
 enum cb_err espi_open_mmio_window(uint32_t base, size_t size)
@@ -279,12 +309,12 @@ enum cb_err espi_open_mmio_window(uint32_t base, size_t size)
 		if (idx == -1) {
 			printk(BIOS_ERR, "Cannot open IO window base %x size %zx\n", base,
 			       size);
-			printk(BIOS_ERR, "ERROR: No more available MMIO windows!\n");
+			printk(BIOS_ERR, "No more available MMIO windows!\n");
 			return CB_ERR;
 		}
 
 		espi_write_mmio_window(idx, base, win_size);
-		espi_enable_decode(ESPI_DECODE_MMIO_RANGE_EN(idx));
+		espi_enable_decode(espi_decode_mmio_range_en_bit(idx));
 	}
 
 	return CB_SUCCESS;
@@ -418,7 +448,7 @@ static enum cb_err espi_poll_status(uint32_t *status)
 			return CB_SUCCESS;
 	} while (!stopwatch_expired(&sw));
 
-	printk(BIOS_ERR, "Error: eSPI timed out waiting for status update.\n");
+	printk(BIOS_ERR, "eSPI timed out waiting for status update.\n");
 
 	return CB_ERR;
 }
@@ -609,17 +639,16 @@ static void espi_set_io_mode_config(enum espi_io_mode mb_io_mode, uint32_t slave
 			*ctrlr_config |= ESPI_IO_MODE_QUAD;
 			break;
 		}
-		printk(BIOS_ERR, "Error: eSPI Quad I/O not supported. Dropping to dual mode.\n");
-		/* Intentional fall-through */
+		printk(BIOS_ERR, "eSPI Quad I/O not supported. Dropping to dual mode.\n");
+		__fallthrough;
 	case ESPI_IO_MODE_DUAL:
 		if (espi_slave_supports_dual_io(slave_caps)) {
 			*slave_config |= ESPI_SLAVE_IO_MODE_SEL_DUAL;
 			*ctrlr_config |= ESPI_IO_MODE_DUAL;
 			break;
 		}
-		printk(BIOS_ERR,
-		       "Error: eSPI Dual I/O not supported. Dropping to single mode.\n");
-		/* Intentional fall-through */
+		printk(BIOS_ERR, "eSPI Dual I/O not supported. Dropping to single mode.\n");
+		__fallthrough;
 	case ESPI_IO_MODE_SINGLE:
 		/* Single I/O mode is always supported. */
 		*slave_config |= ESPI_SLAVE_IO_MODE_SEL_SINGLE;
@@ -642,16 +671,16 @@ static void espi_set_op_freq_config(enum espi_op_freq mb_op_freq, uint32_t slave
 			*ctrlr_config |= ESPI_OP_FREQ_66_MHZ;
 			break;
 		}
-		printk(BIOS_ERR, "Error: eSPI 66MHz not supported. Dropping to 33MHz.\n");
-		/* Intentional fall-through */
+		printk(BIOS_ERR, "eSPI 66MHz not supported. Dropping to 33MHz.\n");
+		__fallthrough;
 	case ESPI_OP_FREQ_33_MHZ:
 		if (slave_max_speed_mhz >= 33) {
 			*slave_config |= ESPI_SLAVE_OP_FREQ_SEL_33_MHZ;
 			*ctrlr_config |= ESPI_OP_FREQ_33_MHZ;
 			break;
 		}
-		printk(BIOS_ERR, "Error: eSPI 33MHz not supported. Dropping to 16MHz.\n");
-		/* Intentional fall-through */
+		printk(BIOS_ERR, "eSPI 33MHz not supported. Dropping to 16MHz.\n");
+		__fallthrough;
 	case ESPI_OP_FREQ_16_MHZ:
 		/*
 		 * eSPI spec says the minimum frequency is 20MHz, but AMD datasheets support
@@ -662,7 +691,7 @@ static void espi_set_op_freq_config(enum espi_op_freq mb_op_freq, uint32_t slave
 			*ctrlr_config |= ESPI_OP_FREQ_16_MHZ;
 			break;
 		}
-		/* Intentional fall-through */
+		__fallthrough;
 	default:
 		die("No supported eSPI Operating Frequency!\n");
 	}
@@ -732,7 +761,7 @@ static enum cb_err espi_wait_channel_ready(uint16_t slave_reg_addr)
 			return CB_SUCCESS;
 	} while (!stopwatch_expired(&sw));
 
-	printk(BIOS_ERR, "Error: Channel is not ready after %d usec (slave addr: 0x%x)\n",
+	printk(BIOS_ERR, "Channel is not ready after %d usec (slave addr: 0x%x)\n",
 	       ESPI_CH_READY_TIMEOUT_US, slave_reg_addr);
 	return CB_ERR;
 
@@ -777,7 +806,7 @@ static enum cb_err espi_setup_vw_channel(const struct espi_config *mb_cfg, uint3
 		return CB_SUCCESS;
 
 	if (!espi_slave_supports_vw_channel(slave_caps)) {
-		printk(BIOS_ERR, "Error: eSPI slave doesn't support VW channel!\n");
+		printk(BIOS_ERR, "eSPI slave doesn't support VW channel!\n");
 		return CB_ERR;
 	}
 
@@ -812,7 +841,7 @@ static enum cb_err espi_setup_periph_channel(const struct espi_config *mb_cfg,
 	 */
 	if (mb_cfg->periph_ch_en) {
 		if (!espi_slave_supports_periph_channel(slave_caps)) {
-			printk(BIOS_ERR, "Error: eSPI slave doesn't support periph channel!\n");
+			printk(BIOS_ERR, "eSPI slave doesn't support periph channel!\n");
 			return CB_ERR;
 		}
 		slave_config |= slave_en_mask;
@@ -834,7 +863,7 @@ static enum cb_err espi_setup_oob_channel(const struct espi_config *mb_cfg, uint
 		return CB_SUCCESS;
 
 	if (!espi_slave_supports_oob_channel(slave_caps)) {
-		printk(BIOS_ERR, "Error: eSPI slave doesn't support OOB channel!\n");
+		printk(BIOS_ERR, "eSPI slave doesn't support OOB channel!\n");
 		return CB_ERR;
 	}
 
@@ -856,7 +885,7 @@ static enum cb_err espi_setup_flash_channel(const struct espi_config *mb_cfg,
 		return CB_SUCCESS;
 
 	if (!espi_slave_supports_flash_channel(slave_caps)) {
-		printk(BIOS_ERR, "Error: eSPI slave doesn't support flash channel!\n");
+		printk(BIOS_ERR, "eSPI slave doesn't support flash channel!\n");
 		return CB_ERR;
 	}
 
@@ -928,7 +957,7 @@ enum cb_err espi_setup(void)
 	 * The resets affects both host and slave devices, so set initial config again.
 	 */
 	if (espi_send_reset() != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: In-band reset failed!\n");
+		printk(BIOS_ERR, "In-band reset failed!\n");
 		return CB_ERR;
 	}
 	espi_set_initial_config(cfg);
@@ -938,7 +967,7 @@ enum cb_err espi_setup(void)
 	 * Get configuration of slave device.
 	 */
 	if (espi_get_general_configuration(&slave_caps) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Slave GET_CONFIGURATION failed!\n");
+		printk(BIOS_ERR, "Slave GET_CONFIGURATION failed!\n");
 		return CB_ERR;
 	}
 
@@ -948,7 +977,7 @@ enum cb_err espi_setup(void)
 	 * Step 5: Set host slave config
 	 */
 	if (espi_set_general_configuration(cfg, slave_caps) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Slave SET_CONFIGURATION failed!\n");
+		printk(BIOS_ERR, "Slave SET_CONFIGURATION failed!\n");
 		return CB_ERR;
 	}
 
@@ -964,39 +993,39 @@ enum cb_err espi_setup(void)
 	 */
 	/* Set up VW first so we can deassert PLTRST#. */
 	if (espi_setup_vw_channel(cfg, slave_caps) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Setup VW channel failed!\n");
+		printk(BIOS_ERR, "Setup VW channel failed!\n");
 		return CB_ERR;
 	}
 
 	/* Assert PLTRST# if VW channel is enabled by mainboard. */
 	if (espi_send_pltrst(cfg, true) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: PLTRST# assertion failed!\n");
+		printk(BIOS_ERR, "PLTRST# assertion failed!\n");
 		return CB_ERR;
 	}
 
 	/* De-assert PLTRST# if VW channel is enabled by mainboard. */
 	if (espi_send_pltrst(cfg, false) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: PLTRST# deassertion failed!\n");
+		printk(BIOS_ERR, "PLTRST# deassertion failed!\n");
 		return CB_ERR;
 	}
 
 	if (espi_setup_periph_channel(cfg, slave_caps) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Setup Periph channel failed!\n");
+		printk(BIOS_ERR, "Setup Periph channel failed!\n");
 		return CB_ERR;
 	}
 
 	if (espi_setup_oob_channel(cfg, slave_caps) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Setup OOB channel failed!\n");
+		printk(BIOS_ERR, "Setup OOB channel failed!\n");
 		return CB_ERR;
 	}
 
 	if (espi_setup_flash_channel(cfg, slave_caps) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Setup Flash channel failed!\n");
+		printk(BIOS_ERR, "Setup Flash channel failed!\n");
 		return CB_ERR;
 	}
 
 	if (espi_configure_decodes(cfg) != CB_SUCCESS) {
-		printk(BIOS_ERR, "Error: Configuring decodes failed!\n");
+		printk(BIOS_ERR, "Configuring decodes failed!\n");
 		return CB_ERR;
 	}
 

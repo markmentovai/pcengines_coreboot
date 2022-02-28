@@ -33,9 +33,9 @@ static const struct pad_config override_gpio_table[] = {
 	/* B2  : VRALERT# ==> NC */
 	PAD_NC(GPP_B2, NONE),
 	/* B3  : PROC_GP2 ==> NC */
-	PAD_NC(GPP_B3, NONE),
+	PAD_NC_LOCK(GPP_B3, NONE, LOCK_CONFIG),
 	/* B15 : TIME_SYNC0 ==> NC */
-	PAD_NC(GPP_B15, NONE),
+	PAD_NC_LOCK(GPP_B15, NONE, LOCK_CONFIG),
 
 	/* C3 : SML0CLK ==> NC */
 	PAD_NC(GPP_C3, NONE),
@@ -45,27 +45,27 @@ static const struct pad_config override_gpio_table[] = {
 	PAD_NC(GPP_C6, NONE),
 
 	/* D1  : ISH_GP1 ==> NC */
-	PAD_NC(GPP_D1, NONE),
+	PAD_NC_LOCK(GPP_D1, NONE, LOCK_CONFIG),
 	/* D2  : ISH_GP2 ==> NC */
-	PAD_NC(GPP_D2, NONE),
+	PAD_NC_LOCK(GPP_D2, NONE, LOCK_CONFIG),
 	/* D3  : ISH_GP3 ==> NC */
-	PAD_NC(GPP_D3, NONE),
+	PAD_NC_LOCK(GPP_D3, NONE, LOCK_CONFIG),
 	/* D5  : SRCCLKREQ0# ==> SSD_CLKREQ_ODL */
 	PAD_CFG_NF(GPP_D5, NONE, DEEP, NF1),
 	/* D9  : ISH_SPI_CS# ==> NC */
-	PAD_NC(GPP_D9, NONE),
+	PAD_NC_LOCK(GPP_D9, NONE, LOCK_CONFIG),
 	/* D10 : ISH_SPI_CLK ==> NC */
-	PAD_NC(GPP_D10, NONE),
+	PAD_NC_LOCK(GPP_D10, NONE, LOCK_CONFIG),
 	/* D13 : ISH_UART0_RXD ==> NC */
-	PAD_NC(GPP_D13, NONE),
+	PAD_NC_LOCK(GPP_D13, NONE, LOCK_CONFIG),
 	/* D14 : ISH_UART0_TXD ==> NC */
-	PAD_NC(GPP_D14, NONE),
+	PAD_NC_LOCK(GPP_D14, NONE, LOCK_CONFIG),
 	/* D15 : ISH_UART0_RTS# ==> NC */
-	PAD_NC(GPP_D15, NONE),
+	PAD_NC_LOCK(GPP_D15, NONE, LOCK_CONFIG),
 	/* D16 : ISH_UART0_CTS# ==> NC */
-	PAD_NC(GPP_D16, NONE),
+	PAD_NC_LOCK(GPP_D16, NONE, LOCK_CONFIG),
 	/* D17 : UART1_RXD ==> NC */
-	PAD_NC(GPP_D17, NONE),
+	PAD_NC_LOCK(GPP_D17, NONE, LOCK_CONFIG),
 
 	/* E0  : SATAXPCIE0 ==> NC */
 	PAD_NC(GPP_E0, NONE),
@@ -78,11 +78,11 @@ static const struct pad_config override_gpio_table[] = {
 	/* E7  : PROC_GP1 ==> NC */
 	PAD_NC(GPP_E7, NONE),
 	/* E10 : THC0_SPI1_CS# ==> NC */
-	PAD_NC(GPP_E10, NONE),
+	PAD_NC_LOCK(GPP_E10, NONE, LOCK_CONFIG),
 	/* E16 : RSVD_TP ==> NC */
 	PAD_NC(GPP_E16, NONE),
 	/* E17 : THC0_SPI1_INT# ==> NC */
-	PAD_NC(GPP_E17, NONE),
+	PAD_NC_LOCK(GPP_E17, NONE, LOCK_CONFIG),
 	/* E18 : DDP1_CTRLCLK ==> NC */
 	PAD_NC(GPP_E18, NONE),
 	/* E19 : DDP1_CTRLDATA ==> NC */
@@ -95,15 +95,15 @@ static const struct pad_config override_gpio_table[] = {
 	/* F6  : CNV_PA_BLANKING ==> NC */
 	PAD_NC(GPP_F6, NONE),
 	/* F11 : THC1_SPI2_CLK ==> NC */
-	PAD_NC(GPP_F11, NONE),
+	PAD_NC_LOCK(GPP_F11, NONE, LOCK_CONFIG),
 	/* F12 : GSXDOUT ==> NC */
-	PAD_NC(GPP_F12, NONE),
+	PAD_NC_LOCK(GPP_F12, NONE, LOCK_CONFIG),
 	/* F13 : GSXDOUT ==> NC */
-	PAD_NC(GPP_F13, NONE),
+	PAD_NC_LOCK(GPP_F13, NONE, LOCK_CONFIG),
 	/* F15 : GSXSRESET# ==> NC */
-	PAD_NC(GPP_F15, NONE),
+	PAD_NC_LOCK(GPP_F15, NONE, LOCK_CONFIG),
 	/* F16 : GSXCLK ==> NC */
-	PAD_NC(GPP_F16, NONE),
+	PAD_NC_LOCK(GPP_F16, NONE, LOCK_CONFIG),
 	/* F19 : SRCCLKREQ6# ==> NC */
 	PAD_NC(GPP_F19, NONE),
 	/* F20 : EXT_PWR_GATE# ==> NC */
@@ -115,12 +115,16 @@ static const struct pad_config override_gpio_table[] = {
 	/* F23 : BP105_CTRL ==> PP1050_CTRL */
 	PAD_CFG_NF(GPP_F23, NONE, DEEP, NF1),
 
+	/* H6  : I2C1_SDA ==> PCH_I2C_TPM_SDA */
+	PAD_CFG_NF_LOCK(GPP_H6, NONE, NF1, LOCK_CONFIG),
+	/* H7  : I2C1_SCL ==> PCH_I2C_TPM_SCL */
+	PAD_CFG_NF_LOCK(GPP_H7, NONE, NF1, LOCK_CONFIG),
 	/* H8  : I2C4_SDA ==> NC */
 	PAD_NC(GPP_H8, NONE),
 	/* H9  : I2C4_SCL ==> NC */
 	PAD_NC(GPP_H9, NONE),
 	/* H13 : I2C7_SCL ==> EN_PP3300_SD */
-	PAD_CFG_GPO(GPP_H13, 1, DEEP),
+	PAD_CFG_GPO_LOCK(GPP_H13, 1, LOCK_CONFIG),
 	/* H15 : DDPB_CTRLCLK ==> NC */
 	PAD_NC(GPP_H15, NONE),
 	/* H17 : DDPB_CTRLDATA ==> NC */
@@ -158,10 +162,6 @@ static const struct pad_config override_gpio_table[] = {
 static const struct pad_config early_gpio_table[] = {
 	/* A13 : PMC_I2C_SCL ==> GSC_PCH_INT_ODL */
 	PAD_CFG_GPI_APIC(GPP_A13, NONE, PLTRST, LEVEL, INVERT),
-	/* B7  : ISH_12C1_SDA ==> PCH_I2C_TPM_SDA */
-	PAD_CFG_NF(GPP_B7, NONE, DEEP, NF2),
-	/* B8  : ISH_12C1_SCL ==> PCH_I2C_TPM_SCL */
-	PAD_CFG_NF(GPP_B8, NONE, DEEP, NF2),
 	/* D11 : ISH_SPI_MISO ==> EN_PP3300_SSD */
 	PAD_CFG_GPO(GPP_D11, 1, DEEP),
 	/* E13 : THC0_SPI1_IO2 ==> MEM_CH_SEL */
@@ -170,6 +170,10 @@ static const struct pad_config early_gpio_table[] = {
 	PAD_CFG_GPI_GPIO_DRIVER(GPP_E15, NONE, DEEP),
 	/* F18 : THC1_SPI2_INT# ==> EC_IN_RW_OD */
 	PAD_CFG_GPI(GPP_F18, NONE, DEEP),
+	/* H6  : I2C1_SDA ==> PCH_I2C_TPM_SDA */
+	PAD_CFG_NF(GPP_H6, NONE, DEEP, NF1),
+	/* H7  : I2C1_SCL ==> PCH_I2C_TPM_SCL */
+	PAD_CFG_NF(GPP_H7, NONE, DEEP, NF1),
 	/* H10 : UART0_RXD ==> UART_PCH_RX_DBG_TX */
 	PAD_CFG_NF(GPP_H10, NONE, DEEP, NF2),
 	/* H11 : UART0_TXD ==> UART_PCH_TX_DBG_RX */

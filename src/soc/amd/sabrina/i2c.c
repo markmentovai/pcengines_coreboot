@@ -1,8 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* TODO: Check if this is still correct */
-
-#include <amdblocks/acpimmio.h>
 #include <amdblocks/i2c.h>
 #include <console/console.h>
 #include <soc/i2c.h>
@@ -35,33 +32,19 @@ void i2c_set_bar(unsigned int bus, uintptr_t bar)
 }
 #endif
 
-__weak void mainboard_i2c_override(int bus, uint32_t *pad_settings) { }
-
 void soc_i2c_misc_init(unsigned int bus, const struct dw_i2c_bus_config *cfg)
 {
 	const struct soc_amd_sabrina_config *config = config_of_soc();
-	uint32_t pad_ctrl;
-	int misc_reg;
 
-	if (bus >= ARRAY_SIZE(config->i2c_pad_ctrl_rx_sel))
+	if (bus >= ARRAY_SIZE(config->i2c_pad))
 		return;
 
-	misc_reg = MISC_I2C0_PAD_CTRL + sizeof(uint32_t) * bus;
-	pad_ctrl = misc_read32(misc_reg);
-
-	pad_ctrl &= ~I2C_PAD_CTRL_NG_MASK;
-	pad_ctrl |= I2C_PAD_CTRL_NG_NORMAL;
-
-	pad_ctrl &= ~I2C_PAD_CTRL_RX_SEL_MASK;
-	pad_ctrl |= config->i2c_pad_ctrl_rx_sel[bus];
-
-	pad_ctrl &= ~I2C_PAD_CTRL_FALLSLEW_MASK;
-	pad_ctrl |= cfg->speed == I2C_SPEED_STANDARD ?
-		I2C_PAD_CTRL_FALLSLEW_STD : I2C_PAD_CTRL_FALLSLEW_LOW;
-	pad_ctrl |= I2C_PAD_CTRL_FALLSLEW_EN;
-
-	mainboard_i2c_override(bus, &pad_ctrl);
-	misc_write32(misc_reg, pad_ctrl);
+	/* The I/O pads of I2C0..2 are the new I23C pads and the I/O pads of I2C3 still are the
+	   same I2C pads as in Picasso and Cezanne. */
+	if (bus <= 2)
+		fch_i23c_pad_init(bus, cfg->speed, &config->i2c_pad[bus]);
+	else
+		fch_i2c_pad_init(bus, cfg->speed, &config->i2c_pad[bus]);
 }
 
 const struct soc_i2c_ctrlr_info *soc_get_i2c_ctrlr_info(size_t *num_ctrlrs)

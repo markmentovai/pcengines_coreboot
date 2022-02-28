@@ -60,7 +60,12 @@ static void get_usb_port_references(int port_number, struct device **usb2_port,
 		 * Check for a matching port number (the 'token' field in 'group').  Note that
 		 * 'port_number' is 0-based, whereas the 'token' field is 1-based.
 		 */
-		if (config->group.token != (port_number + 1))
+		int group_token;
+		if (config->use_custom_pld)
+			group_token = config->custom_pld.group.token;
+		else
+			group_token = config->group.token;
+		if (group_token != (port_number + 1))
 			continue;
 
 		switch (port->path.usb.port_type) {
@@ -106,7 +111,8 @@ static const char *port_location_to_str(enum ec_pd_port_location port_location)
 		return "BACK_LEFT";
 	case EC_PD_PORT_LOCATION_BACK_RIGHT:
 		return "BACK_RIGHT";
-	case EC_PD_PORT_LOCATION_UNKNOWN: /* intentional fallthrough */
+	case EC_PD_PORT_LOCATION_UNKNOWN:
+		__fallthrough;
 	default:
 		return "UNKNOWN";
 	}
@@ -179,9 +185,10 @@ static void fill_ssdt_typec_device(const struct device *dev)
 		get_pld_from_usb_ports(&pld, usb2_port, usb3_port, usb4_port);
 
 		struct typec_connector_class_config typec_config = {
-			.power_role = port_caps.power_role_cap,
-			.try_power_role = port_caps.try_power_role_cap,
-			.data_role = port_caps.data_role_cap,
+			.power_role = (enum usb_typec_power_role)port_caps.power_role_cap,
+			.try_power_role =
+				(enum usb_typec_try_power_role)port_caps.try_power_role_cap,
+			.data_role = (enum usb_typec_data_role)port_caps.data_role_cap,
 			.usb2_port = usb2_port,
 			.usb3_port = usb3_port,
 			.usb4_port = usb4_port,
@@ -219,6 +226,7 @@ static const enum ps2_action_key ps2_enum_val[] = {
 	[TK_PREV_TRACK] = PS2_KEY_PREV_TRACK,
 	[TK_KBD_BKLIGHT_TOGGLE] = PS2_KEY_KBD_BKLIGHT_TOGGLE,
 	[TK_MICMUTE] = PS2_KEY_MICMUTE,
+	[TK_MENU] = PS2_KEY_MENU,
 };
 
 static void fill_ssdt_ps2_keyboard(const struct device *dev)
