@@ -115,6 +115,7 @@ check_dependencies:
     - local
   timeout: 24h
   script:
+    - ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
     - bash -x .gitlab-ci/regression.sh
   only:
     - tags
