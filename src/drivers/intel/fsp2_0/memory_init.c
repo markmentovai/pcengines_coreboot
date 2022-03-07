@@ -36,7 +36,7 @@ static void save_memory_training_data(bool s3wake, uint32_t fsp_version)
 
 	mrc_data = fsp_find_nv_storage_data(&mrc_data_size);
 	if (!mrc_data) {
-		printk(BIOS_ERR, "ERROR: FSP_NON_VOLATILE_STORAGE_HOB missing!\n");
+		printk(BIOS_ERR, "FSP_NON_VOLATILE_STORAGE_HOB missing!\n");
 		return;
 	}
 
@@ -48,7 +48,7 @@ static void save_memory_training_data(bool s3wake, uint32_t fsp_version)
 	 */
 	if (mrc_cache_stash_data(MRC_TRAINING_DATA, fsp_version, mrc_data,
 				mrc_data_size) < 0)
-		printk(BIOS_ERR, "ERROR: Failed to stash MRC data\n");
+		printk(BIOS_ERR, "Failed to stash MRC data\n");
 }
 
 static void do_fsp_post_memory_init(bool s3wake, uint32_t fsp_version)
@@ -64,7 +64,7 @@ static void do_fsp_post_memory_init(bool s3wake, uint32_t fsp_version)
 	} else if (cbmem_initialize_id_size(CBMEM_ID_FSP_RESERVED_MEMORY,
 				range_entry_size(&fsp_mem))) {
 		if (CONFIG(HAVE_ACPI_RESUME)) {
-			printk(BIOS_ERR, "ERROR: Failed to recover CBMEM in S3 resume.\n");
+			printk(BIOS_ERR, "Failed to recover CBMEM in S3 resume.\n");
 			/* Failed S3 resume, reset to come up cleanly */
 			/* FIXME: A "system" reset is likely enough: */
 			full_reset();
@@ -206,7 +206,7 @@ uint8_t fsp_memory_soc_version(void)
 static uint32_t fsp_memory_settings_version(const struct fsp_header *hdr)
 {
 	/* Use the full FSP version by default. */
-	uint32_t ver = hdr->fsp_revision;
+	uint32_t ver = hdr->image_revision;
 
 	if (!CONFIG(FSP_PLATFORM_MEMORY_SETTINGS_VERSIONS))
 		return ver;
@@ -291,7 +291,7 @@ static void do_fsp_memory_init(const struct fspm_context *context, bool s3wake)
 	post_code(POST_MEM_PREINIT_PREP_END);
 
 	/* Call FspMemoryInit */
-	fsp_raminit = (void *)(uintptr_t)(hdr->image_base + hdr->memory_init_entry_offset);
+	fsp_raminit = (void *)(uintptr_t)(hdr->image_base + hdr->fsp_memory_init_entry_offset);
 	fsp_debug_before_memory_init(fsp_raminit, upd, &fspm_upd);
 
 	post_code(POST_FSP_MEMORY_INIT);

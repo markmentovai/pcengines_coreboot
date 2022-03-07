@@ -4,7 +4,6 @@
 #include <arch/cpu.h>
 #include <console/console.h>
 #include <cpu/intel/msr.h>
-#include <cpu/x86/lapic.h>
 #include <cpu/x86/msr.h>
 #include "common.h"
 
@@ -16,11 +15,10 @@ void set_vmx_and_lock(void)
 	set_feature_ctrl_lock();
 }
 
-void set_feature_ctrl_vmx(void)
+void set_feature_ctrl_vmx_arg(bool enable)
 {
 	msr_t msr;
 	uint32_t feature_flag;
-	int enable = CONFIG(ENABLE_VMX);
 
 	feature_flag = cpu_get_feature_flags_ecx();
 	/* Check that the VMX is supported before reading or writing the MSR. */
@@ -62,6 +60,12 @@ void set_feature_ctrl_vmx(void)
 	printk(BIOS_DEBUG, "VMX status: %s\n",
 		enable ? "enabled" : "disabled");
 }
+
+void set_feature_ctrl_vmx(void)
+{
+	set_feature_ctrl_vmx_arg(CONFIG(ENABLE_VMX));
+}
+
 void set_feature_ctrl_lock(void)
 {
 	msr_t msr;

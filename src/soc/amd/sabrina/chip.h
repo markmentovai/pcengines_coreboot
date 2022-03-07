@@ -6,6 +6,7 @@
 #define SABRINA_CHIP_H
 
 #include <amdblocks/chip.h>
+#include <amdblocks/i2c.h>
 #include <gpio.h>
 #include <soc/i2c.h>
 #include <soc/southbridge.h>
@@ -17,7 +18,7 @@ struct soc_amd_sabrina_config {
 	struct soc_amd_common_config common_config;
 	u8 i2c_scl_reset;
 	struct dw_i2c_bus_config i2c[I2C_CTRLR_COUNT];
-	u8 i2c_pad_ctrl_rx_sel[I2C_CTRLR_COUNT];
+	struct i2c_pad_control i2c_pad[I2C_CTRLR_COUNT];
 
 	/* Enable S0iX support */
 	bool s0ix_enable;
@@ -67,13 +68,6 @@ struct soc_amd_sabrina_config {
 	uint8_t smartshift_enable;
 
 	uint8_t system_configuration;
-
-	uint8_t cppc_ctrl;
-	uint8_t cppc_perf_limit_max_range;
-	uint8_t cppc_perf_limit_min_range;
-	uint8_t cppc_epp_max_range;
-	uint8_t cppc_epp_min_range;
-	uint8_t cppc_preferred_cores;
 
 	/* telemetry settings */
 	uint32_t telemetry_vddcrvddfull_scale_current_mA;

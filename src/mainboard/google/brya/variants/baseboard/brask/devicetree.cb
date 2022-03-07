@@ -17,8 +17,7 @@ chip soc/intel/alderlake
 	# DPTF enable
 	register "dptf_enable" = "1"
 
-	# Enable heci communication
-	register "HeciEnabled" = "1"
+	register "tcc_offset" = "10"     # TCC of 90
 
 	# Enable CNVi BT
 	register "CnviBtCore" = "true"
@@ -61,6 +60,12 @@ chip soc/intel/alderlake
 		[PchSerialIoIndexUART1] = PchSerialIoDisabled,
 		[PchSerialIoIndexUART2] = PchSerialIoDisabled,
 	}"
+
+	register "pch_slp_s3_min_assertion_width" = "SLP_S3_ASSERTION_50_MS"
+	register "pch_slp_s4_min_assertion_width" = "SLP_S4_ASSERTION_1S"
+	register "pch_slp_sus_min_assertion_width" = "SLP_SUS_ASSERTION_1_S"
+	register "pch_slp_a_min_assertion_width" = "SLP_A_ASSERTION_98_MS"
+	register "pch_reset_power_cycle_duration" = "POWER_CYCLE_DURATION_1S"
 
 	# HD Audio
 	register "PchHdaDspEnable" = "1"
@@ -118,6 +123,7 @@ chip soc/intel/alderlake
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"
+				register "is_untrusted" = "true"
 				device generic 0 on end
 			end
 		end

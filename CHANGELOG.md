@@ -12,6 +12,16 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
+
+## [v4.16.0.1] - 2022-02-11
+### Changed
+- Rebased with official coreboot repository commit b4ba289f
+- Disabled loglevel prefixes introduced in coreboot 4.16
+- Disabled ANSI escape sequences introduced in coreboot 4.16
+
+### Fixed
+- [AMD PSP CCP as entropy source](https://github.com/pcengines/apu2-documentation/issues/112)
+
 ## [v4.15.0.3] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit 36425312ee
@@ -553,7 +563,13 @@ redundant code which was similar for APU2/3/5 boards.
 - turn off D4 and D5 leds on boot
 - enable power on after power failure
 
-[Unreleased]: https://github.com/pcengines/coreboot/compare/v4.14.0.4...develop
+[Unreleased]: https://github.com/pcengines/coreboot/compare/v4.16.0.1...develop
+[v4.16.0.1]: https://github.com/pcengines/coreboot/compare/v4.15.0.3...v4.16.0.1
+[v4.15.0.3]: https://github.com/pcengines/coreboot/compare/v4.15.0.2...v4.15.0.3
+[v4.15.0.2]: https://github.com/pcengines/coreboot/compare/v4.15.0.1...v4.15.0.2
+[v4.15.0.1]: https://github.com/pcengines/coreboot/compare/v4.14.0.6...v4.15.0.1
+[v4.14.0.6]: https://github.com/pcengines/coreboot/compare/v4.14.0.5...v4.14.0.6
+[v4.14.0.5]: https://github.com/pcengines/coreboot/compare/v4.14.0.4...v4.14.0.5
 [v4.14.0.4]: https://github.com/pcengines/coreboot/compare/v4.13.0.3...v4.14.0.4
 [v4.14.0.3]: https://github.com/pcengines/coreboot/compare/v4.13.0.2...v4.14.0.3
 [v4.14.0.2]: https://github.com/pcengines/coreboot/compare/v4.13.0.1...v4.14.0.2

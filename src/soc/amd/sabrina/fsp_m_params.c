@@ -121,14 +121,6 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 	/* 0 is default */
 	mcfg->system_configuration = config->system_configuration;
 
-	/* when cppc_ctrl is 0 the other values won't be used */
-	mcfg->cppc_ctrl = config->cppc_ctrl;
-	mcfg->cppc_perf_limit_max_range = config->cppc_perf_limit_max_range;
-	mcfg->cppc_perf_limit_min_range = config->cppc_perf_limit_min_range;
-	mcfg->cppc_epp_max_range = config->cppc_epp_max_range;
-	mcfg->cppc_epp_min_range = config->cppc_epp_min_range;
-	mcfg->cppc_preferred_cores = config->cppc_preferred_cores;
-
 	/* S0i3 enable */
 	mcfg->s0i3_enable = config->s0ix_enable;
 	mcfg->iommu_support = is_devfn_enabled(IOMMU_DEVFN);
@@ -148,7 +140,6 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 
 	mcfg->enable_nb_azalia = is_dev_enabled(DEV_PTR(gfx_hda));
 	mcfg->hda_enable = is_dev_enabled(DEV_PTR(hda));
-	mcfg->sata_enable = is_dev_enabled(DEV_PTR(sata_0)) || is_dev_enabled(DEV_PTR(sata_1));
 
 	if (config->usb_phy_custom) {
 		mcfg->usb_phy = (struct usb_phy_config *)&config->usb_phy;

@@ -16,7 +16,6 @@ config SOC_SPECIFIC_OPTIONS
 	select ARCH_RAMSTAGE_X86_32
 	select ARCH_X86
 	select BOOT_DEVICE_SUPPORTS_WRITES if BOOT_DEVICE_SPI_FLASH
-	select CONSOLE_CBMEM_PRINT_PRE_BOOTBLOCK_CONTENTS if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select DRIVERS_USB_ACPI
 	select DRIVERS_I2C_DESIGNWARE
 	select DRIVERS_USB_PCI_XHCI
@@ -37,7 +36,7 @@ config SOC_SPECIFIC_OPTIONS
 	select RESET_VECTOR_IN_RAM
 	select RTC
 	select SOC_AMD_COMMON
-	select SOC_AMD_COMMON_BLOCK_ACP
+	select SOC_AMD_COMMON_BLOCK_ACP_GEN1
 	select SOC_AMD_COMMON_BLOCK_ACPI
 	select SOC_AMD_COMMON_BLOCK_ACPIMMIO
 	select SOC_AMD_COMMON_BLOCK_ACPI_ALIB
@@ -50,6 +49,7 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_BLOCK_GRAPHICS
 	select SOC_AMD_COMMON_BLOCK_HAS_ESPI
 	select SOC_AMD_COMMON_BLOCK_I2C
+	select SOC_AMD_COMMON_BLOCK_I2C_PAD_CTRL
 	select SOC_AMD_COMMON_BLOCK_IOMMU
 	select SOC_AMD_COMMON_BLOCK_LPC
 	select SOC_AMD_COMMON_BLOCK_MCAX
@@ -72,6 +72,9 @@ config SOC_SPECIFIC_OPTIONS
 	select SOC_AMD_COMMON_FSP_PCI
 	select SSE2
 	select UDK_2017_BINDING
+	select USE_FSP_NOTIFY_PHASE_POST_PCI_ENUM
+	select USE_FSP_NOTIFY_PHASE_READY_TO_BOOT
+	select USE_FSP_NOTIFY_PHASE_END_OF_FIRMWARE
 	select VBOOT_DEFINE_WIDEVINE_COUNTERS if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select X86_AMD_FIXED_MTRRS
 	select X86_INIT_NEED_1_SIPI
@@ -342,13 +345,11 @@ config PSP_DISABLE_POSTCODES
 	help
 	  Disables the output of port80 post codes from PSP.
 
-config PSP_POSTCODES_ON_ESPI
-	bool "Use eSPI bus for PSP post codes"
-	default y
-	depends on !PSP_DISABLE_POSTCODES
+config PSP_INIT_ESPI
+	bool "Initialize eSPI in PSP Stage 2 Boot Loader"
 	help
-	  Select to send PSP port80 post codes on eSPI bus.
-	  If not selected, PSP port80 codes will be sent on LPC bus.
+	  Select to initialize the eSPI controller in the PSP Stage 2 Boot
+	  Loader.
 
 config PSP_LOAD_MP2_FW
 	bool
@@ -378,6 +379,20 @@ config PSP_WHITELIST_FILE
 	string "Debug whitelist file path"
 	depends on HAVE_PSP_WHITELIST_FILE
 	default "3rdparty/amd_blobs/cezanne/PSP/wtl-czn.sbin"
+
+config HAVE_SPL_FILE
+	bool "Have a mainboard specific SPL table file"
+	default n
+	help
+	  Have a mainboard specific SPL table file, which is created by AMD
+	  and put to 3rdparty/blobs.
+
+	  If unsure, answer 'n'
+
+config SPL_TABLE_FILE
+	string "SPL table file"
+	depends on HAVE_SPL_FILE
+	default "3rdparty/amd_blobs/cezanne/PSP/TypeId0x55_SplTableBl_CZN.sbin"
 
 config PSP_SOFTFUSE_BITS
 	string "PSP Soft Fuse bits to enable"

@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <arch/hpet.h>
+#include <arch/io.h>
+#include <arch/ioapic.h>
 #include <console/console.h>
 #include <device/device.h>
 #include <device/pci.h>
@@ -8,8 +11,7 @@
 #include <option.h>
 #include <pc80/mc146818rtc.h>
 #include <pc80/isa-dma.h>
-#include <arch/io.h>
-#include <arch/ioapic.h>
+#include <pc80/i8259.h>
 #include "chip.h"
 #include "i82801dx.h"
 
@@ -212,7 +214,7 @@ static void enable_hpet(struct device *dev)
 	u32 reg32, hpet, val;
 
 	/* Set HPET base address and enable it */
-	printk(BIOS_DEBUG, "Enabling HPET at 0x%x\n", CONFIG_HPET_ADDRESS);
+	printk(BIOS_DEBUG, "Enabling HPET at 0x%x\n", HPET_BASE_ADDRESS);
 	reg32 = pci_read_config32(dev, GEN_CNTL);
 	/*
 	 * Bit 17 is HPET enable bit.
@@ -220,7 +222,7 @@ static void enable_hpet(struct device *dev)
 	 */
 	reg32 &= ~(3 << 15);	/* Clear it */
 
-	hpet = CONFIG_HPET_ADDRESS >> 12;
+	hpet = HPET_BASE_ADDRESS >> 12;
 	hpet &= 0x3;
 
 	reg32 |= (hpet << 15);
@@ -233,7 +235,7 @@ static void enable_hpet(struct device *dev)
 	val &= 0x7;
 
 	if ((val & 0x4) && (hpet == (val & 0x3))) {
-		printk(BIOS_INFO, "HPET enabled at 0x%x\n", CONFIG_HPET_ADDRESS);
+		printk(BIOS_INFO, "HPET enabled at 0x%x\n", HPET_BASE_ADDRESS);
 	} else {
 		printk(BIOS_WARNING, "HPET was not enabled correctly\n");
 		reg32 &= ~(1 << 17);	/* Clear Enable */
@@ -273,10 +275,12 @@ static void lpc_init(struct device *dev)
 	/* Initialize the High Precision Event Timers */
 	enable_hpet(dev);
 
+	setup_i8259();
+
 	/* Don't allow evil boot loaders, kernels, or
 	 * userspace applications to deceive us:
 	 */
-	if (CONFIG(HAVE_SMI_HANDLER) && !CONFIG(PARALLEL_MP))
+	if (CONFIG(SMM_LEGACY_ASEG))
 		aseg_smm_lock();
 }
 

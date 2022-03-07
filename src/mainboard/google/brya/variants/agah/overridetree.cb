@@ -1,5 +1,4 @@
 chip soc/intel/alderlake
-	register "SaGv" = "SaGv_Enabled"
 	# Intel Common SoC Config
 	#+-------------------+---------------------------+
 	#| Field             |  Value                    |
@@ -30,6 +29,10 @@ chip soc/intel/alderlake
 			.speed = I2C_SPEED_FAST,
 		},
 	}"
+
+	register "SaGv" = "SaGv_Enabled"
+	register "TcssAuxOri" = "1"
+	register "typec_aux_bias_pads[0]" = "{.pad_auxp_dc = GPP_E22, .pad_auxn_dc = GPP_E23}"
 
 	register "usb2_ports[1]" = "USB2_PORT_EMPTY"		# Disable USB2_C1
 	register "usb2_ports[3]" = "USB2_PORT_EMPTY"		# Disable M.2 WWAN
@@ -157,15 +160,13 @@ chip soc/intel/alderlake
 			end
 		end
 		device ref i2c5 on
-			chip drivers/i2c/hid
-				register "generic.hid" = ""ELAN2703""
-				register "generic.desc" = ""ELAN Touchpad""
-				register "generic.irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_F14_IRQ)"
-				register "generic.wake" = "GPE0_DW2_14"
-				register "generic.probed" = "1"
-				register "hid_desc_reg_offset" = "0x01"
-				device i2c 15 on
-				end
+			chip drivers/i2c/generic
+				register "hid" = ""ELAN0000""
+				register "desc" = ""ELAN Touchpad""
+				register "irq" = "ACPI_IRQ_WAKE_LEVEL_LOW(GPP_F14_IRQ)"
+				register "wake" = "GPE0_DW2_14"
+				register "probed" = "1"
+				device i2c 15 on end
 			end
 		end
 		device ref pcie_rp3 on
@@ -219,13 +220,15 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-C Port C0 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(1, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(LEFT, LEFT, ACPI_PLD_GROUP(1, 1))"
 						device ref tcss_usb3_port1 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-C Port C2 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(3, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
 						device ref tcss_usb3_port3 on end
 					end
 				end
@@ -237,13 +240,15 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-C Port C0 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(1, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(LEFT, LEFT, ACPI_PLD_GROUP(1, 1))"
 						device ref usb2_port1 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-C Port C2 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(3, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
 						device ref usb2_port3 on end
 					end
 					chip drivers/usb/acpi
@@ -254,13 +259,15 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-A Port 2""
 						register "type" = "UPC_TYPE_A"
-						register "group" = "ACPI_PLD_GROUP(4, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_A(RIGHT, RIGHT, ACPI_PLD_GROUP(3, 2))"
 						device ref usb2_port8 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-A Port 0""
 						register "type" = "UPC_TYPE_A"
-						register "group" = "ACPI_PLD_GROUP(4, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, RIGHT, ACPI_PLD_GROUP(3, 1))"
 						device ref usb2_port9 on end
 					end
 					chip drivers/usb/acpi
@@ -273,17 +280,19 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-A Port 0""
 						register "type" = "UPC_TYPE_USB3_A"
-						register "group" = "ACPI_PLD_GROUP(4, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, RIGHT, ACPI_PLD_GROUP(3, 1))"
 						device ref usb3_port1 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-A Port 2""
 						register "type" = "UPC_TYPE_USB3_A"
-						register "group" = "ACPI_PLD_GROUP(4, 2)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_A(RIGHT, RIGHT, ACPI_PLD_GROUP(3, 2))"
 						device ref usb3_port2 on end
 					end
 				end
 			end
 		end
-        end
+	end
 end

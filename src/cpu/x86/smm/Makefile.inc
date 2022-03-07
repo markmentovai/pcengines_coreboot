@@ -1,7 +1,6 @@
 ## SPDX-License-Identifier: GPL-2.0-only
 
 ramstage-y += smm_module_loader.c
-ramstage-y += smi_trigger.c
 
 ifeq ($(CONFIG_ARCH_RAMSTAGE_X86_32),y)
 $(eval $(call create_class_compiler,smm,x86_32))
@@ -29,13 +28,16 @@ ramstage-srcs += $(obj)/cpu/x86/smm/smm.manual
 endif
 
 smm-y += save_state.c
-smm-y += smi_trigger.c
 
 ifeq ($(CONFIG_SMM_TSEG),y)
 
 ramstage-y += tseg_region.c
 romstage-y += tseg_region.c
 postcar-y += tseg_region.c
+
+endif
+
+ifeq ($(CONFIG_PARALLEL_MP),y)
 
 smmstub-y += smm_stub.S
 
@@ -73,7 +75,9 @@ endif
 $(obj)/smm/smm: $(obj)/smm/smm.elf.rmod
 	$(OBJCOPY_smm) -O binary $< $@
 
-else # CONFIG_SMM_TSEG
+endif
+
+ifeq ($(CONFIG_SMM_LEGACY_ASEG),y)
 
 smm-y += smm.ld
 
@@ -85,4 +89,4 @@ $(obj)/smm/smm: $(obj)/smm/smm.o $(call src-to-obj,smm,$(src)/cpu/x86/smm/smm.ld
 smm-y += smmhandler.S
 smm-y += smihandler.c
 
-endif # CONFIG_SMM_TSEG
+endif # CONFIG_SMM_LEGACY_ASEG

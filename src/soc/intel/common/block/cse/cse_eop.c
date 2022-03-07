@@ -10,10 +10,6 @@
 #include <timestamp.h>
 #include <types.h>
 
-#define PMC_IPC_MEI_DISABLE_ID			0xa9
-#define PMC_IPC_MEI_DISABLE_SUBID_ENABLE	0
-#define PMC_IPC_MEI_DISABLE_SUBID_DISABLE	1
-
 enum cse_eop_result {
 	CSE_EOP_RESULT_GLOBAL_RESET_REQUESTED,
 	CSE_EOP_RESULT_SUCCESS,
@@ -44,21 +40,6 @@ static bool cse_disable_mei_bus(void)
 
 	if (reply.status) {
 		printk(BIOS_ERR, "HECI: MEI_Bus_Disable Failed (status: %d)\n", reply.status);
-		return false;
-	}
-
-	return true;
-}
-
-static bool cse_disable_mei_devices(void)
-{
-	struct pmc_ipc_buffer req = { 0 };
-	struct pmc_ipc_buffer rsp;
-	uint32_t cmd;
-
-	cmd = pmc_make_ipc_cmd(PMC_IPC_MEI_DISABLE_ID, PMC_IPC_MEI_DISABLE_SUBID_DISABLE, 0);
-	if (pmc_send_ipc_cmd(cmd, &req, &rsp) != CB_SUCCESS) {
-		printk(BIOS_ERR, "CSE: Failed to disable MEI devices\n");
 		return false;
 	}
 
@@ -172,7 +153,7 @@ static void handle_cse_eop_result(enum cse_eop_result result)
 		break;
 	case CSE_EOP_RESULT_ERROR: /* fallthrough */
 	default:
-		printk(BIOS_ERR, "ERROR: Failed to send EOP to CSE, %d\n", result);
+		printk(BIOS_ERR, "Failed to send EOP to CSE, %d\n", result);
 		/* For vboot, trigger recovery mode if applicable, as there is
 		   likely something very broken in this case. */
 		if (CONFIG(VBOOT) && !vboot_recovery_mode_enabled())
@@ -185,8 +166,15 @@ static void handle_cse_eop_result(enum cse_eop_result result)
 	}
 }
 
-static void set_cse_end_of_post(void *unused)
+static void do_send_end_of_post(void)
 {
+	static bool eop_sent = false;
+
+	if (eop_sent) {
+		printk(BIOS_ERR, "EOP already sent\n");
+		return;
+	}
+
 	/*
 	 * If CSE is already hidden then accessing CSE registers would be wrong and will
 	 * receive junk, hence, return as CSE is already disabled.
@@ -203,6 +191,18 @@ static void set_cse_end_of_post(void *unused)
 	timestamp_add_now(TS_ME_AFTER_END_OF_POST);
 
 	set_cse_device_state(PCH_DEVFN_CSE, DEV_IDLE);
+
+	eop_sent = true;
+}
+
+void cse_send_end_of_post(void)
+{
+	return do_send_end_of_post();
+}
+
+static void set_cse_end_of_post(void *unused)
+{
+	return do_send_end_of_post();
 }
 
 /*

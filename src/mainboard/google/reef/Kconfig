@@ -1,4 +1,3 @@
-
 config BOARD_GOOGLE_BASEBOARD_REEF
 	def_bool n
 	select BOARD_ROMSIZE_KB_16384
@@ -35,13 +34,13 @@ config BOARD_GOOGLE_SAND
 config BOARD_GOOGLE_SNAPPY
 	select BOARD_GOOGLE_BASEBOARD_REEF
 
-config BOARD_GOOGLE_NASHER
-	select BOARD_GOOGLE_BASEBOARD_REEF
-
 config BOARD_GOOGLE_CORAL
 	select BOARD_GOOGLE_BASEBOARD_REEF
 
 if BOARD_GOOGLE_BASEBOARD_REEF
+
+config IGNORE_IASL_MISSING_DEPENDENCY
+	def_bool y
 
 config DRIVER_TPM_I2C_BUS
 	hex
@@ -68,7 +67,6 @@ config VARIANT_DIR
 	default "pyro" if BOARD_GOOGLE_PYRO
 	default "sand" if BOARD_GOOGLE_SAND
 	default "snappy" if BOARD_GOOGLE_SNAPPY
-	default "nasher" if BOARD_GOOGLE_NASHER
 	default "coral" if BOARD_GOOGLE_CORAL
 
 config DEVICETREE
@@ -83,7 +81,6 @@ config MAINBOARD_PART_NUMBER
 	default "Pyro" if BOARD_GOOGLE_PYRO
 	default "Sand" if BOARD_GOOGLE_SAND
 	default "Snappy" if BOARD_GOOGLE_SNAPPY
-	default "Nasher" if BOARD_GOOGLE_NASHER
 	default "Coral" if BOARD_GOOGLE_CORAL
 
 config MAINBOARD_FAMILY
@@ -108,9 +105,5 @@ config PRERAM_CBMEM_CONSOLE_SIZE
 
 config FMDFILE
 	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/default.fmd" if !CHROMEOS
-
-# Override the default behavior, since the data.vbt is the same for all variants
-config INTEL_GMA_VBT_FILE
-	default "src/mainboard/\$(MAINBOARDDIR)/data.vbt"
 
 endif # BOARD_GOOGLE_REEF

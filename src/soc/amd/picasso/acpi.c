@@ -105,8 +105,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 			ACPI_FADT_REMOTE_POWER_ON;
 	fadt->flags |= cfg->fadt_flags; /* additional board-specific flags */
 
-	fadt->ARM_boot_arch = 0;	/* MUST be 0 ACPI 3.0 */
-	fadt->FADT_MinorVersion = 0;	/* MUST be 0 ACPI 3.0 */
+	fadt->ARM_boot_arch = 0;	/* Must be zero if ACPI Revision <= 5.0 */
 
 	fadt->x_firmware_ctl_l = 0;	/* set to 0 if firmware_ctrl is used */
 	fadt->x_firmware_ctl_h = 0;
@@ -316,9 +315,7 @@ void generate_cpu_entries(const struct device *device)
 		},
 	};
 
-	threads_per_core = ((cpuid_ebx(CPUID_EBX_CORE_ID) & CPUID_EBX_THREADS_MASK)
-			    >> CPUID_EBX_THREADS_SHIFT)
-			   + 1;
+	threads_per_core = get_threads_per_core();
 	pstate_count = get_pstate_info(pstate_values, pstate_xpss_values);
 	logical_cores = get_cpu_count();
 

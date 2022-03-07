@@ -167,6 +167,10 @@ static struct pmic_setting init_setting[] = {
 	{0x1BCC, 0x70F, 0x7F7F, 0},
 	{0x1C9E, 0x38, 0x7F, 0},
 	{0x1CA0, 0x70F, 0x7F7F, 0},
+	/* VSRAM_CORE: set SW mode */
+	{0x1CA4, 0x1, 0xFFFF, 0},
+	/* VSRAM_CORE: SW set OFF */
+	{0x1C9C, 0x0, 0xFFFF, 0},
 	{0x1EA2, 0x1B, 0x1F, 0},
 	{0x1EA4, 0xC00, 0x1C00, 0},
 	{0x1EA6, 0xC00, 0x1C00, 0},
@@ -420,6 +424,12 @@ static const int vddq_votrim[] = {
 	80000, 70000, 60000, 50000, 40000, 30000, 20000, 10000,
 };
 
+static void mt6366_protect_control(bool en_protect)
+{
+	/* Write a magic number 0x9CA7 to disable protection */
+	pwrap_write_field(PMIC_TOP_TMA_KEY, en_protect ? 0 : 0x9CA7, 0xFFFF, 0);
+}
+
 static u32 pmic_read_efuse(int i)
 {
 	u32 efuse_data = 0;
@@ -591,9 +601,9 @@ static void pmic_set_vddq_vol(u32 vddq_uv)
 		assert(cali_trim < ARRAY_SIZE(vddq_votrim));
 	}
 
-	pwrap_write_field(PMIC_TOP_TMA_KEY, 0x9CA7, 0xFFFF, 0);
+	mt6366_protect_control(false);
 	pwrap_write_field(PMIC_VDDQ_ELR_0, cali_trim, 0xF, 0);
-	pwrap_write_field(PMIC_TOP_TMA_KEY, 0, 0xFFFF, 0);
+	mt6366_protect_control(true);
 	udelay(1);
 }
 
@@ -779,10 +789,12 @@ static void pmic_wdt_set(void)
 
 static void mt6366_init_setting(void)
 {
+	mt6366_protect_control(false);
 	for (size_t i = 0; i < ARRAY_SIZE(init_setting); i++)
 		pwrap_write_field(
 			init_setting[i].addr, init_setting[i].val,
 			init_setting[i].mask, init_setting[i].shift);
+	mt6366_protect_control(true);
 }
 
 static void wk_sleep_voltage_by_ddr(void)
@@ -793,11 +805,10 @@ static void wk_sleep_voltage_by_ddr(void)
 
 static void wk_power_down_seq(void)
 {
-	/* Write TMA KEY with magic number */
-	pwrap_write_field(PMIC_TOP_TMA_KEY, 0x9CA7, 0xFFFF, 0);
+	mt6366_protect_control(false);
 	/* Set VPROC12 sequence to VA12 */
 	pwrap_write_field(PMIC_CPSDSA4, 0xA, 0x1F, 0);
-	pwrap_write_field(PMIC_TOP_TMA_KEY, 0x0, 0xFFFF, 0);
+	mt6366_protect_control(true);
 }
 
 static void mt6366_lp_setting(void)

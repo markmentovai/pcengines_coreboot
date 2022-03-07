@@ -19,9 +19,6 @@ chip soc/intel/alderlake
 
 	register "tcc_offset" = "10"     # TCC of 90
 
-	# Enable heci communication
-	register "HeciEnabled" = "1"
-
 	# Enable CNVi BT
 	register "CnviBtCore" = "true"
 
@@ -146,6 +143,7 @@ chip soc/intel/alderlake
 		device ref cnvi_wifi on
 			chip drivers/wifi/generic
 				register "wake" = "GPE0_PME_B0"
+				register "is_untrusted" = "true"
 				device generic 0 on end
 			end
 		end
@@ -156,14 +154,21 @@ chip soc/intel/alderlake
 			# Enable WWAN PCIE 6 using clk 5
 			chip soc/intel/common/block/pcie/rtd3
 				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_E0)"
+				register "reset_off_delay_ms" = "20"
 				register "srcclk_pin" = "5"
-				device generic 0 on end
+				register "ext_pm_support" = "ACPI_PCIE_RP_EMIT_ALL"
+				register "skip_on_off_support" = "true"
+				device generic 0 alias rp6_rtd3 on end
 			end
 			register "pch_pcie_rp[PCH_RP(6)]" = "{
 				.clk_src = 5,
 				.clk_req = 5,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
+			chip drivers/pcie/generic
+				register "is_untrusted" = "1"
+				device pci 0 on end
+			end
 		end	#PCIE6 WWAN
 		device ref pcie_rp8 on
 			# Enable SD Card PCIE 8 using clk 3

@@ -110,6 +110,9 @@ const char *soc_acpi_name(const struct device *dev)
 	case PCH_DEVFN_HDA:		return "HDAS";
 	case PCH_DEVFN_SMBUS:		return "SBUS";
 	case PCH_DEVFN_GBE:		return "GLAN";
+#if CONFIG(SOC_INTEL_ALDERLAKE_PCH_N)
+	case PCH_DEVFN_EMMC:		return "EMMC";
+#endif
 	}
 
 	return NULL;
@@ -142,12 +145,15 @@ void soc_init_pre_device(void *chip_info)
 
 	/* Swap enabled PCI ports in device tree if needed. */
 	pcie_rp_update_devicetree(get_pch_pcie_rp_table());
+
+	/* Swap enabled TBT root ports in device tree if needed. */
+	pcie_rp_update_devicetree(get_tbt_pcie_rp_table());
 }
 
 static void cpu_fill_ssdt(const struct device *dev)
 {
 	if (!generate_pin_irq_map())
-		printk(BIOS_ERR, "ERROR: Failed to generate ACPI _PRT table!\n");
+		printk(BIOS_ERR, "Failed to generate ACPI _PRT table!\n");
 
 	generate_cpu_entries(dev);
 }
