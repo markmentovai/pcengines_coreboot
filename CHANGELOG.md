@@ -16,6 +16,8 @@ Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 ## [v4.16.0.1] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit b4ba289f
+- Disabled loglevel prefixes introduced in coreboot 4.16
+- Disabled ANSI escape sequences introduced in coreboot 4.16
 
 ### Fixed
 - [AMD PSP CCP as entropy source](https://github.com/pcengines/apu2-documentation/issues/112)
