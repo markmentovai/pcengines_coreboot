@@ -817,6 +817,11 @@ static void fam16_finalize(void *chip_info)
 		value &= ~(1 << 11);
 		pci_write_config32(dev, 0x60, value);
 	}
+
+	/* Enable access to PSP MMIO BARs. This is needed for CCP. */
+	dev = pcidev_on_root(8, 0);
+	if (dev != NULL)
+		pci_update_config8(dev, 0x48, 0xff, 0x3d);
 }
 
 struct chip_operations northbridge_amd_pi_00730F01_ops = {
