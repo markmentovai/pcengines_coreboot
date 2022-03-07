@@ -12,9 +12,14 @@ official [coreboot repository](https://review.coreboot.org/cgit/coreboot.git)
 Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
+
 ## [v4.16.0.1] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit b4ba289f
+
+### Fixed
+- [AMD PSP CCP as entropy source](https://github.com/pcengines/apu2-documentation/issues/112)
+
 ## [v4.15.0.3] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit 36425312ee
