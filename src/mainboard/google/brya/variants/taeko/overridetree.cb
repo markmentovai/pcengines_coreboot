@@ -41,11 +41,11 @@ fw_config
 end
 chip soc/intel/alderlake
 	# Acoustic settings
-	register "AcousticNoiseMitigation" = "1"
-	register "SlowSlewRate[VR_DOMAIN_IA]" = "SLEW_FAST_8"
-	register "SlowSlewRate[VR_DOMAIN_GT]" = "SLEW_FAST_8"
-	register "FastPkgCRampDisable[VR_DOMAIN_IA]" = "1"
-	register "FastPkgCRampDisable[VR_DOMAIN_GT]" = "1"
+	register "acoustic_noise_mitigation" = "1"
+	register "slow_slew_rate[VR_DOMAIN_IA]" = "SLEW_FAST_8"
+	register "slow_slew_rate[VR_DOMAIN_GT]" = "SLEW_FAST_8"
+	register "fast_pkg_c_ramp_disable[VR_DOMAIN_IA]" = "1"
+	register "fast_pkg_c_ramp_disable[VR_DOMAIN_GT]" = "1"
 	register "ext_fivr_settings" = "{
 		.configure_ext_fivr = 1,
 		.v1p05_enable_bitmap = FIVR_ENABLE_ALL_SX,
@@ -59,9 +59,9 @@ chip soc/intel/alderlake
 		.v1p05_icc_max_ma = 500,
 		.vnn_sx_voltage_mv = 1250,
 	}"
-	register "TcssAuxOri" = "1"
+	register "tcss_aux_ori" = "1"
 	register "typec_aux_bias_pads[0]" = "{.pad_auxp_dc = GPP_E22, .pad_auxn_dc = GPP_E23}"
-	register "SaGv" = "SaGv_Enabled"
+	register "sagv" = "SaGv_Enabled"
 
 	register "usb2_ports[1]" = "USB2_PORT_EMPTY"	# Disable Port 1
 	register "usb2_ports[2]" = "USB2_PORT_TYPE_C(OC2)"	# DB USB2_C1
@@ -115,7 +115,7 @@ chip soc/intel/alderlake
 		},
 	}"
 	# I2C Port Config
-	register "SerialIoI2cMode" = "{
+	register "serial_io_i2c_mode" = "{
 		[PchSerialIoIndexI2C0]  = PchSerialIoPci,
 		[PchSerialIoIndexI2C1]  = PchSerialIoPci,
 		[PchSerialIoIndexI2C2]  = PchSerialIoPci,
@@ -407,6 +407,7 @@ chip soc/intel/alderlake
 				.clk_src = 0,
 				.clk_req = 0,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
+				.pcie_rp_aspm = ASPM_L1,
 			}"
 			chip soc/intel/common/block/pcie/rtd3
 				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D11)"
@@ -466,7 +467,7 @@ chip soc/intel/alderlake
 						register "desc" = ""USB3 Type-C Port C1 (DB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
-						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(3, 1))"
 						device ref tcss_usb3_port3 on
 							probe DB_USB DB_USB3_NO_A
 							probe DB_USB DB_USB3_1C_1A
@@ -489,7 +490,7 @@ chip soc/intel/alderlake
 						register "desc" = ""USB2 Type-C Port C1 (DB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
 						register "use_custom_pld" = "true"
-						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(2, 1))"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(3, 1))"
 						device ref usb2_port3 on
 							probe DB_USB DB_USB3_NO_A
 							probe DB_USB DB_USB3_1C_1A

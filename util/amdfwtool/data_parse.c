@@ -428,10 +428,15 @@ int get_input_file_line(FILE *f, char line[], int line_buf_size)
 	return OK;
 }
 
-static int is_valid_entry(char *oneline, regmatch_t *match)
+#define N_MATCHES 4
+static int is_valid_entry(char *oneline, regmatch_t match[N_MATCHES])
 {
-	int retval;
+	int retval, index;
 
+	for (index = 0; index < N_MATCHES; index++) {
+		match[index].rm_so = -1;
+		match[index].rm_eo = -1;
+	}
 	if (regexec(&entries_line_expr, oneline, 3, match, 0) == 0) {
 		oneline[match[1].rm_eo] = '\0';
 		oneline[match[2].rm_eo] = '\0';
@@ -467,7 +472,25 @@ static int skip_comment_blank_line(char *oneline)
 	return retval;
 }
 
-#define N_MATCHES 4
+char get_level_from_config(char *line, regoff_t level_index, amd_cb_config *cb_config)
+{
+	char lvl = 'x';
+	/* If the optional level field is present,
+	   extract the level char. */
+	if (level_index != -1) {
+		if (cb_config->recovery_ab == 0)
+			lvl = line[level_index + 1];
+		else if (strlen(&line[level_index]) >= 3)
+			lvl = line[level_index + 2];
+	}
+
+	assert(lvl == 'x' || lvl == 'X' ||
+		lvl == 'b' || lvl == 'B' ||
+		lvl == '1' || lvl == '2');
+
+	return lvl;
+}
+
 /*
   return value:
 	0: The config file can not be parsed correctly.
@@ -476,9 +499,15 @@ static int skip_comment_blank_line(char *oneline)
 uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_deps)
 {
 	char oneline[MAX_LINE_SIZE], *path_filename;
-	regmatch_t match[N_MATCHES] = {0};
+	regmatch_t match[N_MATCHES];
 	char dir[MAX_LINE_SIZE] = {'\0'};
 	uint32_t dir_len;
+	int index;
+
+	for (index = 0; index < N_MATCHES; index++) {
+		match[index].rm_so = -1;
+		match[index].rm_eo = -1;
+	}
 
 	compile_reg_expr(REG_EXTENDED | REG_NEWLINE,
 		blank_or_comment_regex, &blank_or_comment_expr);
@@ -527,12 +556,8 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 
 				/* If the optional level field is present,
 				   extract the level char. */
-				if (match[3].rm_so != 0) {
-					if (cb_config->recovery_ab == 0)
-						ch_lvl = oneline[match[3].rm_so + 1];
-					else
-						ch_lvl = oneline[match[3].rm_so + 2];
-				}
+				ch_lvl = get_level_from_config(oneline,
+						match[3].rm_so, cb_config);
 
 				if (find_register_fw_filename_psp_dir(
 						&(oneline[match[1].rm_so]),

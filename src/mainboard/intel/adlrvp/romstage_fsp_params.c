@@ -72,7 +72,7 @@ void mainboard_memory_init_params(FSPM_UPD *memupd)
 	case ADL_P_DDR4_1:
 	case ADL_P_DDR4_2:
 	case ADL_P_DDR5_1:
-		memcfg_init(m_cfg, mem_config, &dimm_module_spd_info, half_populated);
+		memcfg_init(memupd, mem_config, &dimm_module_spd_info, half_populated);
 		break;
 	case ADL_P_DDR5_2:
 	case ADL_P_LP4_1:
@@ -82,7 +82,7 @@ void mainboard_memory_init_params(FSPM_UPD *memupd)
 	case ADL_M_LP4:
 	case ADL_M_LP5:
 	case ADL_N_LP5:
-		memcfg_init(m_cfg, mem_config, &memory_down_spd_info, half_populated);
+		memcfg_init(memupd, mem_config, &memory_down_spd_info, half_populated);
 		break;
 	default:
 		die("Unknown board id = 0x%x\n", board_id);

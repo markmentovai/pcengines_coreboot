@@ -39,7 +39,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* SOC_SAR_INT_L */
 	PAD_SCI(GPIO_17, PULL_NONE, EDGE_LOW),
 	/* GSC_SOC_INT_L */
-	PAD_GPI(GPIO_18, PULL_NONE),
+	PAD_INT(GPIO_18, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
 	/* I2C3_SCL */
 	PAD_NF(GPIO_19, I2C3_SCL, PULL_NONE),
 	/* I2C3_SDA */
@@ -61,11 +61,11 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* EN_PP3300_TCHSCR */
 	PAD_GPO(GPIO_29, HIGH),
 	/* SOC_DISABLE_DISP_BL */
-	PAD_GPO(GPIO_30, HIGH),
+	PAD_GPO(GPIO_30, LOW),
 	/* Unused */
 	PAD_NC(GPIO_31),
 	/* LPC_RST_L */
-	PAD_GPO(GPIO_32, LOW),
+	PAD_NF(GPIO_32, LPC_RST_L, PULL_NONE),
 	/* GPIO_33 - GPIO_39: Not available */
 	/* SOC_TCHPAD_INT_ODL */
 	PAD_SCI(GPIO_40, PULL_NONE, EDGE_LOW),
@@ -155,15 +155,36 @@ static const struct soc_amd_gpio sleep_gpio_table[] = {
 	/* TODO: Fill sleep gpio configuration */
 };
 
-/* Early GPIO configuration in bootblock */
+/* GPIO configuration in bootblock */
 static const struct soc_amd_gpio bootblock_gpio_table[] = {
-	/* TODO: Fill bootblock gpio configuration */
+	/* Enable WLAN */
+	/* WLAN_DISABLE */
+	PAD_GPO(GPIO_21, LOW),
 };
 
 /* Early GPIO configuration */
 static const struct soc_amd_gpio early_gpio_table[] = {
-	/* TODO: Fill early gpio configuration */
+	/* WLAN_AUX_RESET_L (ACTIVE LOW) */
+	PAD_GPO(GPIO_7, LOW),
+	/* Power on WLAN */
+	/* EN_PP3300_WLAN */
+	PAD_GPO(GPIO_9, HIGH),
 };
+
+/* PCIE_RST needs to be brought high before FSP-M runs */
+static const struct soc_amd_gpio pcie_gpio_table[] = {
+	/* Deassert all AUX_RESET lines & PCIE_RST */
+	/* WLAN_AUX_RESET_L (ACTIVE LOW) */
+	PAD_GPO(GPIO_7, HIGH),
+	/* PCIE_RST0_L */
+	PAD_NFO(GPIO_26, PCIE_RST0_L, HIGH),
+};
+
+__weak void variant_pcie_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
+{
+	*size = ARRAY_SIZE(pcie_gpio_table);
+	*gpio = pcie_gpio_table;
+}
 
 __weak void variant_base_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
 {
