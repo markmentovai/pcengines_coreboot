@@ -47,7 +47,7 @@ config FIXED_UART_FOR_CONSOLE
 	  specific UART has to be used (e.g. when the platform code
 	  performs dangerous configurations).
 
-if CONSOLE_SERIAL
+if CONSOLE_SERIAL || CONSOLE_CBMEM_DUMP_TO_UART
 
 	comment "I/O mapped, 8250-compatible"
 	depends on DRIVERS_UART_8250IO
@@ -394,6 +394,15 @@ config DEFAULT_CONSOLE_LOGLEVEL
 	  Map the log level config names to an integer.
 
 endif
+
+config CONSOLE_USE_ANSI_ESCAPES
+	bool "Use ANSI escape sequences for console highlighting"
+	default y
+	help
+	  If enabled, certain consoles (e.g. UART) that are meant to be read on
+	  a terminal will use ANSI escape sequences (like `ESC [1m`) to
+	  highlight lines based on their log level. Disable this if your
+	  terminal does not support ANSI escape sequences.
 
 config NO_POST
 	bool "Don't show any POST codes"

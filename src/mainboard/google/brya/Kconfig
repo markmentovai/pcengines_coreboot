@@ -1,7 +1,7 @@
 config BOARD_GOOGLE_BRYA_COMMON
 	def_bool n
-	select ALDERLAKE_A0_CONFIGURE_PMC_DESCRIPTOR
 	select BOARD_ROMSIZE_KB_32768
+	select CR50_USE_LONG_INTERRUPT_PULSES
 	select DRIVERS_GENERIC_ALC1015
 	select DRIVERS_GENERIC_GPIO_KEYS
 	select DRIVERS_GENERIC_MAX98357A
@@ -18,8 +18,8 @@ config BOARD_GOOGLE_BRYA_COMMON
 	select DRIVERS_SOUNDWIRE_MAX98373
 	select DRIVERS_SPI_ACPI
 	select DRIVERS_WIFI_GENERIC
+	select DRIVERS_WWAN_FM350GL
 	select EC_GOOGLE_CHROMEEC
-	select EC_GOOGLE_CHROMEEC_ACPI_MEMMAP
 	select EC_GOOGLE_CHROMEEC_BOARDID
 	select EC_GOOGLE_CHROMEEC_ESPI
 	select EC_GOOGLE_CHROMEEC_SKUID
@@ -40,6 +40,7 @@ config BOARD_GOOGLE_BRYA_COMMON
 config BOARD_GOOGLE_BASEBOARD_BRYA
 	def_bool n
 	select BOARD_GOOGLE_BRYA_COMMON
+	select HAVE_SLP_S0_GATE
 	select MEMORY_SOLDERDOWN if !BOARD_GOOGLE_BANSHEE
 	select SOC_INTEL_ALDERLAKE_PCH_P
 	select SYSTEM_TYPE_LAPTOP
@@ -48,6 +49,7 @@ config BOARD_GOOGLE_BASEBOARD_BRASK
 	def_bool n
 	select BOARD_GOOGLE_BRYA_COMMON
 	select ENABLE_TCSS_DISPLAY_DETECTION if RUN_FSP_GOP
+	select HAVE_SLP_S0_GATE
 	select MEMORY_SODIMM
 	select RT8168_GEN_ACPI_POWER_RESOURCE
 	select RT8168_GET_MAC_FROM_VPD
@@ -58,10 +60,15 @@ config BOARD_GOOGLE_BASEBOARD_NISSA
 	def_bool n
 	select BOARD_GOOGLE_BRYA_COMMON
 	select CHROMEOS_DRAM_PART_NUMBER_IN_CBI if CHROMEOS
+	select MEMORY_SOLDERDOWN
 	select SOC_INTEL_ALDERLAKE_PCH_N
+	select SOC_INTEL_CSE_LITE_COMPRESS_ME_RW
 	select SYSTEM_TYPE_LAPTOP
 
 if BOARD_GOOGLE_BRYA_COMMON
+
+config IGNORE_IASL_MISSING_DEPENDENCY
+	def_bool y
 
 config BASEBOARD_DIR
 	string
@@ -102,16 +109,22 @@ config DRIVER_TPM_I2C_BUS
 	default 0x1 if BOARD_GOOGLE_ANAHERA
 	default 0x3 if BOARD_GOOGLE_ANAHERA4ES
 	default 0x1 if BOARD_GOOGLE_VELL
-	default 0x3 if BOARD_GOOGLE_TANIKS
+	default 0x1 if BOARD_GOOGLE_TANIKS
 	default 0x0 if BOARD_GOOGLE_NIVVIKS
 	default 0x0 if BOARD_GOOGLE_NEREID
 	default 0x3 if BOARD_GOOGLE_AGAH
 	default 0x1 if BOARD_GOOGLE_VOLMAR
 	default 0x1 if BOARD_GOOGLE_BANSHEE
+	default 0x1 if BOARD_GOOGLE_KINOX
 
 config DRIVER_TPM_I2C_ADDR
 	hex
 	default 0x50
+
+config FMDFILE
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos-serger.fmd" if BOARD_GOOGLE_KANO || BOARD_GOOGLE_BRASK
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos-nissa.fmd" if BOARD_GOOGLE_BASEBOARD_NISSA
+	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/chromeos.fmd"
 
 config TPM_TIS_ACPI_INTERRUPT
 	int
@@ -152,6 +165,9 @@ config MAINBOARD_PART_NUMBER
 	default "Agah" if BOARD_GOOGLE_AGAH
 	default "Volmar" if BOARD_GOOGLE_VOLMAR
 	default "Banshee" if BOARD_GOOGLE_BANSHEE
+	default "Crota" if BOARD_GOOGLE_CROTA
+	default "Moli" if BOARD_GOOGLE_MOLI
+	default "Kinox" if BOARD_GOOGLE_KINOX
 
 config VARIANT_DIR
 	default "brya0" if BOARD_GOOGLE_BRYA0
@@ -176,6 +192,9 @@ config VARIANT_DIR
 	default "agah" if BOARD_GOOGLE_AGAH
 	default "volmar" if BOARD_GOOGLE_VOLMAR
 	default "banshee" if BOARD_GOOGLE_BANSHEE
+	default "crota" if BOARD_GOOGLE_CROTA
+	default "moli" if BOARD_GOOGLE_MOLI
+	default "kinox" if BOARD_GOOGLE_KINOX
 
 config VBOOT
 	select VBOOT_EARLY_EC_SYNC
@@ -194,9 +213,14 @@ config HAVE_WWAN_POWER_SEQUENCE
 	  Select this if the variant has a WWAN module and requires the poweroff sequence
 	  to be performed on shutdown. Must define WWAN_FCPO, WWAN_RST and WWAN_PERST GPIOs
 	  in variant.h, as well as T1_OFF_MS (time between PERST & RST) and T2_OFF_MS (time
-	  between RST and FCPO).
+	  between RST and FCPO). WWAN_PERST and T1_OFF_MS are only necessary for PCIe WWAN
+	  (when HAVE_PCIE_WWAN is also selected).
+
+config HAVE_PCIE_WWAN
+	def_bool n
 
 config USE_PM_ACPI_TIMER
+	default y if BOARD_GOOGLE_PRIMUS4ES
 	default n
 
 choice
@@ -216,11 +240,15 @@ endchoice
 
 config MEMORY_SODIMM
 	def_bool n
+	select SPD_CACHE_ENABLE
 	select SPD_CACHE_IN_FMAP
 
 config MEMORY_SOLDERDOWN
 	def_bool n
 	select CHROMEOS_DRAM_PART_NUMBER_IN_CBI if CHROMEOS
 	select HAVE_SPD_IN_CBFS
+
+config HAVE_SLP_S0_GATE
+	def_bool n
 
 endif # BOARD_GOOGLE_BRYA_COMMON

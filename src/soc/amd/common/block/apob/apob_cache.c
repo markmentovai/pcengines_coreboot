@@ -9,15 +9,15 @@
 #include <commonlib/region.h>
 #include <console/console.h>
 #include <fmap.h>
+#include <fmap_config.h>
 #include <spi_flash.h>
 #include <stdint.h>
 #include <string.h>
 #include <thread.h>
 #include <timestamp.h>
 
-#define DEFAULT_MRC_CACHE "RW_MRC_CACHE"
-/* PSP requires this value to be 64KiB */
-#define DEFAULT_MRC_CACHE_SIZE 0x10000
+#define DEFAULT_MRC_CACHE	"RW_MRC_CACHE"
+#define DEFAULT_MRC_CACHE_SIZE	FMAP_SECTION_RW_MRC_CACHE_SIZE
 
 #if !CONFIG_PSP_APOB_DRAM_ADDRESS
 #error Incorrect APOB configuration setting(s)
@@ -67,7 +67,7 @@ static void *get_apob_dram_address(void)
 static int get_nv_rdev(struct region_device *r)
 {
 	if  (fmap_locate_area_as_rdev(DEFAULT_MRC_CACHE, r) < 0) {
-		printk(BIOS_ERR, "Error: No APOB NV region is found in flash\n");
+		printk(BIOS_ERR, "No APOB NV region is found in flash\n");
 		return -1;
 	}
 
@@ -171,7 +171,7 @@ static void soc_update_apob_cache(void *unused)
 		printk(BIOS_DEBUG, "APOB valid copy is already in flash\n");
 
 	if (!update_needed) {
-		timestamp_add_now(TS_AMD_APOB_DONE);
+		timestamp_add_now(TS_AMD_APOB_END);
 		return;
 	}
 
@@ -180,7 +180,7 @@ static void soc_update_apob_cache(void *unused)
 		region_device_offset(&read_rdev), region_device_sz(&read_rdev));
 
 	if  (fmap_locate_area_as_rdev_rw(DEFAULT_MRC_CACHE, &write_rdev) < 0) {
-		printk(BIOS_ERR, "Error: No RW APOB NV region is found in flash\n");
+		printk(BIOS_ERR, "No RW APOB NV region is found in flash\n");
 		return;
 	}
 
@@ -188,18 +188,18 @@ static void soc_update_apob_cache(void *unused)
 
 	/* write data to flash region */
 	if (rdev_eraseat(&write_rdev, 0, DEFAULT_MRC_CACHE_SIZE) < 0) {
-		printk(BIOS_ERR, "Error: APOB flash region erase failed\n");
+		printk(BIOS_ERR, "APOB flash region erase failed\n");
 		return;
 	}
 
 	timestamp_add_now(TS_AMD_APOB_WRITE_START);
 
 	if (rdev_writeat(&write_rdev, apob_src_ram, 0, apob_src_ram->size) < 0) {
-		printk(BIOS_ERR, "Error: APOB flash region update failed\n");
+		printk(BIOS_ERR, "APOB flash region update failed\n");
 		return;
 	}
 
-	timestamp_add_now(TS_AMD_APOB_DONE);
+	timestamp_add_now(TS_AMD_APOB_END);
 
 	printk(BIOS_INFO, "Updated APOB in flash\n");
 }

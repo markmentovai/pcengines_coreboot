@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <bl_uapp/bl_syscall_public.h>
+#include <console/console.h>
 #include <psp_verstage.h>
 
 uint32_t update_psp_bios_dir(uint32_t *psp_dir_offset, uint32_t *bios_dir_offset)
@@ -33,12 +34,12 @@ int platform_set_sha_op(enum vb2_hash_algorithm hash_alg,
 	return 0;
 }
 
-
-/* Functions below are stub functions for not-yet-implemented PSP features.
- * These functions should be replaced with proper implementations later.
- */
-
-uint32_t svc_write_postcode(uint32_t postcode)
+void platform_report_mode(int developer_mode_enabled)
 {
-	return 0;
+	printk(BIOS_INFO, "Reporting %s mode\n",
+			developer_mode_enabled ? "Developer" : "Production");
+	if (developer_mode_enabled)
+		svc_set_platform_boot_mode(CHROME_BOOK_BOOT_MODE_DEVELOPER);
+	else
+		svc_set_platform_boot_mode(CHROME_BOOK_BOOT_MODE_PRODUCTION);
 }

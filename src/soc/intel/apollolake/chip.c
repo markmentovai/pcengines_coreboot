@@ -23,6 +23,7 @@
 #include <intelblocks/gpio.h>
 #include <intelblocks/itss.h>
 #include <intelblocks/pmclib.h>
+#include <option.h>
 #include <soc/cpu.h>
 #include <soc/heci.h>
 #include <soc/intel/common/vbt.h>
@@ -447,6 +448,10 @@ static void disable_dev(struct device *dev, FSP_S_CONFIG *silconfig)
 	case SA_DEVFN_IPU:
 		silconfig->IpuEn = 0;
 		break;
+#else
+	case PCH_DEVFN_CNVI:
+		silconfig->CnviMode = 0;
+		break;
 #endif
 	case PCH_DEVFN_HDA:
 		silconfig->HdaEnable = 0;
@@ -536,7 +541,18 @@ static void glk_fsp_silicon_init_params_cb(
 #if CONFIG(SOC_INTEL_GEMINILAKE)
 	uint8_t port;
 
+	/*
+	 * UsbPerPortCtl was retired in Fsp 2.0.0+, so PDO programming must be
+	 * enabled to configure individual ports in what Fsp thinks is PEI.
+	 */
+	silconfig->UsbPdoProgramming = cfg->usb_config_override;
+
 	for (port = 0; port < APOLLOLAKE_USB2_PORT_MAX; port++) {
+		if (cfg->usb_config_override) {
+			silconfig->PortUsb20Enable[port] = cfg->usb2_port[port].enable;
+			silconfig->PortUs20bOverCurrentPin[port] = cfg->usb2_port[port].oc_pin;
+		}
+
 		if (!cfg->usb2eye[port].Usb20OverrideEn)
 			continue;
 
@@ -548,6 +564,13 @@ static void glk_fsp_silicon_init_params_cb(
 			cfg->usb2eye[port].Usb20PerPortTxiSet;
 		silconfig->Usb2AfePredeemp[port] =
 			cfg->usb2eye[port].Usb20IUsbTxEmphasisEn;
+	}
+
+	if (cfg->usb_config_override) {
+		for (port = 0; port < APOLLOLAKE_USB3_PORT_MAX; port++) {
+			silconfig->PortUsb30Enable[port] = cfg->usb3_port[port].enable;
+			silconfig->PortUs30bOverCurrentPin[port] = cfg->usb3_port[port].oc_pin;
+		}
 	}
 
 	silconfig->Gmm = is_devfn_enabled(SA_GLK_DEVFN_GMM);
@@ -687,11 +710,15 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 	silconfig->VmxEnable = CONFIG(ENABLE_VMX);
 
 	/* Set VTD feature according to devicetree */
-	silconfig->VtdEnable = cfg->enable_vtd;
+	silconfig->VtdEnable = get_uint_option("vtd", cfg->enable_vtd);
 
 	silconfig->PeiGraphicsPeimInit = CONFIG(RUN_FSP_GOP) && is_devfn_enabled(SA_DEVFN_IGD);
 
 	silconfig->PavpEnable = CONFIG(PAVP);
+
+	/* SATA config */
+	if (is_devfn_enabled(PCH_DEVFN_SATA))
+		silconfig->SataSalpSupport = !(cfg->DisableSataSalpSupport);
 
 	mainboard_silicon_init_params(silconfig);
 }

@@ -13,20 +13,22 @@
  * in coreboot.
  */
 
-#include <console/console.h>
-#include <string.h>
 #include <acpi/acpi.h>
 #include <acpi/acpi_ivrs.h>
 #include <acpi/acpigen.h>
-#include <device/pci.h>
+#include <arch/hpet.h>
+#include <cbfs.h>
 #include <cbmem.h>
 #include <commonlib/helpers.h>
+#include <commonlib/sort.h>
+#include <console/console.h>
 #include <cpu/cpu.h>
-#include <cbfs.h>
+#include <device/mmio.h>
+#include <device/pci.h>
+#include <pc80/mc146818rtc.h>
+#include <string.h>
 #include <types.h>
 #include <version.h>
-#include <commonlib/sort.h>
-#include <pc80/mc146818rtc.h>
 
 static acpi_rsdp_t *valid_rsdp(acpi_rsdp_t *rsdp);
 
@@ -220,15 +222,6 @@ int acpi_create_madt_lx2apic_nmi(acpi_madt_lx2apic_nmi_t *lapic_nmi, u32 cpu,
 	lapic_nmi->reserved[2] = 0;
 
 	return lapic_nmi->length;
-}
-
-__weak uintptr_t cpu_get_lapic_addr(void)
-{
-	/*
-	 * If an architecture does not support LAPIC, this weak implementation returns LAPIC
-	 * addr as 0.
-	 */
-	return 0;
 }
 
 void acpi_create_madt(acpi_madt_t *madt)
@@ -847,10 +840,10 @@ void acpi_create_hpet(acpi_hpet_t *hpet)
 	addr->space_id = ACPI_ADDRESS_SPACE_MEMORY;
 	addr->bit_width = 64;
 	addr->bit_offset = 0;
-	addr->addrl = CONFIG_HPET_ADDRESS & 0xffffffff;
-	addr->addrh = ((unsigned long long)CONFIG_HPET_ADDRESS) >> 32;
+	addr->addrl = HPET_BASE_ADDRESS & 0xffffffff;
+	addr->addrh = ((unsigned long long)HPET_BASE_ADDRESS) >> 32;
 
-	hpet->id = *(unsigned int *)CONFIG_HPET_ADDRESS;
+	hpet->id = read32p(HPET_BASE_ADDRESS);
 	hpet->number = 0;
 	hpet->min_tick = CONFIG_HPET_MIN_TICKS;
 
@@ -1507,6 +1500,7 @@ void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt)
 	memcpy(header->asl_compiler_id, ASLC, 4);
 	header->asl_compiler_revision = asl_revision;
 
+	fadt->FADT_MinorVersion = get_acpi_fadt_minor_version();
 	fadt->firmware_ctrl = (unsigned long) facs;
 	fadt->x_firmware_ctl_l = (unsigned long)facs;
 	fadt->x_firmware_ctl_h = 0;
@@ -1586,6 +1580,13 @@ void preload_acpi_dsdt(void)
 
 	printk(BIOS_DEBUG, "Preloading %s\n", file);
 	cbfs_preload(file);
+}
+
+static uintptr_t coreboot_rsdp;
+
+uintptr_t get_coreboot_rsdp(void)
+{
+	return coreboot_rsdp;
 }
 
 unsigned long write_acpi_tables(unsigned long start)
@@ -1695,6 +1696,7 @@ unsigned long write_acpi_tables(unsigned long start)
 
 	/* We need at least an RSDP and an RSDT Table */
 	rsdp = (acpi_rsdp_t *) current;
+	coreboot_rsdp = (uintptr_t)rsdp;
 	current += sizeof(acpi_rsdp_t);
 	current = acpi_align_current(current);
 	rsdt = (acpi_rsdt_t *) current;
@@ -1944,11 +1946,16 @@ __weak int acpi_get_gpe(int gpe)
 	return -1; /* implemented by SOC */
 }
 
+u8 get_acpi_fadt_minor_version(void)
+{
+	return ACPI_FADT_MINOR_VERSION_0;
+}
+
 int get_acpi_table_revision(enum acpi_tables table)
 {
 	switch (table) {
 	case FADT:
-		return ACPI_FADT_REV_ACPI_6_0;
+		return ACPI_FADT_REV_ACPI_6;
 	case MADT: /* ACPI 3.0: 2, ACPI 4.0/5.0: 3, ACPI 6.2b/6.3: 5 */
 		return 3;
 	case MCFG:

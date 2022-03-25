@@ -3,7 +3,10 @@
 #include <assert.h>
 #include <bootmode.h>
 #include <cbfs.h>
+#include <cbmem.h>
+#include <commonlib/bsd/mem_chip_info.h>
 #include <console/console.h>
+#include <soc/dramc_common.h>
 #include <ip_checksum.h>
 #include <mrc_cache.h>
 #include <soc/dramc_param.h>
@@ -21,6 +24,8 @@ _Static_assert(sizeof(struct dramc_param) <= CALIBRATION_REGION_SIZE,
 
 const char *get_dram_geometry_str(u32 ddr_geometry);
 const char *get_dram_type_str(u32 ddr_type);
+
+static const struct ddr_base_info *curr_ddr_info;
 
 static int mt_mem_test(const struct dramc_data *dparam)
 {
@@ -95,31 +100,54 @@ const char *get_dram_type_str(u32 ddr_type)
 	return s;
 }
 
-static int dram_run_fast_calibration(struct dramc_param *dparam)
+size_t mtk_dram_size(void)
 {
-	const u16 config = CONFIG(MEDIATEK_DRAM_DVFS) ? DRAMC_ENABLE_DVFS : DRAMC_DISABLE_DVFS;
-	if (dparam->dramc_datas.ddr_info.config_dvfs != config) {
-		printk(BIOS_WARNING,
-		       "DRAM-K: Incompatible config for calibration data from flash "
-		       "(expected: %#x, saved: %#x)\n",
-		       config, dparam->dramc_datas.ddr_info.config_dvfs);
-		return -1;
-	}
+	size_t size = 0;
 
-	printk(BIOS_INFO, "DRAM-K: DRAM calibration data valid pass\n");
-	init_dram_by_params(dparam);
-	if (mt_mem_test(&dparam->dramc_datas) == 0)
+	if (!curr_ddr_info)
 		return 0;
-
-	return DRAMC_ERR_FAST_CALIBRATION;
+	for (unsigned int i = 0; i < RANK_MAX; ++i)
+		size += curr_ddr_info->mrr_info.mr8_density[i];
+	return size;
 }
 
-static int dram_run_full_calibration(struct dramc_param *dparam)
+static void fill_dram_info(struct mem_chip_info *mc, const struct ddr_base_info *ddr)
+{
+	unsigned int i;
+	size_t size;
+
+	mc->type = MEM_CHIP_LPDDR4X;
+	mc->num_channels = CHANNEL_MAX;
+	size = mtk_dram_size();
+	assert(size);
+
+	for (i = 0; i < mc->num_channels; ++i) {
+		mc->channel[i].density = size / mc->num_channels;
+		mc->channel[i].io_width = DQ_DATA_WIDTH_LP4;
+		mc->channel[i].manufacturer_id = ddr->mrr_info.mr5_vendor_id;
+		mc->channel[i].revision_id[0] = ddr->mrr_info.mr6_revision_id;
+		mc->channel[i].revision_id[1] = ddr->mrr_info.mr7_revision_id;
+	}
+}
+
+static void add_mem_chip_info(int unused)
+{
+	struct mem_chip_info *mc;
+	size_t size;
+
+	size = sizeof(*mc) + sizeof(struct mem_chip_channel) * CHANNEL_MAX;
+	mc = cbmem_add(CBMEM_ID_MEM_CHIP_INFO, size);
+	assert(mc);
+
+	fill_dram_info(mc, curr_ddr_info);
+}
+ROMSTAGE_CBMEM_INIT_HOOK(add_mem_chip_info);
+
+static int run_dram_blob(struct dramc_param *dparam)
 {
 	/* Load and run the provided blob for full-calibration if available */
 	struct prog dram = PROG_INIT(PROG_REFCODE, CONFIG_CBFS_PREFIX "/dram");
 
-	initialize_dramc_param(dparam);
 	dump_param_header(dparam);
 
 	if (cbfs_prog_stage_load(&dram)) {
@@ -132,12 +160,13 @@ static int dram_run_full_calibration(struct dramc_param *dparam)
 	prog_set_entry(&dram, prog_entry(&dram), dparam);
 	prog_run(&dram);
 	if (dparam->header.status != DRAMC_SUCCESS) {
-		printk(BIOS_ERR, "DRAM-K: Full calibration failed: status = %d\n",
+		printk(BIOS_ERR, "DRAM-K: calibration failed: status = %d\n",
 		       dparam->header.status);
 		return -3;
 	}
 
-	if (!(dparam->header.flags & DRAMC_FLAG_HAS_SAVED_DATA)) {
+	if (!(dparam->header.config & DRAMC_CONFIG_FAST_K)
+	    && !(dparam->header.flags & DRAMC_FLAG_HAS_SAVED_DATA)) {
 		printk(BIOS_ERR,
 		       "DRAM-K: Full calibration executed without saving parameters. "
 		       "Please ensure the blob is built properly.\n");
@@ -145,6 +174,49 @@ static int dram_run_full_calibration(struct dramc_param *dparam)
 	}
 
 	return 0;
+}
+
+static int dram_run_fast_calibration(struct dramc_param *dparam)
+{
+	const u16 config = CONFIG(MEDIATEK_DRAM_DVFS) ? DRAMC_ENABLE_DVFS : DRAMC_DISABLE_DVFS;
+
+	if (dparam->dramc_datas.ddr_info.config_dvfs != config) {
+		printk(BIOS_WARNING,
+		       "DRAM-K: Incompatible config for calibration data from flash "
+		       "(expected: %#x, saved: %#x)\n",
+		       config, dparam->dramc_datas.ddr_info.config_dvfs);
+		return -1;
+	}
+
+	printk(BIOS_INFO, "DRAM-K: DRAM calibration data valid pass\n");
+
+	if (CONFIG(MEDIATEK_BLOB_FAST_INIT)) {
+		printk(BIOS_INFO, "DRAM-K: Run fast calibration run in blob mode\n");
+
+		/*
+		 * The loaded config should not contain FAST_K (done in full calibration),
+		 * so we have to set that now to indicate the blob taking the config instead
+		 * of generating a new config.
+		 */
+		dparam->header.config |= DRAMC_CONFIG_FAST_K;
+
+		if (run_dram_blob(dparam) < 0)
+			return -3;
+	} else {
+		init_dram_by_params(dparam);
+	}
+
+	if (mt_mem_test(&dparam->dramc_datas) < 0)
+		return -4;
+
+	return 0;
+}
+
+static int dram_run_full_calibration(struct dramc_param *dparam)
+{
+	initialize_dramc_param(dparam);
+
+	return run_dram_blob(dparam);
 }
 
 static void mem_init_set_default_config(struct dramc_param *dparam,
@@ -236,5 +308,6 @@ void mtk_dram_init(void)
 	/* dramc_param is too large to fit in stack. */
 	static struct dramc_param dramc_parameter;
 	mt_mem_init(&dramc_parameter);
+	curr_ddr_info = &dramc_parameter.dramc_datas.ddr_info;
 	mtk_mmu_after_dram();
 }

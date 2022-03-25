@@ -191,7 +191,8 @@ static void mem_init_dq_upds(FSP_M_CONFIG *mem_cfg, const struct mem_channel_dat
 
 	const size_t upd_size = sizeof(mem_cfg->DqMapCpu2DramMc0Ch0);
 
-	_Static_assert(upd_size == CONFIG_MRC_CHANNEL_WIDTH, "Incorrect DQ UPD size!");
+	_Static_assert(sizeof(mem_cfg->DqMapCpu2DramMc0Ch0) == CONFIG_MRC_CHANNEL_WIDTH,
+		       "Incorrect DQ UPD size!");
 
 	mem_init_dq_dqs_upds(dq_upds, mb_cfg->dq_map, upd_size, data, auto_detect);
 }
@@ -212,7 +213,8 @@ static void mem_init_dqs_upds(FSP_M_CONFIG *mem_cfg, const struct mem_channel_da
 
 	const size_t upd_size = sizeof(mem_cfg->DqsMapCpu2DramMc0Ch0);
 
-	_Static_assert(upd_size == CONFIG_MRC_CHANNEL_WIDTH / 8, "Incorrect DQS UPD size!");
+	_Static_assert(sizeof(mem_cfg->DqsMapCpu2DramMc0Ch0) == CONFIG_MRC_CHANNEL_WIDTH / 8,
+		       "Incorrect DQS UPD size!");
 
 	mem_init_dq_dqs_upds(dqs_upds, mb_cfg->dqs_map, upd_size, data, auto_detect);
 }
@@ -233,11 +235,12 @@ static void ddr5_fill_dimm_module_info(FSP_M_CONFIG *mem_cfg, const struct mb_cf
 	mem_init_dqs_upds(mem_cfg, NULL, mb_cfg, true);
 }
 
-void memcfg_init(FSP_M_CONFIG *mem_cfg, const struct mb_cfg *mb_cfg,
+void memcfg_init(FSPM_UPD *memupd, const struct mb_cfg *mb_cfg,
 		 const struct mem_spd *spd_info, bool half_populated)
 {
 	struct mem_channel_data data;
 	bool dq_dqs_auto_detect = false;
+	FSP_M_CONFIG *mem_cfg = &memupd->FspmConfig;
 
 	mem_cfg->ECT = mb_cfg->ect;
 	mem_cfg->UserBd = mb_cfg->UserBd;
@@ -276,7 +279,8 @@ void memcfg_init(FSP_M_CONFIG *mem_cfg, const struct mb_cfg *mb_cfg,
 		die("Unsupported memory type(%d)\n", mb_cfg->type);
 	}
 
-	mem_populate_channel_data(&soc_mem_cfg[mb_cfg->type], spd_info, half_populated, &data);
+	mem_populate_channel_data(memupd, &soc_mem_cfg[mb_cfg->type], spd_info, half_populated,
+			&data);
 	mem_init_spd_upds(mem_cfg, &data);
 	mem_init_dq_upds(mem_cfg, &data, mb_cfg, dq_dqs_auto_detect);
 	mem_init_dqs_upds(mem_cfg, &data, mb_cfg, dq_dqs_auto_detect);

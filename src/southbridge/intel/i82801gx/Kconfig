@@ -25,15 +25,11 @@ config SOUTHBRIDGE_INTEL_I82801GX
 
 if SOUTHBRIDGE_INTEL_I82801GX
 
-config AZALIA_MAX_CODECS
-	default 3
-
 config EHCI_BAR
 	hex
 	default 0xfef00000
 
 config HPET_MIN_TICKS
-	hex
 	default 0x80
 
 config INTEL_TOP_SWAP_BOOTBLOCK_SIZE

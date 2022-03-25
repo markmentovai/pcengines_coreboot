@@ -45,6 +45,7 @@ enum ich_chipset {
 	CHIPSET_500_600_SERIES_TIGER_ALDER_POINT, /* 11th-12th gen Core i/o (LP)
 						   * variants onwards */
 	CHIPSET_C620_SERIES_LEWISBURG,
+	CHIPSET_DENVERTON,
 };
 
 enum platform {
@@ -58,6 +59,9 @@ enum platform {
 	PLATFORM_SKLKBL,
 	PLATFORM_TGL,
 	PLATFORM_ADL,
+	PLATFORM_IFD2,
+	PLATFORM_DNV,
+	PLATFORM_MTL,
 };
 
 #define LAYOUT_LINELEN 80
@@ -117,7 +121,7 @@ typedef struct {
 } __attribute__((packed)) fdbar_t;
 
 // regions
-#define MAX_REGIONS 9
+#define MAX_REGIONS 16
 #define MAX_REGIONS_OLD 5
 
 enum flash_regions {
@@ -126,7 +130,14 @@ enum flash_regions {
 	REGION_ME,
 	REGION_GBE,
 	REGION_PDR,
+	REGION_DEV_EXP1,
+	REGION_BIOS2,
 	REGION_EC = 8,
+	REGION_DEV_EXP2,
+	REGION_IE,
+	REGION_10GB_0,
+	REGION_10GB_1,
+	REGION_PTT = 15,
 };
 
 typedef struct {
@@ -163,6 +174,7 @@ typedef struct {
 	uint32_t flmstr3;
 	uint32_t flmstr4;
 	uint32_t flmstr5;
+	uint32_t flmstr6;
 } __attribute__((packed)) fmba_t;
 
 // processor strap

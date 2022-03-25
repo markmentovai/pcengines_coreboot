@@ -6,6 +6,7 @@
 #include <soc/acpi.h>
 #include <string.h>
 #include <types.h>
+#include "gpio.h"
 
 /*
  * These arrays set up the FCH PCI_INTR registers 0xC00/0xC01.
@@ -36,23 +37,24 @@ static const struct fch_irq_routing {
 	uint8_t pic_irq_num;
 	uint8_t apic_irq_num;
 } chausie_fch[] = {
-	{ PIRQ_A,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_B,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_C,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_D,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_E,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_F,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_G,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_H,	PIRQ_NC,	PIRQ_NC },
+	{ PIRQ_A,	12,		PIRQ_NC },
+	{ PIRQ_B,	14,		PIRQ_NC },
+	{ PIRQ_C,	15,		PIRQ_NC },
+	{ PIRQ_D,	12,		PIRQ_NC },
+	{ PIRQ_E,	14,		PIRQ_NC },
+	{ PIRQ_F,	15,		PIRQ_NC },
+	{ PIRQ_G,	12,		PIRQ_NC },
+	{ PIRQ_H,	14,		PIRQ_NC },
 
 	{ PIRQ_SCI,	ACPI_SCI_IRQ,	ACPI_SCI_IRQ },
 	{ PIRQ_SD,	PIRQ_NC,	PIRQ_NC },
 	{ PIRQ_SDIO,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_SATA,	PIRQ_NC,	PIRQ_NC },
 	{ PIRQ_EMMC,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_GPIO,	7,		7 },
-	{ PIRQ_I2C2,	PIRQ_NC,	PIRQ_NC },
-	{ PIRQ_I2C3,	PIRQ_NC,	PIRQ_NC },
+	{ PIRQ_GPIO,	11,		11 },
+	{ PIRQ_I2C0,	10,		10 },
+	{ PIRQ_I2C1,	 7,		 7 },
+	{ PIRQ_I2C2,	 6,		 6 },
+	{ PIRQ_I2C3,	 5,		 5 },
 	{ PIRQ_UART0,	 4,		 4 },
 	{ PIRQ_UART1,	 3,		 3 },
 
@@ -86,6 +88,7 @@ static void pirq_setup(void)
 
 static void mainboard_init(void *chip_info)
 {
+	mainboard_program_gpios();
 }
 
 static void mainboard_enable(struct device *dev)

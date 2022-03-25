@@ -5,7 +5,6 @@
 #include <console/console.h>
 #include <cf9_reset.h>
 #include <device/pci_ops.h>
-#include <cpu/x86/lapic.h>
 #include <timestamp.h>
 #include <romstage_handoff.h>
 #include "ironlake.h"
@@ -27,8 +26,6 @@ void mainboard_romstage_entry(void)
 	int s3resume = 0;
 	u8 spd_addrmap[4] = {};
 
-	enable_lapic();
-
 	/* TODO, make this configurable */
 	ironlake_early_initialization(IRONLAKE_MOBILE);
 
@@ -45,7 +42,7 @@ void mainboard_romstage_entry(void)
 
 	early_thermal_init();
 
-	timestamp_add_now(TS_BEFORE_INITRAM);
+	timestamp_add_now(TS_INITRAM_START);
 
 	chipset_init(s3resume);
 
@@ -55,7 +52,7 @@ void mainboard_romstage_entry(void)
 
 	raminit(s3resume, spd_addrmap);
 
-	timestamp_add_now(TS_AFTER_INITRAM);
+	timestamp_add_now(TS_INITRAM_END);
 
 	intel_early_me_status();
 

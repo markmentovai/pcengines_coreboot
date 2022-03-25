@@ -263,15 +263,24 @@ EMPTY_RESOURCE_TEMPLATE_WARNING = 3150
 # Redundant offset remarks are not useful in any way and are masking useful
 # ones that might indicate an issue so it is better to hide them.
 REDUNDANT_OFFSET_REMARK = 2158
-# Ignore _HID & _ADR coexisting in Intel Lynxpoint ASL code.
-# See cb:38802
-# "Multiple types (Device object requires either a _HID or _ADR, but not both)"
-MULTIPLE_TYPES_WARNING = 3073
+# IASL compiler check for usage of _CRS, _DIS, _PRS, and _SRS objects:
+#	1) If _PRS is present, must have _CRS and _SRS
+#	2) If _SRS is present, must have _PRS (_PRS requires _CRS and _SRS)
+#	3) If _DIS is present, must have _SRS (_SRS requires _PRS, _PRS requires _CRS and _SRS)
+#	4) If _SRS is present, probably should have a _DIS (Remark only)
+# A warning will be issued for each of these cases.
+# For existing ASL code, ignore this warnings
+IASL_MISSING_DEPENDENCY = 3141
 
 IASL_WARNINGS_LIST = $(EMPTY_RESOURCE_TEMPLATE_WARNING) $(REDUNDANT_OFFSET_REMARK)
 
-ifeq ($(CONFIG_SOUTHBRIDGE_INTEL_LYNXPOINT),y)
-IASL_WARNINGS_LIST += $(MULTIPLE_TYPES_WARNING)
+ifeq ($(CONFIG_IGNORE_IASL_MISSING_DEPENDENCY),y)
+	IASL_WARNINGS_LIST += $(IASL_MISSING_DEPENDENCY)
+build_complete::
+	printf "*** WARNING: The ASL code for this platform is incomplete.  Please fix it. ***\n"
+	printf "*** If _PRS is present, must have _CRS and _SRS ***\n"
+	printf "*** If _SRS is present, must have _PRS, _CRS, and _SRS ***\n"
+	printf "*** If _DIS is present, must have _SRS, _PRS, _CRS, and _SRS ***\n"
 endif
 
 IGNORED_IASL_WARNINGS = $(addprefix -vw , $(IASL_WARNINGS_LIST))
@@ -782,11 +791,14 @@ endif
 $(objcbfs)/%.bin: $(objcbfs)/%.raw.bin
 	cp $< $@
 
-$(objcbfs)/%.elf: $(objcbfs)/%.debug
+$(objcbfs)/%.map: $(objcbfs)/%.debug
+	$(eval class := $(call find-class,$(@F)))
+	$(NM_$(class)) -n $< | sort > $(basename $@).map
+
+$(objcbfs)/%.elf: $(objcbfs)/%.debug $(objcbfs)/%.map
 	$(eval class := $(call find-class,$(@F)))
 	@printf "    OBJCOPY    $(subst $(obj)/,,$(@))\n"
 	cp $< $@.tmp
-	$(NM_$(class)) -n $@.tmp | sort > $(basename $@).map
 	$(OBJCOPY_$(class)) --strip-debug $@.tmp
 	$(OBJCOPY_$(class)) --add-gnu-debuglink=$< $@.tmp
 	mv $@.tmp $@

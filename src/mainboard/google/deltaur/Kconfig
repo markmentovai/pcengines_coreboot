@@ -27,14 +27,14 @@ config BOARD_GOOGLE_DELTAUR
 
 if BOARD_GOOGLE_BASEBOARD_DELTAUR
 
+config IGNORE_IASL_MISSING_DEPENDENCY
+	def_bool y
+
 config CHROMEOS
 	select GBB_FLAG_DISABLE_EC_SOFTWARE_SYNC
 	select GBB_FLAG_FORCE_DEV_BOOT_ALTFW
 	select GBB_FLAG_FORCE_DEV_BOOT_USB
 	select GBB_FLAG_FORCE_DEV_SWITCH_ON
-
-config DIMM_SPD_SIZE
-	default 512
 
 config DEVICETREE
 	default "variants/baseboard/devicetree.cb"

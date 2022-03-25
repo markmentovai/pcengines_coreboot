@@ -48,7 +48,7 @@ ssize_t _cbfs_boot_lookup(const char *name, bool force_ro, union cbfs_mdata *mda
 		return CB_ERR;
 
 	size_t data_offset;
-	cb_err_t err = CB_CBFS_CACHE_FULL;
+	enum cb_err err = CB_CBFS_CACHE_FULL;
 	if (cbd->mcache_size)
 		err = cbfs_mcache_lookup(cbd->mcache, cbd->mcache_size, name, mdata,
 					 &data_offset);
@@ -164,13 +164,13 @@ static void *do_load(union cbfs_mdata *mdata, ssize_t offset, void *buf, size_t 
 
 	if (buf) {
 		if (!size_inout || *size_inout < out_size) {
-			ERROR("'%s' buffer too small", mdata->h.filename);
+			ERROR("'%s' buffer too small\n", mdata->h.filename);
 			return NULL;
 		}
 	} else {
 		buf = malloc(out_size);
 		if (!buf) {
-			ERROR("'%s' allocation failure", mdata->h.filename);
+			ERROR("'%s' allocation failure\n", mdata->h.filename);
 			return NULL;
 		}
 		malloced = true;

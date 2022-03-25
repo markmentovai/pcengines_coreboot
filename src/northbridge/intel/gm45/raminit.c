@@ -32,8 +32,8 @@ void get_gmch_info(sysinfo_t *sysinfo)
 {
 	sysinfo->stepping = pci_read_config8(PCI_DEV(0, 0, 0), PCI_CLASS_REVISION);
 	if ((sysinfo->stepping > STEPPING_B3) &&
-			(sysinfo->stepping != STEPPING_CONVERSION_A1))
-	       die("Unknown stepping.\n");
+	    (sysinfo->stepping != STEPPING_CONVERSION_A1))
+		die("Unknown stepping.\n");
 	if (sysinfo->stepping <= STEPPING_B3)
 		printk(BIOS_DEBUG, "Stepping %c%d\n", 'A' + sysinfo->stepping / 4, sysinfo->stepping % 4);
 	else
@@ -195,8 +195,7 @@ void enter_raminit_or_reset(void)
 
 	if (reg8 & (1 << 2)) { /* S4-assertion-width violation */
 		/* Ignore S4-assertion-width violation like original BIOS. */
-		printk(BIOS_WARNING,
-			"WARNING: Ignoring S4-assertion-width violation.\n");
+		printk(BIOS_WARNING, "Ignoring S4-assertion-width violation.\n");
 		/* Bit2 is R/WC, so it will clear itself below. */
 	}
 
@@ -1696,7 +1695,7 @@ void raminit(sysinfo_t *const sysinfo, const int s3resume)
 
 	int ch;
 
-	timestamp_add_now(TS_BEFORE_INITRAM);
+	timestamp_add_now(TS_INITRAM_START);
 
 	/* Wait for some bit, maybe TXT clear. */
 	if (sysinfo->txt_enabled) {
@@ -1804,5 +1803,5 @@ void raminit(sysinfo_t *const sysinfo, const int s3resume)
 	raminit_thermal(sysinfo);
 	init_igd(sysinfo);
 
-	timestamp_add_now(TS_AFTER_INITRAM);
+	timestamp_add_now(TS_INITRAM_END);
 }

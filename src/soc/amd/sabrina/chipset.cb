@@ -1,5 +1,3 @@
-# TODO: Check if this is still correct
-
 chip soc/amd/sabrina
 	device cpu_cluster 0 on
 	end
@@ -7,10 +5,7 @@ chip soc/amd/sabrina
 		device pci 00.0 alias gnb on end
 		device pci 00.2 alias iommu off end
 
-		device pci 01.0 on end # Dummy Host Bridge, do not disable
-		device pci 01.1 alias gpp_gfx_bridge_0 off end
-		device pci 01.2 alias gpp_gfx_bridge_1 off end
-		device pci 01.3 alias gpp_gfx_bridge_2 off end
+		device pci 01.0 on end # Dummy Host Bridge
 
 		device pci 02.0 on end # Dummy Host Bridge, do not disable
 		device pci 02.1 alias gpp_bridge_0 off end
@@ -19,7 +14,6 @@ chip soc/amd/sabrina
 		device pci 02.4 alias gpp_bridge_3 off end
 		device pci 02.5 alias gpp_bridge_4 off end
 		device pci 02.6 alias gpp_bridge_5 off end
-		device pci 02.7 alias gpp_bridge_6 off end
 
 		device pci 08.0 on end # Dummy Host Bridge, do not disable
 		device pci 08.1 alias gpp_bridge_a off  # Internal GPP Bridge 0 to Bus A
@@ -34,19 +28,10 @@ chip soc/amd/sabrina
 							device usb 3.0 alias usb3_port0 off end
 						end
 						chip drivers/usb/acpi
-							device usb 3.1 alias usb3_port1 off end
-						end
-						chip drivers/usb/acpi
 							device usb 2.0 alias usb2_port0 off end
 						end
 						chip drivers/usb/acpi
 							device usb 2.1 alias usb2_port1 off end
-						end
-						chip drivers/usb/acpi
-							device usb 2.2 alias usb2_port2 off end
-						end
-						chip drivers/usb/acpi
-							device usb 2.3 alias usb2_port3 off end
 						end
 					end
 				end
@@ -56,22 +41,19 @@ chip soc/amd/sabrina
 					register "type" = "UPC_TYPE_HUB"
 					device usb 0.0 alias xhci_1_root_hub off
 						chip drivers/usb/acpi
-							device usb 3.0 alias usb3_port4 off end
+							device usb 3.0 alias usb3_port2 off end
 						end
 						chip drivers/usb/acpi
-							device usb 3.1 alias usb3_port5 off end
+							device usb 3.1 alias usb3_port3 off end
 						end
 						chip drivers/usb/acpi
-							device usb 2.0 alias usb2_port4 off end
+							device usb 2.0 alias usb2_port2 off end
 						end
 						chip drivers/usb/acpi
-							device usb 2.1 alias usb2_port5 off end
+							device usb 2.1 alias usb2_port3 off end
 						end
 						chip drivers/usb/acpi
-							device usb 2.2 alias usb2_port6 off end
-						end
-						chip drivers/usb/acpi
-							device usb 2.3 alias usb2_port7 off end
+							device usb 2.2 alias usb2_port4 off end
 						end
 					end
 				end
@@ -80,15 +62,9 @@ chip soc/amd/sabrina
 			device pci 0.6 alias hda off end # Audio Processor HD Audio Controller (main AZ)
 			device pci 0.7 alias mp2 off end # Sensor Fusion Hub (MP2)
 		end
-		device pci 08.2 alias gpp_bridge_b off # Internal GPP Bridge 1 to Bus B
-			device pci 0.0 alias sata_0 off end # first SATA controller; AHCI Mode
-			device pci 0.1 alias sata_1 off end # second SATA Controller; SATA Raid/AHCI Mode
-			device pci 0.2 alias xgbe_0 off end # 10 GbE Controller Port 0 (XGBE0)
-			device pci 0.3 alias xgbe_1 off end # 10 GbE Controller Port 1 (XGBE1)
-		end
+		device pci 08.2 alias gpp_bridge_b off end # Internal GPP Bridge 1 to Bus B
 		device pci 08.3 alias gpp_bridge_c off # Internal GPP Bridge 2 to Bus C
-			device pci 0.0 alias dummy_function_c off end # PCIe Dummy Function
-			device pci 0.2 alias i2s_ac97 off end # I2S/AC'97 Audio
+			device pci 0.0 alias xhci_2 off end # Might also be a dummy device with different PCI DID
 		end
 
 		device pci 14.0 alias smbus on end # primary FCH function
@@ -110,5 +86,8 @@ chip soc/amd/sabrina
 	device mmio 0xfedc5000 alias i2c_3 off end
 	device mmio 0xfedc9000 alias uart_0 off end
 	device mmio 0xfedca000 alias uart_1 off end
+	device mmio 0xfedce000 alias uart_2 off end
+	device mmio 0xfedcf000 alias uart_3 off end
+	device mmio 0xfedd1000 alias uart_4 off end
 	device mmio 0xfedd5000 alias emmc off end
 end

@@ -5,6 +5,7 @@
 #include <cpu/x86/msr.h>
 #include <cpu/intel/cpu_ids.h>
 #include <device/device.h>
+#include <drivers/wifi/generic/wifi.h>
 #include <fsp/util.h>
 #include <intelblocks/cpulib.h>
 #include <intelblocks/pcie_rp.h>
@@ -114,8 +115,8 @@ static void fill_fspm_igd_params(FSP_M_CONFIG *m_cfg,
 		/* IGD is enabled, set IGD stolen size to 60MB. */
 		m_cfg->IgdDvmt50PreAlloc = IGD_SM_60MB;
 		/* DP port config */
-		m_cfg->DdiPortAConfig = config->DdiPortAConfig;
-		m_cfg->DdiPortBConfig = config->DdiPortBConfig;
+		m_cfg->DdiPortAConfig = config->ddi_portA_config;
+		m_cfg->DdiPortBConfig = config->ddi_portB_config;
 		for  (i = 0; i < ARRAY_SIZE(ddi_port_upds); i++) {
 			*ddi_port_upds[i].ddc = !!(config->ddi_ports_config[i] &
 								DDI_ENABLE_DDC);
@@ -137,10 +138,10 @@ static void fill_fspm_igd_params(FSP_M_CONFIG *m_cfg,
 static void fill_fspm_mrc_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
-	m_cfg->SaGv = config->SaGv;
+	m_cfg->SaGv = config->sagv;
 	m_cfg->RMT = config->RMT;
-	if (config->MaxDramSpeed)
-		m_cfg->DdrFreqLimit = config->MaxDramSpeed;
+	if (config->max_dram_speed)
+		m_cfg->DdrFreqLimit = config->max_dram_speed;
 }
 
 static void fill_fspm_cpu_params(FSP_M_CONFIG *m_cfg,
@@ -202,16 +203,19 @@ static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->LockPTMregs = 0;
 
 	/* Skip CPU replacement check */
-	m_cfg->SkipCpuReplacementCheck = !config->CpuReplacementCheck;
+	m_cfg->SkipCpuReplacementCheck = !config->cpu_replacement_check;
 
 	/* Skip GPIO configuration from FSP */
 	m_cfg->GpioOverride = 0x1;
 
-	/* Skip generation of MBP HOB from FSP. coreboot doesn't consume it */
-	m_cfg->SkipMbpHob = 1;
-
 	/* CNVi DDR RFI Mitigation */
-	m_cfg->CnviDdrRfim = config->CnviDdrRfim;
+	const struct device_path path[] = {
+		{ .type = DEVICE_PATH_PCI, .pci.devfn = PCH_DEVFN_CNVI_WIFI },
+		{ .type = DEVICE_PATH_GENERIC, .generic.id = 0 } };
+	const struct device *dev = find_dev_nested_path(pci_root_bus(), path,
+							ARRAY_SIZE(path));
+	if (is_dev_enabled(dev))
+		m_cfg->CnviDdrRfim = wifi_generic_cnvi_ddr_rfim_enabled(dev);
 }
 
 static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
@@ -219,10 +223,10 @@ static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
 {
 	/* Audio: HDAUDIO_LINK_MODE I2S/SNDW */
 	m_cfg->PchHdaEnable = is_devfn_enabled(PCH_DEVFN_HDA);
-	m_cfg->PchHdaDspEnable = config->PchHdaDspEnable;
-	m_cfg->PchHdaIDispLinkTmode = config->PchHdaIDispLinkTmode;
-	m_cfg->PchHdaIDispLinkFrequency = config->PchHdaIDispLinkFrequency;
-	m_cfg->PchHdaIDispCodecDisconnect = !config->PchHdaIDispCodecEnable;
+	m_cfg->PchHdaDspEnable = config->pch_hda_dsp_enable;
+	m_cfg->PchHdaIDispLinkTmode = config->pch_hda_idisp_link_tmode;
+	m_cfg->PchHdaIDispLinkFrequency = config->pch_hda_idisp_link_frequency;
+	m_cfg->PchHdaIDispCodecDisconnect = !config->pch_hda_idisp_codec_enable;
 	/*
 	 * All the PchHdaAudioLink{Hda|Dmic|Ssp|Sndw}Enable UPDs are used by FSP only to
 	 * configure GPIO pads for audio. Mainboard is expected to perform all GPIO
@@ -284,17 +288,17 @@ static void fill_fspm_vtd_params(FSP_M_CONFIG *m_cfg,
 
 	if (m_cfg->VtdIgdEnable && m_cfg->VtdBaseAddress[VTD_GFX] == 0) {
 		m_cfg->VtdIgdEnable = 0;
-		printk(BIOS_ERR, "ERROR: Requested IGD VT-d, but GFXVT_BASE_ADDRESS is 0\n");
+		printk(BIOS_ERR, "Requested IGD VT-d, but GFXVT_BASE_ADDRESS is 0\n");
 	}
 
 	if (m_cfg->VtdIpuEnable && m_cfg->VtdBaseAddress[VTD_IPU] == 0) {
 		m_cfg->VtdIpuEnable = 0;
-		printk(BIOS_ERR, "ERROR: Requested IPU VT-d, but IPUVT_BASE_ADDRESS is 0\n");
+		printk(BIOS_ERR, "Requested IPU VT-d, but IPUVT_BASE_ADDRESS is 0\n");
 	}
 
 	if (!m_cfg->VtdDisable && m_cfg->VtdBaseAddress[VTD_VTVCO] == 0) {
 		m_cfg->VtdDisable = 1;
-		printk(BIOS_ERR, "ERROR: Requested VT-d, but VTVCO_BASE_ADDRESS is 0\n");
+		printk(BIOS_ERR, "Requested VT-d, but VTVCO_BASE_ADDRESS is 0\n");
 	}
 
 	if (m_cfg->TcssDma0En || m_cfg->TcssDma1En)
@@ -333,7 +337,7 @@ static void fill_fspm_trace_params(FSP_M_CONFIG *m_cfg,
 static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
-	const void (*fill_fspm_params[])(FSP_M_CONFIG *m_cfg,
+	void (*const fill_fspm_params[])(FSP_M_CONFIG *m_cfg,
 			const struct soc_intel_alderlake_config *config) = {
 		fill_fspm_igd_params,
 		fill_fspm_mrc_params,
@@ -364,10 +368,10 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 	config = config_of_soc();
 
 	soc_memory_init_params(m_cfg, config);
-	mainboard_memory_init_params(m_cfg);
+	mainboard_memory_init_params(mupd);
 }
 
-__weak void mainboard_memory_init_params(FSP_M_CONFIG *m_cfg)
+__weak void mainboard_memory_init_params(FSPM_UPD *memupd)
 {
 	printk(BIOS_DEBUG, "WEAK: %s/%s called\n", __FILE__, __func__);
 }

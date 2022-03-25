@@ -106,6 +106,8 @@ static void soc_pmc_fill_ssdt(const struct device *dev)
 
 	acpigen_write_name_string("_HID", PMC_HID);
 	acpigen_write_name_string("_DDN", "Intel(R) Tiger Lake IPC Controller");
+	/* Hide the device so that Windows does not complain on missing driver */
+	acpigen_write_STA(ACPI_STATUS_DEVICE_HIDDEN_ON);
 
 	/*
 	 * Part of the PCH's reserved 32 MB MMIO range (0xFC800000 - 0xFE7FFFFF).
@@ -170,6 +172,22 @@ static void pm1_enable_pwrbtn_smi(void *unused)
 
 BOOT_STATE_INIT_ENTRY(BS_DEV_INIT_CHIPS, BS_ON_EXIT, pm1_enable_pwrbtn_smi, NULL);
 
+/*
+ * `pmc_final` function is native implementation of equivalent events performed by
+ * each FSP NotifyPhase() API invocations.
+ *
+ *
+ * Clear PMCON status bits (Global Reset/Power Failure/Host Reset Status bits)
+ *
+ * Perform the PMCON status bit clear operation from `.final`
+ * to cover any such chances where later boot stage requested a global
+ * reset and PMCON status bit remains set.
+ */
+static void pmc_final(struct device *dev)
+{
+	pmc_clear_pmcon_sts();
+}
+
 struct device_operations pmc_ops = {
 	.read_resources	  = soc_pmc_read_resources,
 	.set_resources	  = noop_set_resources,
@@ -179,4 +197,5 @@ struct device_operations pmc_ops = {
 	.acpi_fill_ssdt	  = soc_pmc_fill_ssdt,
 #endif
 	.scan_bus	  = scan_static_bus,
+	.final		  = pmc_final,
 };

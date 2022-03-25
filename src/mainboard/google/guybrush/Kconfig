@@ -5,10 +5,15 @@ config BOARD_GOOGLE_BASEBOARD_GUYBRUSH
 
 if BOARD_GOOGLE_BASEBOARD_GUYBRUSH
 
+config IGNORE_IASL_MISSING_DEPENDENCY
+	def_bool y
+
 config BOARD_SPECIFIC_OPTIONS
 	def_bool y
 	select AMD_SOC_CONSOLE_UART
 	select BOARD_ROMSIZE_KB_16384
+	select CONSOLE_CBMEM_DUMP_TO_UART if !CONSOLE_SERIAL
+	select DEBUG_SMI if !CONSOLE_SERIAL # TODO(b/217968734): Always enable
 	select DISABLE_KEYBOARD_RESET_PIN
 	select DISABLE_SPI_FLASH_ROM_SHARING
 	select DRIVERS_ACPI_THERMAL_ZONE
@@ -38,11 +43,13 @@ config BOARD_SPECIFIC_OPTIONS
 	select PCIEXP_CLK_PM
 	select PCIEXP_COMMON_CLOCK
 	select PCIEXP_L1_SUB_STATE
-	select PSP_DISABLE_POSTCODES
+	select PSP_DISABLE_POSTCODES if !VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select PSP_S0I3_RESUME_VERSTAGE if VBOOT_STARTS_BEFORE_BOOTBLOCK
 	select SOC_AMD_CEZANNE
 	select SOC_AMD_COMMON_BLOCK_GRAPHICS_ATIF
+	select SOC_AMD_COMMON_BLOCK_I2C3_TPM_SHARED_WITH_PSP
 	select SOC_AMD_COMMON_BLOCK_USE_ESPI
+	select SOC_AMD_COMMON_BLOCK_PSP_FUSE_SPL
 
 config CHROMEOS
 	select EC_GOOGLE_CHROMEEC_SWITCHES
@@ -94,6 +101,15 @@ config DRIVER_TPM_I2C_ADDR
 config AMDFW_CONFIG_FILE
 	string
 	default "src/mainboard/google/guybrush/variants/baseboard/amdfw.cfg"
+
+config HAVE_SPL_FILE
+	bool
+	default y
+
+config SPL_TABLE_FILE
+	string
+	depends on HAVE_SPL_FILE
+	default "3rdparty/blobs/mainboard/google/guybrush/TypeId0x55_SplTable_Prod_CZN_Chrome.sbin"
 
 if !EM100	# EM100 defaults in soc/amd/common/blocks/spi/Kconfig
 config EFS_SPI_READ_MODE

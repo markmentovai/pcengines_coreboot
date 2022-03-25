@@ -29,6 +29,7 @@ payloads/external/tianocore \
 payloads/external/GRUB2 \
 payloads/external/LinuxBoot \
 payloads/external/Yabits \
+payloads/external/skiboot \
 
 force-payload:
 

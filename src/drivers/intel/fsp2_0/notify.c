@@ -10,6 +10,7 @@
 
 struct fsp_notify_phase_data {
 	enum fsp_notify_phase notify_phase;
+	bool skip;
 	uint8_t post_code_before;
 	uint8_t post_code_after;
 	enum timestamp_id timestamp_before;
@@ -19,24 +20,27 @@ struct fsp_notify_phase_data {
 static const struct fsp_notify_phase_data notify_data[] = {
 	{
 		.notify_phase     = AFTER_PCI_ENUM,
+		.skip             = !CONFIG(USE_FSP_NOTIFY_PHASE_POST_PCI_ENUM),
 		.post_code_before = POST_FSP_NOTIFY_BEFORE_ENUMERATE,
 		.post_code_after  = POST_FSP_NOTIFY_AFTER_ENUMERATE,
-		.timestamp_before = TS_FSP_BEFORE_ENUMERATE,
-		.timestamp_after  = TS_FSP_AFTER_ENUMERATE,
+		.timestamp_before = TS_FSP_ENUMERATE_START,
+		.timestamp_after  = TS_FSP_ENUMERATE_END,
 	},
 	{
 		.notify_phase     = READY_TO_BOOT,
+		.skip             = !CONFIG(USE_FSP_NOTIFY_PHASE_READY_TO_BOOT),
 		.post_code_before = POST_FSP_NOTIFY_BEFORE_FINALIZE,
 		.post_code_after  = POST_FSP_NOTIFY_AFTER_FINALIZE,
-		.timestamp_before = TS_FSP_BEFORE_FINALIZE,
-		.timestamp_after  = TS_FSP_AFTER_FINALIZE,
+		.timestamp_before = TS_FSP_FINALIZE_START,
+		.timestamp_after  = TS_FSP_FINALIZE_END,
 	},
 	{
 		.notify_phase     = END_OF_FIRMWARE,
+		.skip             = !CONFIG(USE_FSP_NOTIFY_PHASE_END_OF_FIRMWARE),
 		.post_code_before = POST_FSP_NOTIFY_BEFORE_END_OF_FIRMWARE,
 		.post_code_after  = POST_FSP_NOTIFY_AFTER_END_OF_FIRMWARE,
-		.timestamp_before = TS_FSP_BEFORE_END_OF_FIRMWARE,
-		.timestamp_after  = TS_FSP_AFTER_END_OF_FIRMWARE,
+		.timestamp_before = TS_FSP_END_OF_FIRMWARE_START,
+		.timestamp_after  = TS_FSP_END_OF_FIRMWARE_END,
 	},
 };
 
@@ -55,6 +59,11 @@ static void fsp_notify(enum fsp_notify_phase phase)
 	struct fsp_notify_params notify_params = { .phase = phase };
 	fsp_notify_fn fspnotify;
 	uint32_t ret;
+
+	if (data->skip) {
+		printk(BIOS_INFO, "coreboot skipped calling FSP notify phase: %08x.\n", phase);
+		return;
+	}
 
 	if (!fsps_hdr.notify_phase_entry_offset)
 		die("Notify_phase_entry_offset is zero!\n");

@@ -84,6 +84,13 @@ void cbmemc_init(void)
 	if (ENV_ROMSTAGE_OR_BEFORE) {
 		/* Pre-RAM environments use special buffer placed by linker script. */
 		init_console_ptr(_preram_cbmem_console, REGION_SIZE(preram_cbmem_console));
+	} else if (ENV_SMM) {
+		void *cbmemc = NULL;
+		size_t cbmemc_size = 0;
+
+		smm_get_cbmemc_buffer(&cbmemc, &cbmemc_size);
+
+		init_console_ptr(cbmemc, cbmemc_size);
 	} else {
 		/* Post-RAM uses static (BSS) buffer before CBMEM is reinitialized. */
 		init_console_ptr(static_console, sizeof(static_console));
@@ -171,16 +178,31 @@ POSTCAR_CBMEM_INIT_HOOK(cbmemc_reinit)
 void cbmem_dump_console_to_uart(void)
 {
 	u32 cursor;
+	unsigned int console_index;
+
 	if (!current_console)
 		return;
 
-	uart_init(0);
-	if (current_console->cursor & OVERFLOW)
+	console_index = get_uart_for_console();
+
+	uart_init(console_index);
+	if (current_console->cursor & OVERFLOW) {
 		for (cursor = current_console->cursor & CURSOR_MASK;
-		     cursor < current_console->size; cursor++)
-			uart_tx_byte(0, current_console->body[cursor]);
-	for (cursor = 0; cursor < (current_console->cursor & CURSOR_MASK); cursor++)
-		uart_tx_byte(0, current_console->body[cursor]);
+		     cursor < current_console->size; cursor++) {
+			if (BIOS_LOG_IS_MARKER(current_console->body[cursor]))
+				continue;
+			if (current_console->body[cursor] == '\n')
+				uart_tx_byte(console_index, '\r');
+			uart_tx_byte(console_index, current_console->body[cursor]);
+		}
+	}
+	for (cursor = 0; cursor < (current_console->cursor & CURSOR_MASK); cursor++) {
+		if (BIOS_LOG_IS_MARKER(current_console->body[cursor]))
+			continue;
+		if (current_console->body[cursor] == '\n')
+			uart_tx_byte(console_index, '\r');
+		uart_tx_byte(console_index, current_console->body[cursor]);
+	}
 }
 #endif
 
@@ -195,9 +217,11 @@ void cbmem_dump_console(void)
 	if (current_console->cursor & OVERFLOW)
 		for (cursor = current_console->cursor & CURSOR_MASK;
 		     cursor < current_console->size; cursor++)
-			do_putchar(current_console->body[cursor]);
+			if (!BIOS_LOG_IS_MARKER(current_console->body[cursor]))
+				do_putchar(current_console->body[cursor]);
 	for (cursor = 0; cursor < (current_console->cursor & CURSOR_MASK); cursor++)
-		do_putchar(current_console->body[cursor]);
+		if (!BIOS_LOG_IS_MARKER(current_console->body[cursor]))
+			do_putchar(current_console->body[cursor]);
 
 	console_paused = false;
 }

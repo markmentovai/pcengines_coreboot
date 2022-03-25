@@ -9,9 +9,22 @@
 #include <soc/addressmap.h>
 #include <soc/wdt.h>
 
-#define MTK_WDT_CLR_STATUS 0x22000000
+#define MTK_WDT_CLR_STATUS_VAL 0x22
+#define MTK_WDT_REQ_MOD_KEY_VAL 0x33
 
-void mtk_wdt_clr_status(uint32_t wdt_sta)
+DEFINE_BITFIELD(MTK_WDT_CLR_STATUS, 31, 24)
+DEFINE_BITFIELD(MTK_WDT_REQ_MOD_KEY, 31, 24)
+DEFINE_BIT(MTK_WDT_SPM_THERMAL_EN, 0)
+
+void mtk_wdt_preinit(void)
 {
-	write32(&mtk_wdt->wdt_mode, wdt_sta | MTK_WDT_CLR_STATUS);
+	SET32_BITFIELDS(&mtk_wdt->wdt_req_mode,
+			MTK_WDT_SPM_THERMAL_EN, 0,
+			MTK_WDT_REQ_MOD_KEY, MTK_WDT_REQ_MOD_KEY_VAL);
+}
+
+void mtk_wdt_clr_status(void)
+{
+	SET32_BITFIELDS(&mtk_wdt->wdt_mode,
+			MTK_WDT_CLR_STATUS, MTK_WDT_CLR_STATUS_VAL);
 }

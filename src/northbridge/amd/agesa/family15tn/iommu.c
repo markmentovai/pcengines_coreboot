@@ -13,7 +13,7 @@ static void iommu_read_resources(struct device *dev)
 	/* Get the normal pci resources of this device */
 	pci_dev_read_resources(dev);
 
-	/* Add an extra subtractive resource for both memory and I/O. */
+	/* IOMMU MMIO registers */
 	res = new_resource(dev, 0x44);
 	res->size = 512 * 1024;
 	res->align = log2(res->size);
@@ -45,6 +45,6 @@ static struct device_operations iommu_ops = {
 
 static const struct pci_driver iommu_driver __pci_driver = {
 	.ops = &iommu_ops,
-	.vendor = PCI_VENDOR_ID_AMD,
-	.device = PCI_DEVICE_ID_AMD_15H_MODEL_101F_NB_IOMMU,
+	.vendor = PCI_VID_AMD,
+	.device = PCI_DID_AMD_15H_MODEL_101F_NB_IOMMU,
 };

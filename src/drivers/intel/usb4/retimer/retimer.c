@@ -358,7 +358,7 @@ static void usb4_retimer_fill_ssdt(const struct device *dev)
 	for (dfp_port = 0; dfp_port < DFP_NUM_MAX; dfp_port++) {
 
 		if (!config->dfp[dfp_port].power_gpio.pin_count) {
-			printk(BIOS_ERR, "%s: No DFP%1d power GPIO for %s\n",
+			printk(BIOS_WARNING, "%s: No DFP%1d power GPIO for %s\n",
 				__func__, dfp_port, dev_path(dev));
 			continue;
 		}
@@ -370,7 +370,7 @@ static void usb4_retimer_fill_ssdt(const struct device *dev)
 		if (ec_port == -1) {
 			printk(BIOS_ERR, "%s: No relative EC port found for TC port %d\n",
 				__func__, usb_port);
-		 	continue;
+			continue;
 		}
 		/* DFPx */
 		snprintf(dfp, sizeof(dfp), "DFP%1d", ec_port);
@@ -415,7 +415,7 @@ static void usb4_retimer_fill_ssdt(const struct device *dev)
 	acpigen_pop_len(); /* Host Router */
 	acpigen_pop_len(); /* Scope */
 
-	printk(BIOS_INFO, "%s: %s at %s\n", acpi_device_path(dev), dev->chip_ops->name,
+	printk(BIOS_INFO, "%s.HR: %s at %s\n", usb4_retimer_scope, dev->chip_ops->name,
 	       dev_path(dev));
 }
 

@@ -6,10 +6,8 @@
 #include <device/pci.h>
 #include <device/pci_def.h>
 #include <device/pci_ids.h>
-#include <intelblocks/systemagent.h>
+#include <intelblocks/tcss.h>
 #include <soc/pci_devs.h>
-#include <soc/pcr_ids.h>
-#include <soc/tcss.h>
 
 #define INTEL_TBT_IMR_VALID_UUID	"C44D002F-69F9-4E7D-A904-A7BAABDF43F7"
 #define INTEL_TBT_WAKE_SUPPORTED_UUID	"6C501103-C189-4296-BA72-9BF5A26EBE5D"
@@ -27,16 +25,11 @@ static const char *tbt_dma_acpi_name(const struct device *dev)
 	}
 }
 
-static int valid_tbt_auth(void)
-{
-	return REGBAR32(PID_IOM, IOM_CSME_IMR_TBT_STATUS) & TBT_VALID_AUTHENTICATION;
-}
-
 static void tbt_dma_fill_ssdt(const struct device *dev)
 {
 	struct acpi_dp *dsd, *pkg;
 
-	if (!valid_tbt_auth())
+	if (!tcss_valid_tbt_auth())
 		return;
 
 	acpigen_write_scope(acpi_device_path(dev));
@@ -60,12 +53,15 @@ static void tbt_dma_fill_ssdt(const struct device *dev)
 #endif
 
 static const unsigned short pci_device_ids[] = {
-	PCI_DEVICE_ID_INTEL_TGL_TBT_DMA0,
-	PCI_DEVICE_ID_INTEL_TGL_TBT_DMA1,
-	PCI_DEVICE_ID_INTEL_TGL_H_TBT_DMA0,
-	PCI_DEVICE_ID_INTEL_TGL_H_TBT_DMA1,
-	PCI_DEVICE_ID_INTEL_ADL_TBT_DMA0,
-	PCI_DEVICE_ID_INTEL_ADL_TBT_DMA1,
+	PCI_DID_INTEL_MTL_M_TBT_DMA0,
+	PCI_DID_INTEL_MTL_P_TBT_DMA0,
+	PCI_DID_INTEL_MTL_P_TBT_DMA1,
+	PCI_DID_INTEL_TGL_TBT_DMA0,
+	PCI_DID_INTEL_TGL_TBT_DMA1,
+	PCI_DID_INTEL_TGL_H_TBT_DMA0,
+	PCI_DID_INTEL_TGL_H_TBT_DMA1,
+	PCI_DID_INTEL_ADL_TBT_DMA0,
+	PCI_DID_INTEL_ADL_TBT_DMA1,
 	0
 };
 
@@ -83,6 +79,6 @@ static struct device_operations usb4_dev_ops = {
 
 static const struct pci_driver usb4_driver __pci_driver = {
 	.ops			= &usb4_dev_ops,
-	.vendor			= PCI_VENDOR_ID_INTEL,
+	.vendor			= PCI_VID_INTEL,
 	.devices		= pci_device_ids,
 };

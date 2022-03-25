@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
+#include <arch/hpet.h>
 #include <console/console.h>
 #include <console/usb.h>
 #include <string.h>
@@ -234,7 +235,7 @@ static void setup_sdram_meminfo(struct pei_data *pei_data)
 
 	memset(mem_info, 0, sizeof(struct memory_info));
 
-	const u32 ddr_frequency = (mchbar_read32(MC_BIOS_DATA) * 13333 * 2 + 50) / 100;
+	const u32 ddr_freq_mhz = (mchbar_read32(MC_BIOS_DATA) * 13333 * 2 + 50) / 100;
 
 	for (ch = 0; ch < NUM_CHANNELS; ch++) {
 		const u32 ch_conf = mchbar_read32(MAD_DIMM(ch));
@@ -246,7 +247,7 @@ static void setup_sdram_meminfo(struct pei_data *pei_data)
 				dimm = &mem_info->dimm[dimm_cnt];
 				dimm->dimm_size = dimm_size;
 				dimm->ddr_type = MEMORY_TYPE_DDR3;
-				dimm->ddr_frequency = ddr_frequency;
+				dimm->ddr_frequency = ddr_freq_mhz * 2; /* In MT/s */
 				dimm->rank_per_dimm = 1 + ((ch_conf >> (17 + d_num)) & 1);
 				dimm->channel_num = ch;
 				dimm->dimm_num = d_num;
@@ -351,7 +352,7 @@ void perform_raminit(const int s3resume)
 		.epbar			= CONFIG_FIXED_EPBAR_MMIO_BASE,
 		.pciexbar		= CONFIG_ECAM_MMCONF_BASE_ADDRESS,
 		.smbusbar		= CONFIG_FIXED_SMBUS_IO_BASE,
-		.hpet_address		= CONFIG_HPET_ADDRESS,
+		.hpet_address		= HPET_BASE_ADDRESS,
 		.rcba			= CONFIG_FIXED_RCBA_MMIO_BASE,
 		.pmbase			= DEFAULT_PMBASE,
 		.gpiobase		= DEFAULT_GPIOBASE,
@@ -404,13 +405,13 @@ void perform_raminit(const int s3resume)
 	pei_data.dimm_channel0_disabled = make_channel_disabled_mask(&pei_data, 0);
 	pei_data.dimm_channel1_disabled = make_channel_disabled_mask(&pei_data, 1);
 
-	timestamp_add_now(TS_BEFORE_INITRAM);
+	timestamp_add_now(TS_INITRAM_START);
 
 	copy_spd(&pei_data, &spdi);
 
 	sdram_initialize(&pei_data);
 
-	timestamp_add_now(TS_AFTER_INITRAM);
+	timestamp_add_now(TS_INITRAM_END);
 
 	post_code(0x3b);
 

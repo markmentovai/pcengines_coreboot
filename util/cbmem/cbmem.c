@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <regex.h>
 #include <commonlib/bsd/cbmem_id.h>
+#include <commonlib/loglevel.h>
 #include <commonlib/timestamp_serialized.h>
 #include <commonlib/tpm_log_serialized.h>
 #include <commonlib/coreboot_tables.h>
@@ -648,9 +649,12 @@ static void dump_timestamps(int mach_readable)
 	 * If there are negative timestamp entries, rebase all of the
 	 * timestamps to the lowest one in the list.
 	 */
-	if (sorted_tst_p->entries[0].entry_stamp < 0)
+	if (sorted_tst_p->entries[0].entry_stamp < 0) {
 		sorted_tst_p->base_time = -sorted_tst_p->entries[0].entry_stamp;
-	prev_stamp = 0;
+		prev_stamp = 0;
+	} else {
+		prev_stamp = tst_p->base_time;
+	}
 
 	total_time = 0;
 	for (uint32_t i = 0; i < sorted_tst_p->num_entries; i++) {
@@ -908,7 +912,7 @@ static void dump_drtm_log(void)
 	} else {
 		unmap_memory(&drtm_mapping);
 		tcg_spec_entry = map_memory(&drtm_mapping, drtm_log.cbmem_addr, size);
-	
+
 		if (!strcmp((const char *)tcg_spec_entry->signature,
 			    TCG_EFI_SPEC_ID_EVENT_SIGNATURE)) {
 			if (tcg_spec_entry->spec_version_major == 2 &&
@@ -942,8 +946,31 @@ enum console_print_type {
 	CONSOLE_PRINT_PREVIOUS,
 };
 
+static int parse_loglevel(char *arg, int *print_unknown_logs)
+{
+	if (arg[0] == '+') {
+		*print_unknown_logs = 1;
+		arg++;
+	} else {
+		*print_unknown_logs = 0;
+	}
+
+	char *endptr;
+	int loglevel = strtol(arg, &endptr, 0);
+	if (*endptr == '\0' && loglevel >= BIOS_EMERG && loglevel <= BIOS_LOG_PREFIX_MAX_LEVEL)
+		return loglevel;
+
+	/* Only match first 3 characters so `NOTE` and `NOTICE` both match. */
+	for (int i = BIOS_EMERG; i <= BIOS_LOG_PREFIX_MAX_LEVEL; i++)
+		if (!strncasecmp(arg, bios_log_prefix[i], 3))
+			return i;
+
+	*print_unknown_logs = 1;
+	return BIOS_NEVER;
+}
+
 /* dump the cbmem console */
-static void dump_console(enum console_print_type type)
+static void dump_console(enum console_print_type type, int max_loglevel, int print_unknown_logs)
 {
 	const struct cbmem_console *console_p;
 	char *console_c;
@@ -997,7 +1024,8 @@ static void dump_console(enum console_print_type type)
 	/* Slight memory corruption may occur between reboots and give us a few
 	   unprintable characters like '\0'. Replace them with '?' on output. */
 	for (cursor = 0; cursor < size; cursor++)
-		if (!isprint(console_c[cursor]) && !isspace(console_c[cursor]))
+		if (!isprint(console_c[cursor]) && !isspace(console_c[cursor])
+		    && !BIOS_LOG_IS_MARKER(console_c[cursor]))
 			console_c[cursor] = '?';
 
 	/* We detect the reboot cutoff by looking for a bootblock, romstage or
@@ -1007,8 +1035,8 @@ static void dump_console(enum console_print_type type)
 	cursor = previous = 0;
 	if (type != CONSOLE_PRINT_FULL) {
 #define BANNER_REGEX(stage) \
-		"\n\ncoreboot-[^\n]* " stage " starting.*\\.\\.\\.\n"
-#define OVERFLOW_REGEX(stage) "\n\\*\\*\\* Pre-CBMEM " stage " console overflow"
+		"\n\n.?coreboot-[^\n]* " stage " starting.*\\.\\.\\.\n"
+#define OVERFLOW_REGEX(stage) "\n.?\\*\\*\\* Pre-CBMEM " stage " console overflow"
 		const char *regex[] = { BANNER_REGEX("verstage-before-bootblock"),
 					BANNER_REGEX("bootblock"),
 					BANNER_REGEX("verstage"),
@@ -1020,7 +1048,8 @@ static void dump_console(enum console_print_type type)
 		for (size_t i = 0; !cursor && i < ARRAY_SIZE(regex); i++) {
 			regex_t re;
 			regmatch_t match;
-			assert(!regcomp(&re, regex[i], 0));
+			int res = regcomp(&re, regex[i], REG_EXTENDED);
+			assert(res == 0);
 
 			/* Keep looking for matches so we find the last one. */
 			while (!regexec(&re, console_c + cursor, 1, &match, 0)) {
@@ -1036,7 +1065,33 @@ static void dump_console(enum console_print_type type)
 		cursor = previous;
 	}
 
-	puts(console_c + cursor);
+	char c;
+	int suppressed = 0;
+	int tty = isatty(fileno(stdout));
+	while ((c = console_c[cursor++])) {
+		if (BIOS_LOG_IS_MARKER(c)) {
+			int lvl = BIOS_LOG_MARKER_TO_LEVEL(c);
+			if (lvl > max_loglevel) {
+				suppressed = 1;
+				continue;
+			}
+			suppressed = 0;
+			if (tty)
+				printf(BIOS_LOG_ESCAPE_PATTERN, bios_log_escape[lvl]);
+			printf(BIOS_LOG_PREFIX_PATTERN, bios_log_prefix[lvl]);
+		} else {
+			if (!suppressed)
+				putchar(c);
+			if (c == '\n') {
+				if (tty && !suppressed)
+					printf(BIOS_LOG_ESCAPE_RESET);
+				suppressed = !print_unknown_logs;
+			}
+		}
+	}
+	if (tty)
+		printf(BIOS_LOG_ESCAPE_RESET);
+
 	free(console_c);
 	unmap_memory(&console_mapping);
 }
@@ -1324,6 +1379,7 @@ static void print_usage(const char *name, int exit_code)
 	     "   -c | --console:                   print cbmem console\n"
 	     "   -1 | --oneboot:                   print cbmem console for last boot only\n"
 	     "   -2 | --2ndtolast:                 print cbmem console for the boot that came before the last one only\n"
+	     "   -B | --loglevel:                  maximum loglevel to print; prefix `+` (e.g. -B +INFO) to also print lines that have no level\n"
 	     "   -C | --coverage:                  dump coverage information\n"
 	     "   -l | --list:                      print cbmem table of contents\n"
 	     "   -x | --hexdump:                   print hexdump of cbmem area\n"
@@ -1471,6 +1527,8 @@ int main(int argc, char** argv)
 	int machine_readable_timestamps = 0;
 	enum console_print_type console_type = CONSOLE_PRINT_FULL;
 	unsigned int rawdump_id = 0;
+	int max_loglevel = BIOS_NEVER;
+	int print_unknown_logs = 1;
 
 	int opt, option_index = 0;
 	static struct option long_options[] = {
@@ -1479,6 +1537,7 @@ int main(int argc, char** argv)
 		{"console", 0, 0, 'c'},
 		{"oneboot", 0, 0, '1'},
 		{"2ndtolast", 0, 0, '2'},
+		{"loglevel", required_argument, 0, 'B'},
 		{"coverage", 0, 0, 'C'},
 		{"list", 0, 0, 'l'},
 		{"tcpa-log", 0, 0, 'L'},
@@ -1518,6 +1577,9 @@ int main(int argc, char** argv)
 			print_console = 1;
 			console_type = CONSOLE_PRINT_PREVIOUS;
 			print_defaults = 0;
+			break;
+		case 'B':
+			max_loglevel = parse_loglevel(optarg, &print_unknown_logs);
 			break;
 		case 'C':
 			print_coverage = 1;
@@ -1651,7 +1713,7 @@ int main(int argc, char** argv)
 		die("Table not found.\n");
 
 	if (print_console)
-		dump_console(console_type);
+		dump_console(console_type, max_loglevel, print_unknown_logs);
 
 	if (print_coverage)
 		dump_coverage();

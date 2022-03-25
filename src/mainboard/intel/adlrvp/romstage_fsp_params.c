@@ -42,8 +42,9 @@ static void configure_external_clksrc(FSP_M_CONFIG *m_cfg)
 		m_cfg->PcieClkSrcUsage[i] = CONFIG_CLKSRC_FOR_EXTERNAL_BUFFER;
 }
 
-void mainboard_memory_init_params(FSP_M_CONFIG *m_cfg)
+void mainboard_memory_init_params(FSPM_UPD *memupd)
 {
+	FSP_M_CONFIG *m_cfg = &memupd->FspmConfig;
 	const struct mb_cfg *mem_config = variant_memory_params();
 	int board_id = get_board_id();
 	const bool half_populated = false;
@@ -71,7 +72,7 @@ void mainboard_memory_init_params(FSP_M_CONFIG *m_cfg)
 	case ADL_P_DDR4_1:
 	case ADL_P_DDR4_2:
 	case ADL_P_DDR5_1:
-		memcfg_init(m_cfg, mem_config, &dimm_module_spd_info, half_populated);
+		memcfg_init(memupd, mem_config, &dimm_module_spd_info, half_populated);
 		break;
 	case ADL_P_DDR5_2:
 	case ADL_P_LP4_1:
@@ -81,7 +82,7 @@ void mainboard_memory_init_params(FSP_M_CONFIG *m_cfg)
 	case ADL_M_LP4:
 	case ADL_M_LP5:
 	case ADL_N_LP5:
-		memcfg_init(m_cfg, mem_config, &memory_down_spd_info, half_populated);
+		memcfg_init(memupd, mem_config, &memory_down_spd_info, half_populated);
 		break;
 	default:
 		die("Unknown board id = 0x%x\n", board_id);

@@ -36,6 +36,8 @@
 #define CFG_9346		0x50
 #define  CFG_9346_LOCK		0x00
 #define  CFG_9346_UNLOCK	0xc0
+#define CMD_REG_ASPM		0xb0
+#define ASPM_L1_2_MASK		0xe059000f
 
 #define DEVICE_INDEX_BYTE	12
 #define MAX_DEVICE_SUPPORT	10
@@ -76,7 +78,7 @@ static u8 get_hex_digit(const u8 c)
 			ret = c - 'a' + 0x0a;
 	}
 	if (ret > 0x0f) {
-		printk(BIOS_ERR, "Error: Invalid hex digit found: "
+		printk(BIOS_ERR, "Invalid hex digit found: "
 				 "%c - 0x%02x\n", (char)c, c);
 		ret = 0;
 	}
@@ -94,7 +96,7 @@ static enum cb_err fetch_mac_vpd_key(u8 *macstrbuf, const char *vpd_key)
 	size_t offset;
 
 	if (fmap_locate_area_as_rdev("RO_VPD", &rdev)) {
-		printk(BIOS_ERR, "Error: Couldn't find RO_VPD region.");
+		printk(BIOS_ERR, "Couldn't find RO_VPD region.");
 		return CB_ERR;
 	}
 	search_address = rdev_mmap_full(&rdev);
@@ -108,8 +110,7 @@ static enum cb_err fetch_mac_vpd_key(u8 *macstrbuf, const char *vpd_key)
 			search_length);
 
 	if (offset == search_length) {
-		printk(BIOS_ERR,
-		       "Error: Could not locate '%s' in VPD\n", vpd_key);
+		printk(BIOS_ERR, "Could not locate '%s' in VPD\n", vpd_key);
 		rdev_munmap(&rdev, search_address);
 		return CB_ERR;
 	}
@@ -245,6 +246,20 @@ static void program_mac_address(struct device *dev, u16 io_base)
 	printk(BIOS_DEBUG, "done\n");
 }
 
+static void enable_aspm_l1_2(u16 io_base)
+{
+	printk(BIOS_INFO, "rtl: Enable ASPM L1.2\n");
+
+	/* Disable register protection */
+	outb(CFG_9346_UNLOCK, io_base + CFG_9346);
+
+	/* Enable ASPM_L1.2 */
+	outl(ASPM_L1_2_MASK, io_base + CMD_REG_ASPM);
+
+	/* Lock config regs */
+	outb(CFG_9346_LOCK, io_base + CFG_9346);
+}
+
 static void r8168_set_customized_led(struct device *dev, u16 io_base)
 {
 	struct drivers_net_config *config = dev->chip_info;
@@ -252,7 +267,7 @@ static void r8168_set_customized_led(struct device *dev, u16 io_base)
 	if (!config)
 		return;
 
-	if (dev->device == PCI_DEVICE_ID_REALTEK_8125) {
+	if (dev->device == PCI_DID_REALTEK_8125) {
 		/* Set LED global Feature register */
 		outb(config->led_feature, io_base + CMD_LED_FEATURE);
 		printk(BIOS_DEBUG, "r8125: read back LED global feature setting as 0x%x\n",
@@ -339,6 +354,10 @@ static void r8168_init(struct device *dev)
 	/* Program customized LED mode */
 	if (CONFIG(RT8168_SET_LED_MODE))
 		r8168_set_customized_led(dev, io_base);
+
+	struct drivers_net_config *config = dev->chip_info;
+	if (CONFIG(PCIEXP_ASPM) && config->enable_aspm_l1_2)
+		enable_aspm_l1_2(io_base);
 }
 
 #if CONFIG(HAVE_ACPI_TABLES)
@@ -406,14 +425,15 @@ static struct device_operations r8168_ops  = {
 };
 
 static const unsigned short pci_device_ids[] = {
-	PCI_DEVICE_ID_REALTEK_8168,
-	PCI_DEVICE_ID_REALTEK_8125,
+	PCI_DID_REALTEK_8168,
+	PCI_DID_REALTEK_8125,
+	PCI_DID_REALTEK_8111,
 	0
 };
 
 static const struct pci_driver r8168_driver __pci_driver = {
 	.ops    = &r8168_ops,
-	.vendor = PCI_VENDOR_ID_REALTEK,
+	.vendor = PCI_VID_REALTEK,
 	.devices = pci_device_ids,
 };
 

@@ -109,6 +109,39 @@ struct me_fw_ver_resp {
 	struct me_version fitc;
 } __packed;
 
+/* CSE RX and TX error status */
+enum cse_tx_rx_status {
+	/*
+	 * Transmission of HECI message is success or
+	 * Reception of HECI message is success.
+	 */
+	CSE_TX_RX_SUCCESS = 0,
+
+	 /* Timeout to send a message to CSE */
+	CSE_TX_ERR_TIMEOUT = 1,
+
+	/* Timeout to receive the response message from CSE */
+	CSE_RX_ERR_TIMEOUT = 2,
+
+	/*
+	 * Response length doesn't match with expected
+	 * response message length
+	 */
+	CSE_RX_ERR_RESP_LEN_MISMATCH = 3,
+
+	/* CSE is not ready during TX flow */
+	CSE_TX_ERR_CSE_NOT_READY = 4,
+
+	/* CSE is not ready during RX flow */
+	CSE_RX_ERR_CSE_NOT_READY = 5,
+
+	/* Invalid input arguments provided for TX API */
+	CSE_TX_ERR_INPUT = 6,
+
+	/* Invalid input arguments provided for RX API */
+	CSE_RX_ERR_INPUT = 7,
+};
+
 /* CSE recovery sub-error codes */
 enum csme_failure_reason {
 	/* No error */
@@ -300,10 +333,10 @@ void heci_init(uintptr_t bar);
  * Send message from BIOS_HOST_ADDR to cse_addr.
  * Sends snd_msg of size snd_sz, and reads message into buffer pointed by
  * rcv_msg of size rcv_sz
- * Returns 0 on failure and 1 on success.
+ * Returns CSE_TX_RX_SUCCESS on success and other enum values on failure scenarios.
  */
-int heci_send_receive(const void *snd_msg, size_t snd_sz, void *rcv_msg, size_t *rcv_sz,
-									uint8_t cse_addr);
+enum cse_tx_rx_status heci_send_receive(const void *snd_msg, size_t snd_sz, void *rcv_msg,
+					size_t *rcv_sz,	uint8_t cse_addr);
 
 /*
  * Attempt device reset. This is useful and perhaps only thing left to do when
@@ -311,8 +344,8 @@ int heci_send_receive(const void *snd_msg, size_t snd_sz, void *rcv_msg, size_t 
  * Returns 0 on failure and 1 on success.
  */
 int heci_reset(void);
-/* Disable HECI using Sideband interface communication */
-void heci_disable(void);
+/* Disable HECI1 using Sideband interface communication */
+void heci1_disable(void);
 
 /* Reads config value from a specified offset in the CSE PCI Config space. */
 uint32_t me_read_config32(int offset);
@@ -485,5 +518,34 @@ bool skip_cse_sub_part_update(void);
  * the last platform boot flow.
  */
 bool cse_get_boot_performance_data(struct cse_boot_perf_rsp *boot_perf);
+
+/* Function to make cse disable using PMC IPC */
+bool cse_disable_mei_devices(void);
+
+/* Set CSE device state to D0I3 */
+void cse_set_to_d0i3(void);
+
+/* Function sets D0I3 for all HECI devices */
+void heci_set_to_d0i3(void);
+
+/* Function performs the global reset lock */
+void cse_control_global_reset_lock(void);
+
+/* Send End of Post (EOP) command to CSE device */
+void cse_send_end_of_post(void);
+
+/*
+ * SoC override API to make heci1 disable using PCR.
+ *
+ * Allow SoC to implement heci1 disable override due to PSF registers being
+ * different across SoC generation.
+ */
+void soc_disable_heci1_using_pcr(void);
+
+/*
+ * Get all the timestamps CSE collected using cse_get_boot_performance_data() and
+ * insert them into the CBMEM timestamp table.
+ */
+void cse_get_telemetry_data(void);
 
 #endif // SOC_INTEL_COMMON_CSE_H

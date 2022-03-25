@@ -50,6 +50,8 @@
 #define SVC_READ_TIMER_VAL                  0x68
 #define SVC_SHA                             0x69
 #define SVC_CCP_DMA                         0x6A
+#define SVC_SET_PLATFORM_BOOT_MODE          0x6C
+#define SVC_WRITE_POSTCODE                  0x6D
 
 struct mod_exp_params {
 	char		*pExponent;	// Exponent address
@@ -86,8 +88,15 @@ enum fch_io_device {
 	FCH_IO_DEVICE_MISC,
 	FCH_IO_DEVICE_AOAC,
 	FCH_IO_DEVICE_IOPORT,
+	FCH_IO_DEVICE_UART,
 
 	FCH_IO_DEVICE_END,
+};
+
+enum fch_uart_id {
+	FCH_UART_ID_0 = 0,
+	FCH_UART_ID_1 = 1,
+	FCH_UART_ID_MAX,
 };
 
 enum fch_i2c_controller_id {
@@ -133,6 +142,19 @@ struct sha_generic_data {
 	uint32_t	IntermediateMsgLen;
 	uint32_t	Init;
 	uint32_t	Eom;
+};
+
+/*
+ * This is state that PSP manages internally.
+ * We only report BOOT_MODE_DEVELOPER or BOOT_MODE_PRODUCTION in verstage.
+ */
+enum chrome_platform_boot_mode
+{
+    NON_CHROME_BOOK_BOOT_MODE                = 0x0,
+    CHROME_BOOK_BOOT_MODE_UNSIGNED_VERSTAGE  = 0x1,
+    CHROME_BOOK_BOOT_MODE_PRODUCTION         = 0x2,
+    CHROME_BOOK_BOOT_MODE_DEVELOPER          = 0x3,
+    CHROME_BOOK_BOOT_MODE_TYPE_MAX_LIMIT     = 0x4, // used for boundary check
 };
 
 /*
@@ -312,6 +334,14 @@ uint32_t svc_modexp(struct mod_exp_params *mod_exp_param);
  * Return value: BL_OK or error code
  */
 uint32_t svc_ccp_dma(uint32_t spi_rom_offset, void *dest, uint32_t size);
+
+/*
+ * Get the Platform boot mode from verstage. Production or developer
+ *
+ * Parameters:
+ *       - boot mode
+ -----------------------------------------------------------------------------*/
+uint32_t svc_set_platform_boot_mode(enum chrome_platform_boot_mode boot_mode);
 
 /* C entry point for the Bootloader Userspace Application */
 void Main(void);

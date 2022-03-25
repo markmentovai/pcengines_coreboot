@@ -298,6 +298,11 @@ asmlinkage void secondary_cpu_init(unsigned int index)
 	cr4_val |= (CR4_OSFXSR | CR4_OSXMMEXCPT);
 	write_cr4(cr4_val);
 #endif
+
+	/* Ensure the local APIC is enabled */
+	enable_lapic();
+	setup_lapic_interrupts();
+
 	cpu_initialize(index);
 
 	spin_unlock(&start_cpu_lock);
@@ -330,37 +335,6 @@ static void start_other_cpus(struct bus *cpu_bus, struct device *bsp_cpu)
 		udelay(10);
 	}
 
-}
-
-static void smm_other_cpus(struct bus *cpu_bus, struct device *bsp_cpu)
-{
-	struct device *cpu;
-	int pre_count = atomic_read(&active_cpus);
-
-	/* Loop through the cpus once to let them run through SMM relocator */
-
-	for (cpu = cpu_bus->children; cpu; cpu = cpu->sibling) {
-		if (cpu->path.type != DEVICE_PATH_APIC)
-			continue;
-
-		printk(BIOS_ERR, "considering CPU 0x%02x for SMM init\n",
-			cpu->path.apic.apic_id);
-
-		if (cpu == bsp_cpu)
-			continue;
-
-		if (!cpu->enabled)
-			continue;
-
-		if (!start_cpu(cpu))
-			/* Record the error in cpu? */
-			printk(BIOS_ERR, "CPU 0x%02x would not start!\n",
-				cpu->path.apic.apic_id);
-
-		/* FIXME: endless loop */
-		while (atomic_read(&active_cpus) != pre_count)
-			;
-	}
 }
 
 static void wait_other_cpus_stop(struct bus *cpu_bus)
@@ -407,8 +381,12 @@ void initialize_cpus(struct bus *cpu_bus)
 	info = cpu_info();
 
 	/* Ensure the local APIC is enabled */
-	if (is_smp_boot())
+	if (is_smp_boot()) {
 		enable_lapic();
+		setup_lapic_interrupts();
+	} else {
+		disable_lapic();
+	}
 
 	/* Get the device path of the boot CPU */
 	cpu_path.type = DEVICE_PATH_APIC;
@@ -422,7 +400,7 @@ void initialize_cpus(struct bus *cpu_bus)
 	if (is_smp_boot())
 		copy_secondary_start_to_lowest_1M();
 
-	if (!CONFIG(SERIALIZED_SMM_INITIALIZATION))
+	if (CONFIG(SMM_LEGACY_ASEG))
 		smm_init();
 
 	/* Initialize the bootstrap processor */
@@ -435,19 +413,8 @@ void initialize_cpus(struct bus *cpu_bus)
 	if (is_smp_boot())
 		wait_other_cpus_stop(cpu_bus);
 
-	if (CONFIG(SERIALIZED_SMM_INITIALIZATION)) {
-		/* At this point, all APs are sleeping:
-		 * smm_init() will queue a pending SMI on all cpus
-		 * and smm_other_cpus() will start them one by one */
-		smm_init();
-
-		if (is_smp_boot()) {
-			last_cpu_index = 0;
-			smm_other_cpus(cpu_bus, info->cpu);
-		}
-	}
-
-	smm_init_completion();
+	if (CONFIG(SMM_LEGACY_ASEG))
+		smm_init_completion();
 
 	if (is_smp_boot())
 		recover_lowest_1M();

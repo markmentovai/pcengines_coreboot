@@ -2,11 +2,18 @@
 
 #include <baseboard/gpio.h>
 #include <baseboard/variants.h>
+#include <bootstate.h>
+#include <fw_config.h>
 
 /* Pad configuration in ramstage */
 static const struct pad_config gpio_table[] = {
+	/* A10 : WWAN_EN */
+	PAD_CFG_GPO(GPP_A10, 1, PWROK),
 	/* A11 : TOUCH_RPT_EN ==> NC */
 	PAD_NC(GPP_A11, NONE),
+
+	/* B7  : PCIE_CLKREQ2_N ==> WWAN_SAR_DETECT_ODL */
+	PAD_CFG_GPO(GPP_B7, 1, DEEP),
 
 	/* C18 : AP_I2C_EMR_SDA ==> NC */
 	PAD_NC(GPP_C18, NONE),
@@ -15,6 +22,8 @@ static const struct pad_config gpio_table[] = {
 	/* C22 : UART2_RTS_N ==> NC */
 	PAD_NC(GPP_C22, NONE),
 
+	/* D0  : WWAN_HOST_WAKE ==> WWAN_WDISABLE_L */
+	PAD_CFG_GPO(GPP_D0, 1, DEEP),
 	/* D12 : WCAM_RST_L ==> NC */
 	PAD_NC(GPP_D12, NONE),
 	/* D13 : EN_PP2800_CAMERA ==> NC */
@@ -58,6 +67,14 @@ static const struct pad_config gpio_table[] = {
 
 	/* H1  : EN_PP3300_SD_U ==> NC */
 	PAD_NC(GPP_H1, NONE),
+	/* H17 : WWAN_RST_L */
+	PAD_CFG_GPO(GPP_H17, 0, PLTRST),
+};
+
+static const struct pad_config lte_disable_pads[] = {
+	PAD_NC(GPP_A10, NONE),
+	PAD_NC(GPP_D0, NONE),
+	PAD_NC(GPP_H17, NONE),
 };
 
 const struct pad_config *variant_override_gpio_table(size_t *num)
@@ -65,3 +82,10 @@ const struct pad_config *variant_override_gpio_table(size_t *num)
 	*num = ARRAY_SIZE(gpio_table);
 	return gpio_table;
 }
+
+static void fw_config_handle(void *unused)
+{
+	if (!fw_config_probe(FW_CONFIG(LTE, LTE_PRESENT)))
+		gpio_configure_pads(lte_disable_pads, ARRAY_SIZE(lte_disable_pads));
+}
+BOOT_STATE_INIT_ENTRY(BS_DEV_ENABLE, BS_ON_ENTRY, fw_config_handle, NULL);

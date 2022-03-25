@@ -45,10 +45,10 @@ static void fill_ddi_descriptors(FSP_M_CONFIG *mcfg,
 
 static void fsp_fill_pcie_ddi_descriptors(FSP_M_CONFIG *mcfg)
 {
-	const fsp_dxio_descriptor *fsp_dxio;
-	const fsp_ddi_descriptor *fsp_ddi;
-	size_t num_dxio;
-	size_t num_ddi;
+	const fsp_dxio_descriptor *fsp_dxio = NULL;
+	const fsp_ddi_descriptor *fsp_ddi = NULL;
+	size_t num_dxio = 0;
+	size_t num_ddi = 0;
 
 	mainboard_get_dxio_ddi_descriptors(&fsp_dxio, &num_dxio,
 						&fsp_ddi, &num_ddi);
@@ -155,6 +155,16 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 		mcfg->usb_phy->TableLength = 100;
 	} else {
 		mcfg->usb_phy = NULL;
+	}
+
+	if (config->edp_phy_override) {
+		mcfg->edp_phy_override = config->edp_phy_override;
+		mcfg->edp_physel = config->edp_physel;
+		mcfg->dp_vs_pemph_level = config->edp_tuningset.dp_vs_pemph_level;
+		mcfg->tx_eq_main = config->edp_tuningset.tx_eq_main;
+		mcfg->tx_eq_pre = config->edp_tuningset.tx_eq_pre;
+		mcfg->tx_eq_post = config->edp_tuningset.tx_eq_post;
+		mcfg->tx_vboost_lvl = config->edp_tuningset.tx_vboost_lvl;
 	}
 
 	fsp_fill_pcie_ddi_descriptors(mcfg);

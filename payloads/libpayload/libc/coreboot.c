@@ -230,11 +230,11 @@ static void cb_parse_cbmem_entry(void *ptr, struct sysinfo_t *info)
 		break;
 	case CBMEM_ID_CBFS_RO_MCACHE:
 		info->cbfs_ro_mcache_offset = cbmem_entry->address;
-		info->cbfs_ro_mcache_size = cbmem_entry->size;
+		info->cbfs_ro_mcache_size = cbmem_entry->entry_size;
 		break;
 	case CBMEM_ID_CBFS_RW_MCACHE:
 		info->cbfs_rw_mcache_offset = cbmem_entry->address;
-		info->cbfs_rw_mcache_size = cbmem_entry->size;
+		info->cbfs_rw_mcache_size = cbmem_entry->entry_size;
 		break;
 	case CBMEM_ID_CONSOLE:
 		info->cbmem_cons = cbmem_entry->address;
@@ -259,6 +259,9 @@ static void cb_parse_cbmem_entry(void *ptr, struct sysinfo_t *info)
 		break;
 	case CBMEM_ID_TYPE_C_INFO:
 		info->type_c_info = cbmem_entry->address;
+		break;
+	case CBMEM_ID_MEM_CHIP_INFO:
+		info->mem_chip_base = cbmem_entry->address;
 		break;
 	default:
 		break;

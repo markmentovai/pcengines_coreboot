@@ -16,7 +16,7 @@ fw_config
 end
 
 chip soc/intel/alderlake
-	register "SaGv" = "SaGv_Enabled"
+	register "sagv" = "SaGv_Enabled"
 
 	# FIVR configurations for brya are disabled since the board doesn't have V1p05 and Vnn
 	# bypass rails implemented.
@@ -30,7 +30,7 @@ chip soc/intel/alderlake
 
 	register "tcss_ports[0]" = "TCSS_PORT_EMPTY"
 
-	register "SerialIoI2cMode" = "{
+	register "serial_io_i2c_mode" = "{
 		[PchSerialIoIndexI2C0] = PchSerialIoPci,
 		[PchSerialIoIndexI2C1] = PchSerialIoPci,
 		[PchSerialIoIndexI2C2] = PchSerialIoDisabled,
@@ -39,7 +39,7 @@ chip soc/intel/alderlake
 		[PchSerialIoIndexI2C5] = PchSerialIoPci,
 	}"
 
-	register "SerialIoGSpiMode" = "{
+	register "serial_io_gspi_mode" = "{
 		[PchSerialIoIndexGSPI0] = PchSerialIoDisabled,
 		[PchSerialIoIndexGSPI1] = PchSerialIoDisabled,
 	}"
@@ -58,16 +58,28 @@ chip soc/intel/alderlake
 	register "common_soc_config" = "{
 		.i2c[0] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 550,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 		.i2c[1] = {
 			.early_init = 1,
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 550,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 		.i2c[3] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 550,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 		.i2c[5] = {
 			.speed = I2C_SPEED_FAST,
+			.rise_time_ns = 550,
+			.fall_time_ns = 400,
+			.data_hold_time_ns = 50,
 		},
 	}"
 
@@ -78,28 +90,27 @@ chip soc/intel/alderlake
 				register "options.tsr[0].desc" = ""DRAM_SOC""
 				register "options.tsr[1].desc" = ""Ambient""
 				register "options.tsr[2].desc" = ""Charger""
-				register "options.tsr[3].desc" = ""WWAN""
 
 				## Active Policy
 				register "policies.active" = "{
 					[0] = {
 						.target = DPTF_CPU,
 						.thresholds = {
-								TEMP_PCT(55, 65),
-								TEMP_PCT(52, 59),
-								TEMP_PCT(49, 50),
-								TEMP_PCT(46, 43),
-								TEMP_PCT(43, 37),
+								TEMP_PCT(44, 76),
+								TEMP_PCT(40, 65),
+								TEMP_PCT(36, 53),
+								TEMP_PCT(32, 41),
+								TEMP_PCT(28, 29),
 						}
 					},
 					[1] = {
 						.target = DPTF_TEMP_SENSOR_1,
 						.thresholds = {
-								TEMP_PCT(55, 65),
-								TEMP_PCT(52, 59),
-								TEMP_PCT(49, 50),
-								TEMP_PCT(46, 43),
-								TEMP_PCT(43, 37),
+								TEMP_PCT(44, 76),
+								TEMP_PCT(40, 65),
+								TEMP_PCT(36, 53),
+								TEMP_PCT(32, 41),
+								TEMP_PCT(28, 29),
 						}
 					}
 				}"
@@ -110,7 +121,6 @@ chip soc/intel/alderlake
 					[1] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_0, 75, 5000),
 					[2] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_1, 75, 5000),
 					[3] = DPTF_PASSIVE(CHARGER,     TEMP_SENSOR_2, 75, 5000),
-					[4] = DPTF_PASSIVE(CPU,         TEMP_SENSOR_3, 75, 5000),
 				}"
 
 				## Critical Policy
@@ -119,7 +129,6 @@ chip soc/intel/alderlake
 					[1] = DPTF_CRITICAL(TEMP_SENSOR_0,      85, SHUTDOWN),
 					[2] = DPTF_CRITICAL(TEMP_SENSOR_1,      85, SHUTDOWN),
 					[3] = DPTF_CRITICAL(TEMP_SENSOR_2,      85, SHUTDOWN),
-					[4] = DPTF_CRITICAL(TEMP_SENSOR_3,      85, SHUTDOWN),
 				}"
 
 				register "controls.power_limits" = "{
@@ -266,10 +275,10 @@ chip soc/intel/alderlake
 			end
 			chip drivers/generic/gpio_keys
 				register "name" = ""PENH""
-				register "gpio" = "ACPI_GPIO_IRQ_EDGE_BOTH(GPP_A7)"
+				register "gpio" = "ACPI_GPIO_INPUT_ACTIVE_LOW(GPP_A7)"
 				register "key.wake_gpe" = "GPE0_DW0_08"
 				register "key.wakeup_route" = "WAKEUP_ROUTE_SCI"
-				register "key.wakeup_event_action" = "EV_ACT_ASSERTED"
+				register "key.wakeup_event_action" = "EV_ACT_DEASSERTED"
 				register "key.dev_name" = ""EJCT""
 				register "key.linux_code" = "SW_PEN_INSERTED"
 				register "key.linux_input_type" = "EV_SW"
@@ -327,13 +336,15 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-C Port C1 (DB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(1, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(1, 1))"
 						device ref tcss_usb3_port2 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-C Port C2 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(2, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(LEFT, LEFT, ACPI_PLD_GROUP(2, 1))"
 						device ref tcss_usb3_port3 on end
 					end
 				end
@@ -345,13 +356,15 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-C Port C1 (DB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(1, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(RIGHT, LEFT, ACPI_PLD_GROUP(1, 1))"
 						device ref usb2_port2 on end
 					end
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-C Port C2 (MLB)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						register "group" = "ACPI_PLD_GROUP(2, 1)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_C(LEFT, LEFT, ACPI_PLD_GROUP(2, 1))"
 						device ref usb2_port3 on end
 					end
 					chip drivers/usb/acpi
@@ -362,7 +375,8 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB2 Type-A Port A0 (DB)""
 						register "type" = "UPC_TYPE_A"
-						register "group" = "ACPI_PLD_GROUP(1, 2)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_A(RIGHT, RIGHT, ACPI_PLD_GROUP(1, 2))"
 						device ref usb2_port9 on end
 					end
 					chip drivers/usb/acpi
@@ -375,7 +389,8 @@ chip soc/intel/alderlake
 					chip drivers/usb/acpi
 						register "desc" = ""USB3 Type-A Port A0 (DB)""
 						register "type" = "UPC_TYPE_USB3_A"
-						register "group" = "ACPI_PLD_GROUP(1, 2)"
+						register "use_custom_pld" = "true"
+						register "custom_pld" = "ACPI_PLD_TYPE_A(RIGHT, RIGHT, ACPI_PLD_GROUP(1, 2))"
 						device ref usb3_port1 on end
 					end
 				end

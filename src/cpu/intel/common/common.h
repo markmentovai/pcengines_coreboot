@@ -8,6 +8,7 @@
 
 void set_vmx_and_lock(void);
 void set_feature_ctrl_vmx(void);
+void set_feature_ctrl_vmx_arg(bool enable);
 void set_feature_ctrl_lock(void);
 
 /*
@@ -45,5 +46,24 @@ void configure_dca_cap(void);
  * Possible values are 0 (performance) to 15 (powersave).
  */
 void set_energy_perf_bias(u8 policy);
+
+/*
+ * Check energy performance preference and HWP capabilities from Thermal and
+ * Power Management Leaf CPUID.
+ */
+bool check_energy_perf_cap(void);
+
+/*
+ * Set the IA32_HWP_REQUEST Energy-Performance Preference bits on the logical
+ * thread. 0 is a hint to the HWP to prefer performance, and 255 is a hint to
+ * prefer energy efficiency.
+ */
+void set_energy_perf_pref(u8 pref);
+
+/*
+ * Instructs the CPU to use EPP hints. This means that any energy policies set
+ * up in `set_energy_perf_bias` will be ignored afterwards.
+ */
+void enable_energy_perf_pref(void);
 
 #endif

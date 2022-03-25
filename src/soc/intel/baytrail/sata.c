@@ -71,7 +71,7 @@ static void sata_init(struct device *dev)
 	pci_write_config16(dev, 0x92, reg16);
 
 	if (config->sata_ahci) {
-	  u8 *abar = (u8 *)pci_read_config32(dev, PCI_BASE_ADDRESS_5);
+		u8 *abar = (u8 *)pci_read_config32(dev, PCI_BASE_ADDRESS_5);
 
 		/* Enable CR memory space decoding */
 		reg16 = pci_read_config16(dev, 0x04);
@@ -209,6 +209,6 @@ static const unsigned short pci_device_ids[] = {
 
 static const struct pci_driver baytrail_sata __pci_driver = {
 	.ops     = &sata_ops,
-	.vendor  = PCI_VENDOR_ID_INTEL,
+	.vendor  = PCI_VID_INTEL,
 	.devices = pci_device_ids,
 };

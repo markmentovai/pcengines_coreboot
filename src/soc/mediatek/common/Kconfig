@@ -1,5 +1,6 @@
 config SOC_MEDIATEK_COMMON
 	bool
+	select NO_ECAM_MMCONF_SUPPORT if PCI
 	help
 	  common code blocks for Mediatek SOCs
 
@@ -21,6 +22,13 @@ config MEDIATEK_DRAM_DVFS_LIMIT_FREQ_CNT
 	help
 	  This options limit DRAM frequency calibration count from total 7 to 3,
 	  other frequency will directly use the low frequency shu result.
+
+config MEDIATEK_BLOB_FAST_INIT
+	bool "Enable running fast calibration by blob"
+	default n
+	help
+	  This option allows performing fast calibration through different
+	  open-source policy.
 
 config MEMORY_TEST
 	bool

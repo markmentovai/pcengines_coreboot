@@ -51,6 +51,9 @@ int  mainboard_smi_apmc(u8 data);
 void mainboard_smi_sleep(u8 slp_typ);
 void mainboard_smi_finalize(void);
 
+void smm_soc_early_init(void);
+void smm_soc_exit(void);
+
 /* This is the SMM handler. */
 extern unsigned char _binary_smm_start[];
 extern unsigned char _binary_smm_end[];
@@ -61,6 +64,8 @@ struct smm_runtime {
 	u32 save_state_size;
 	u32 num_cpus;
 	u32 gnvs_ptr;
+	u32 cbmemc_size;
+	void *cbmemc;
 	uintptr_t save_state_top[CONFIG_MAX_CPUS];
 } __packed;
 
@@ -120,10 +125,7 @@ static inline bool smm_points_to_smram(const void *ptr, const size_t len)
 /* SMM Module Loading API */
 
 /* The smm_loader_params structure provides direction to the SMM loader:
- * - stack_top - optional external stack provided to loader. It must be at
- *               least per_cpu_stack_size * num_concurrent_stacks in size.
- * - per_cpu_stack_size - stack size per CPU for smm modules.
- * - num_concurrent_stacks - number of concurrent cpus in handler needing stack
+ * - num_cpus - number of concurrent cpus in handler needing stack
  *                           optional for setting up relocation handler.
  * - per_cpu_save_state_size - the SMM save state size per cpu
  * - num_concurrent_save_states - number of concurrent cpus needing save state
@@ -135,9 +137,7 @@ static inline bool smm_points_to_smram(const void *ptr, const size_t len)
  *             handle sparse APIC id space.
  */
 struct smm_loader_params {
-	void *stack_top;
-	size_t per_cpu_stack_size;
-	size_t num_concurrent_stacks;
+	size_t num_cpus;
 
 	size_t real_cpu_save_state_size;
 	size_t per_cpu_save_state_size;
@@ -148,9 +148,11 @@ struct smm_loader_params {
 	struct smm_stub_params *stub_params;
 };
 
-/* Both of these return 0 on success, < 0 on failure. */
-int smm_setup_relocation_handler(void * const perm_smram, struct smm_loader_params *params);
-int smm_load_module(void *smram, size_t size, struct smm_loader_params *params);
+/* All of these return 0 on success, < 0 on failure. */
+int smm_setup_stack(const uintptr_t perm_smbase, const size_t perm_smram_size,
+		    const unsigned int total_cpus, const size_t stack_size);
+int smm_setup_relocation_handler(struct smm_loader_params *params);
+int smm_load_module(uintptr_t smram_base, size_t smram_size, struct smm_loader_params *params);
 
 u32 smm_get_cpu_smbase(unsigned int cpu_num);
 

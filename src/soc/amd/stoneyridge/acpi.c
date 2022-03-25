@@ -97,8 +97,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 				ACPI_FADT_S4_RTC_VALID |
 				ACPI_FADT_REMOTE_POWER_ON;
 
-	fadt->ARM_boot_arch = 0;	/* MUST be 0 ACPI 3.0 */
-	fadt->FADT_MinorVersion = 0;	/* MUST be 0 ACPI 3.0 */
+	fadt->ARM_boot_arch = 0;	/* Must be zero if ACPI Revision <= 5.0 */
 
 	fadt->x_firmware_ctl_l = 0;	/* set to 0 if firmware_ctrl is used */
 	fadt->x_firmware_ctl_h = 0;
@@ -152,7 +151,5 @@ void generate_cpu_entries(const struct device *device)
 		acpigen_pop_len();
 	}
 
-	acpigen_write_scope("\\");
-	acpigen_write_name_integer("PCNT", cores);
-	acpigen_pop_len();
+	acpigen_write_processor_package("PPKG", 0, cores);
 }

@@ -44,7 +44,7 @@ void hudson_enable(struct device *dev)
 		if (dev->enabled == 0) {
 			u32 usb_device_id = pci_read_config16(dev, PCI_DEVICE_ID);
 			u8 reg8;
-			if (usb_device_id == PCI_DEVICE_ID_AMD_SB900_USB_20_5) {
+			if (usb_device_id == PCI_DID_AMD_SB900_USB_20_5) {
 				/* turn off and remove device 0:14.5 from PCI space */
 				reg8 = pm_read8(0xef);
 				reg8 &= ~(1 << 6);
@@ -58,12 +58,11 @@ void hudson_enable(struct device *dev)
 			u32 sd_device_id = pci_read_config16(dev, PCI_DEVICE_ID);
 			/* turn off the SDHC controller in the PM reg */
 			u8 reg8;
-			if (sd_device_id == PCI_DEVICE_ID_AMD_HUDSON_SD) {
+			if (sd_device_id == PCI_DID_AMD_HUDSON_SD) {
 				reg8 = pm_read8(0xe7);
 				reg8 &= ~(1 << 0);
 				pm_write8(0xe7, reg8);
-			}
-			else if (sd_device_id == PCI_DEVICE_ID_AMD_YANGTZE_SD) {
+			} else if (sd_device_id == PCI_DID_AMD_YANGTZE_SD) {
 				reg8 = pm_read8(0xe8);
 				reg8 &= ~(1 << 0);
 				pm_write8(0xe8, reg8);
@@ -79,7 +78,7 @@ void hudson_enable(struct device *dev)
 	case PCI_DEVFN(0x12, 0):
 		if (dev->enabled == 0)
 			hudson_disable_usb(USB_EN_DEVFN_12_0);
-		/* fall through */
+		__fallthrough;
 	case PCI_DEVFN(0x12, 2):
 		if (dev->enabled == 0)
 			hudson_disable_usb(USB_EN_DEVFN_12_2);
@@ -87,7 +86,7 @@ void hudson_enable(struct device *dev)
 	case PCI_DEVFN(0x13, 0):
 		if (dev->enabled == 0)
 			hudson_disable_usb(USB_EN_DEVFN_13_0);
-		/* fall through */
+		__fallthrough;
 	case PCI_DEVFN(0x13, 2):
 		if (dev->enabled == 0)
 			hudson_disable_usb(USB_EN_DEVFN_13_2);
@@ -95,7 +94,7 @@ void hudson_enable(struct device *dev)
 	case PCI_DEVFN(0x16, 0):
 		if (dev->enabled == 0)
 			hudson_disable_usb(USB_EN_DEVFN_16_0);
-		/* fall through */
+		__fallthrough;
 	case PCI_DEVFN(0x16, 2):
 		if (dev->enabled == 0)
 			hudson_disable_usb(USB_EN_DEVFN_16_2);

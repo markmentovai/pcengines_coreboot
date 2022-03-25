@@ -62,8 +62,7 @@ void acpi_fill_fadt(acpi_fadt_t *fadt)
 				ACPI_FADT_S4_RTC_VALID |
 				ACPI_FADT_REMOTE_POWER_ON;
 
-	fadt->ARM_boot_arch = 0;	/* MUST be 0 ACPI 3.0 */
-	fadt->FADT_MinorVersion = 0;	/* MUST be 0 ACPI 3.0 */
+	fadt->ARM_boot_arch = 0;	/* Must be zero if ACPI Revision <= 5.0 */
 
 	fadt->x_pm1a_evt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
 	fadt->x_pm1a_evt_blk.bit_width = 32;
