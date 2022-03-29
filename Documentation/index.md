@@ -190,4 +190,4 @@ Contents:
 * [Utilities](util.md)
 * [coreboot infrastructure](infrastructure/index.md)
 * [Release notes](releases/index.md)
-* [Flashing firmware tutorial](flash_tutorial/index.md)
+* [Documentation License](documentation_license.md)

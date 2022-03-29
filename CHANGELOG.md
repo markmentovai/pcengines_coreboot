@@ -13,6 +13,10 @@ Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 
 ## [Unreleased]
 
+## [v4.16.0.2] - 2022-03-29
+### Changed
+- Rebased with official coreboot repository commit 66f99f7f
+
 ## [v4.16.0.1] - 2022-02-11
 ### Changed
 - Rebased with official coreboot repository commit b4ba289f
@@ -563,7 +567,8 @@ redundant code which was similar for APU2/3/5 boards.
 - turn off D4 and D5 leds on boot
 - enable power on after power failure
 
-[Unreleased]: https://github.com/pcengines/coreboot/compare/v4.16.0.1...develop
+[Unreleased]: https://github.com/pcengines/coreboot/compare/v4.16.0.2...develop
+[v4.16.0.2]: https://github.com/pcengines/coreboot/compare/v4.16.0.1...v4.16.0.2
 [v4.16.0.1]: https://github.com/pcengines/coreboot/compare/v4.15.0.3...v4.16.0.1
 [v4.15.0.3]: https://github.com/pcengines/coreboot/compare/v4.15.0.2...v4.15.0.3
 [v4.15.0.2]: https://github.com/pcengines/coreboot/compare/v4.15.0.1...v4.15.0.2

@@ -649,9 +649,12 @@ static void dump_timestamps(int mach_readable)
 	 * If there are negative timestamp entries, rebase all of the
 	 * timestamps to the lowest one in the list.
 	 */
-	if (sorted_tst_p->entries[0].entry_stamp < 0)
+	if (sorted_tst_p->entries[0].entry_stamp < 0) {
 		sorted_tst_p->base_time = -sorted_tst_p->entries[0].entry_stamp;
-	prev_stamp = 0;
+		prev_stamp = 0;
+	} else {
+		prev_stamp = tst_p->base_time;
+	}
 
 	total_time = 0;
 	for (uint32_t i = 0; i < sorted_tst_p->num_entries; i++) {
@@ -1032,8 +1035,8 @@ static void dump_console(enum console_print_type type, int max_loglevel, int pri
 	cursor = previous = 0;
 	if (type != CONSOLE_PRINT_FULL) {
 #define BANNER_REGEX(stage) \
-		"\n\ncoreboot-[^\n]* " stage " starting.*\\.\\.\\.\n"
-#define OVERFLOW_REGEX(stage) "\n\\*\\*\\* Pre-CBMEM " stage " console overflow"
+		"\n\n.?coreboot-[^\n]* " stage " starting.*\\.\\.\\.\n"
+#define OVERFLOW_REGEX(stage) "\n.?\\*\\*\\* Pre-CBMEM " stage " console overflow"
 		const char *regex[] = { BANNER_REGEX("verstage-before-bootblock"),
 					BANNER_REGEX("bootblock"),
 					BANNER_REGEX("verstage"),
@@ -1045,7 +1048,8 @@ static void dump_console(enum console_print_type type, int max_loglevel, int pri
 		for (size_t i = 0; !cursor && i < ARRAY_SIZE(regex); i++) {
 			regex_t re;
 			regmatch_t match;
-			assert(!regcomp(&re, regex[i], 0));
+			int res = regcomp(&re, regex[i], REG_EXTENDED);
+			assert(res == 0);
 
 			/* Keep looking for matches so we find the last one. */
 			while (!regexec(&re, console_c + cursor, 1, &match, 0)) {

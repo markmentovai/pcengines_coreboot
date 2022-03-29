@@ -41,13 +41,26 @@ chip soc/amd/sabrina
 	register "i2c_scl_reset" = "GPIO_I2C0_SCL | GPIO_I2C1_SCL |
 					GPIO_I2C2_SCL | GPIO_I2C3_SCL"
 
+	# I2C Pad Control RX Select Configuration
+	register "i2c_pad[0].rx_level" = "I2C_PAD_RX_1_8V" # Touchpad
+	register "i2c_pad[1].rx_level" = "I2C_PAD_RX_1_8V" # Touchscreen
+	register "i2c_pad[2].rx_level" = "I2C_PAD_RX_1_8V" # Audio/SAR
+	register "i2c_pad[3].rx_level" = "I2C_PAD_RX_1_8V" # GSC
+
+	register "pspp_policy" = "DXIO_PSPP_DISABLED" # TODO: reenable when PSPP works
+
 	device domain 0 on
 		device ref lpc_bridge on
 			chip ec/google/chromeec
 				device pnp 0c09.0 alias chrome_ec on end
 			end
 		end
-		device ref gpp_bridge_0 on end # WLAN
+		device ref gpp_bridge_0 on # WLAN
+			chip drivers/wifi/generic
+				register "wake" = "GEVENT_8"
+				device pci 00.0 on end
+			end
+		end
 		device ref gpp_bridge_1 on end # SD
 		device ref gpp_bridge_2 on end # WWAN
 		device ref gpp_bridge_3 on end # NVMe
@@ -122,7 +135,7 @@ chip soc/amd/sabrina
 							register "desc" = ""Bluetooth""
 							register "type" = "UPC_TYPE_INTERNAL"
 							register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPIO_10)"
-							device usb 2.3 alias usb2_port5 on end
+							device usb 2.0 alias usb2_port5 on end
 						end
 					end
 				end

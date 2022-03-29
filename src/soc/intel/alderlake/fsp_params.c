@@ -297,6 +297,26 @@ static int get_l1_substate_control(enum L1_substates_control ctl)
 	return ctl - 1;
 }
 
+/*
+ * Chip config parameter pcie_rp_aspm uses (UPD value + 1) because
+ * a UPD value of 0 for pcie_rp_aspm means disabled. In order to ensure
+ * that the mainboard setting does not disable ASPM incorrectly, chip
+ * config parameter values are offset by 1 with 0 meaning use FSP UPD default.
+ * get_aspm_control() ensures that the right UPD value is set in fsp_params.
+ * 0: Use FSP UPD default
+ * 1: Disable ASPM
+ * 2: L0s only
+ * 3: L1 only
+ * 4: L0s and L1
+ * 5: Auto configuration
+ */
+static unsigned int get_aspm_control(enum ASPM_control ctl)
+{
+	if ((ctl > ASPM_AUTO) || (ctl == ASPM_DEFAULT))
+		ctl = ASPM_AUTO;
+	return ctl - 1;
+}
+
 /* This function returns the VccIn Aux Imon IccMax values for ADL-P SKU's */
 static uint16_t get_vccin_aux_imon_iccmax(void)
 {
@@ -309,17 +329,21 @@ static uint16_t get_vccin_aux_imon_iccmax(void)
 	}
 
 	switch (mch_id) {
-	case PCI_DEVICE_ID_INTEL_ADL_P_ID_1:
-	case PCI_DEVICE_ID_INTEL_ADL_P_ID_3:
-	case PCI_DEVICE_ID_INTEL_ADL_P_ID_5:
-	case PCI_DEVICE_ID_INTEL_ADL_P_ID_6:
-	case PCI_DEVICE_ID_INTEL_ADL_P_ID_7:
+	case PCI_DID_INTEL_ADL_P_ID_1:
+	case PCI_DID_INTEL_ADL_P_ID_3:
+	case PCI_DID_INTEL_ADL_P_ID_4:
+	case PCI_DID_INTEL_ADL_P_ID_5:
+	case PCI_DID_INTEL_ADL_P_ID_6:
+	case PCI_DID_INTEL_ADL_P_ID_7:
+	case PCI_DID_INTEL_ADL_P_ID_8:
+	case PCI_DID_INTEL_ADL_P_ID_9:
+	case PCI_DID_INTEL_ADL_P_ID_10:
 		tdp = get_cpu_tdp();
 		if (tdp == TDP_45W)
 			return ICC_MAX_TDP_45W;
 		return ICC_MAX_TDP_15W_28W;
-	case PCI_DEVICE_ID_INTEL_ADL_M_ID_1:
-	case PCI_DEVICE_ID_INTEL_ADL_M_ID_2:
+	case PCI_DID_INTEL_ADL_M_ID_1:
+	case PCI_DID_INTEL_ADL_M_ID_2:
 		return ICC_MAX_ID_ADL_M_MA;
 	default:
 		printk(BIOS_ERR, "Unknown MCH ID: 0x%4x, skipping VccInAuxImonIccMax config\n",
@@ -337,16 +361,16 @@ static void fill_fsps_lpss_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
 	for (int i = 0; i < CONFIG_SOC_INTEL_I2C_DEV_MAX; i++)
-		s_cfg->SerialIoI2cMode[i] = config->SerialIoI2cMode[i];
+		s_cfg->SerialIoI2cMode[i] = config->serial_io_i2c_mode[i];
 
 	for (int i = 0; i < CONFIG_SOC_INTEL_COMMON_BLOCK_GSPI_MAX; i++) {
-		s_cfg->SerialIoSpiMode[i] = config->SerialIoGSpiMode[i];
-		s_cfg->SerialIoSpiCsMode[i] = config->SerialIoGSpiCsMode[i];
-		s_cfg->SerialIoSpiCsState[i] = config->SerialIoGSpiCsState[i];
+		s_cfg->SerialIoSpiMode[i] = config->serial_io_gspi_mode[i];
+		s_cfg->SerialIoSpiCsMode[i] = config->serial_io_gspi_cs_mode[i];
+		s_cfg->SerialIoSpiCsState[i] = config->serial_io_gspi_cs_state[i];
 	}
 
 	for (int i = 0; i < CONFIG_SOC_INTEL_UART_DEV_MAX; i++)
-		s_cfg->SerialIoUartMode[i] = config->SerialIoUartMode[i];
+		s_cfg->SerialIoUartMode[i] = config->serial_io_uart_mode[i];
 }
 
 static void fill_fsps_cpu_params(FSP_S_CONFIG *s_cfg,
@@ -393,7 +417,7 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 		DEV_PTR(tcss_usb3_port4),
 	};
 
-	s_cfg->TcssAuxOri = config->TcssAuxOri;
+	s_cfg->TcssAuxOri = config->tcss_aux_ori;
 
 	/* Explicitly clear this field to avoid using defaults */
 	memset(s_cfg->IomTypeCPortPadCfg, 0, sizeof(s_cfg->IomTypeCPortPadCfg));
@@ -406,8 +430,8 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 	s_cfg->ITbtConnectTopologyTimeoutInMs = 0;
 
 	/* D3Hot and D3Cold for TCSS */
-	s_cfg->D3HotEnable = !config->TcssD3HotDisable;
-	s_cfg->D3ColdEnable = !config->TcssD3ColdDisable;
+	s_cfg->D3HotEnable = !config->tcss_d3_hot_disable;
+	s_cfg->D3ColdEnable = !config->tcss_d3_cold_disable;
 
 	s_cfg->UsbTcPortEn = 0;
 	for (int i = 0; i < MAX_TYPE_C_PORTS; i++) {
@@ -497,11 +521,11 @@ static void fill_fsps_sata_params(FSP_S_CONFIG *s_cfg,
 	/* SATA */
 	s_cfg->SataEnable = is_devfn_enabled(PCH_DEVFN_SATA);
 	if (s_cfg->SataEnable) {
-		s_cfg->SataMode = config->SataMode;
-		s_cfg->SataSalpSupport = config->SataSalpSupport;
-		memcpy(s_cfg->SataPortsEnable, config->SataPortsEnable,
+		s_cfg->SataMode = config->sata_mode;
+		s_cfg->SataSalpSupport = config->sata_salp_support;
+		memcpy(s_cfg->SataPortsEnable, config->sata_ports_enable,
 			sizeof(s_cfg->SataPortsEnable));
-		memcpy(s_cfg->SataPortsDevSlp, config->SataPortsDevSlp,
+		memcpy(s_cfg->SataPortsDevSlp, config->sata_ports_dev_slp,
 			sizeof(s_cfg->SataPortsDevSlp));
 	}
 
@@ -511,17 +535,17 @@ static void fill_fsps_sata_params(FSP_S_CONFIG *s_cfg,
 	 * Boards not needing the optimizers explicitly disables them by setting
 	 * these disable variables to 1 in devicetree overrides.
 	 */
-	s_cfg->SataPwrOptEnable = !(config->SataPwrOptimizeDisable);
+	s_cfg->SataPwrOptEnable = !(config->sata_pwr_optimize_disable);
 	/*
 	 *  Enable DEVSLP Idle Timeout settings DmVal and DitoVal.
 	 *  SataPortsDmVal is the DITO multiplier. Default is 15.
 	 *  SataPortsDitoVal is the DEVSLP Idle Timeout (DITO), Default is 625ms.
 	 *  The default values can be changed from devicetree.
 	 */
-	for (size_t i = 0; i < ARRAY_SIZE(config->SataPortsEnableDitoConfig); i++) {
-		if (config->SataPortsEnableDitoConfig[i]) {
-			s_cfg->SataPortsDmVal[i] = config->SataPortsDmVal[i];
-			s_cfg->SataPortsDitoVal[i] = config->SataPortsDitoVal[i];
+	for (size_t i = 0; i < ARRAY_SIZE(config->sata_ports_enable_dito_config); i++) {
+		if (config->sata_ports_enable_dito_config[i]) {
+			s_cfg->SataPortsDmVal[i] = config->sata_ports_dm_val[i];
+			s_cfg->SataPortsDitoVal[i] = config->sata_ports_dito_val[i];
 		}
 	}
 }
@@ -548,8 +572,8 @@ static void fill_fsps_cnvi_params(FSP_S_CONFIG *s_cfg,
 {
 	/* CNVi */
 	s_cfg->CnviMode = is_devfn_enabled(PCH_DEVFN_CNVI_WIFI);
-	s_cfg->CnviBtCore = config->CnviBtCore;
-	s_cfg->CnviBtAudioOffload = config->CnviBtAudioOffload;
+	s_cfg->CnviBtCore = config->cnvi_bt_core;
+	s_cfg->CnviBtAudioOffload = config->cnvi_bt_audio_offload;
 	/* Assert if CNVi BT is enabled without CNVi being enabled. */
 	assert(s_cfg->CnviMode || !s_cfg->CnviBtCore);
 	/* Assert if CNVi BT offload is enabled without CNVi BT being enabled. */
@@ -611,7 +635,7 @@ static void fill_fsps_storage_params(FSP_S_CONFIG *s_cfg,
 		s_cfg->ScsEmmcHs400Enabled = config->emmc_enable_hs400_mode;
 #endif
 	/* Enable Hybrid storage auto detection */
-	s_cfg->HybridStorageMode = config->HybridStorageMode;
+	s_cfg->HybridStorageMode = config->hybrid_storage_mode;
 }
 
 static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
@@ -628,6 +652,8 @@ static void fill_fsps_pcie_params(FSP_S_CONFIG *s_cfg,
 		s_cfg->PcieRpAdvancedErrorReporting[i] = !!(rp_cfg->flags & PCIE_RP_AER);
 		s_cfg->PcieRpHotPlug[i] = !!(rp_cfg->flags & PCIE_RP_HOTPLUG);
 		s_cfg->PcieRpClkReqDetect[i] = !!(rp_cfg->flags & PCIE_RP_CLK_REQ_DETECT);
+		if (rp_cfg->pcie_rp_aspm)
+			s_cfg->PcieRpAspm[i] = get_aspm_control(rp_cfg->pcie_rp_aspm);
 	}
 }
 
@@ -663,7 +689,7 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	 * Boards not needing the optimizers explicitly disables them by setting
 	 * these disable variables to 1 in devicetree overrides.
 	 */
-	s_cfg->PchPwrOptEnable = !(config->DmiPwrOptimizeDisable);
+	s_cfg->PchPwrOptEnable = !(config->dmi_power_optimize_disable);
 	s_cfg->PmSupport = 1;
 	s_cfg->Hwp = 1;
 	s_cfg->Cx = 1;
@@ -712,11 +738,13 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 						   power_cycle_duration);
 
 	/* Set PsysPmax if it is available from DT */
-	if (config->PsysPmax) {
-		printk(BIOS_DEBUG, "PsysPmax = %dW\n", config->PsysPmax);
+	if (config->platform_pmax) {
+		printk(BIOS_DEBUG, "PsysPmax = %dW\n", config->platform_pmax);
 		/* PsysPmax is in unit of 1/8 Watt */
-		s_cfg->PsysPmax = config->PsysPmax * 8;
+		s_cfg->PsysPmax = config->platform_pmax * 8;
 	}
+
+	s_cfg->C1StateAutoDemotion = !config->disable_c1_state_auto_demotion;
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,
@@ -776,19 +804,19 @@ static void fill_fsps_fivr_rfi_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
 	/* transform from Hz to 100 KHz */
-	s_cfg->FivrRfiFrequency = config->FivrRfiFrequency / (100 * KHz);
-	s_cfg->FivrSpreadSpectrum = config->FivrSpreadSpectrum;
+	s_cfg->FivrRfiFrequency = config->fivr_rfi_frequency / (100 * KHz);
+	s_cfg->FivrSpreadSpectrum = config->fivr_spread_spectrum;
 }
 
 static void fill_fsps_acoustic_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
-	s_cfg->AcousticNoiseMitigation = config->AcousticNoiseMitigation;
+	s_cfg->AcousticNoiseMitigation = config->acoustic_noise_mitigation;
 
 	if (s_cfg->AcousticNoiseMitigation) {
 		for (int i = 0; i < NUM_VR_DOMAINS; i++) {
-			s_cfg->FastPkgCRampDisable[i] = config->FastPkgCRampDisable[i];
-			s_cfg->SlowSlewRate[i] = config->SlowSlewRate[i];
+			s_cfg->FastPkgCRampDisable[i] = config->fast_pkg_c_ramp_disable[i];
+			s_cfg->SlowSlewRate[i] = config->slow_slew_rate[i];
 		}
 	}
 }
