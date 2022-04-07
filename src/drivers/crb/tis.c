@@ -92,14 +92,8 @@ int tis_sendrecv(const uint8_t *sendbuf, size_t sbuf_size, uint8_t *recvbuf, siz
 
 static void crb_tpm_fill_ssdt(const struct device *dev)
 {
-	const char *path = acpi_device_path(dev);
-	if (!path) {
-		path = "\\_SB_.TPM";
-		printk(BIOS_DEBUG, "Using default TPM2 ACPI path: '%s'\n", path);
-	}
-
 	/* Device */
-	acpigen_write_device(path);
+	acpigen_write_device("\\_SB_.TPM");
 
 	acpigen_write_name_string("_HID", "MSFT0101");
 	acpigen_write_name_string("_CID", "MSFT0101");
@@ -111,7 +105,7 @@ static void crb_tpm_fill_ssdt(const struct device *dev)
 	/* Resources */
 	acpigen_write_name("_CRS");
 	acpigen_write_resourcetemplate_header();
-	acpigen_write_mem32fixed(1, TPM_CRB_BASE_ADDRESS, 0x5000);
+	acpigen_write_mem32fixed(1, tpm2_get_crb_base(), 0x5000);
 
 	acpigen_write_resourcetemplate_footer();
 

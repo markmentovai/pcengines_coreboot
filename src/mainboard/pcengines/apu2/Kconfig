@@ -17,7 +17,8 @@ config BOARD_SPECIFIC_OPTIONS
 	select SPI_FLASH
 	select SPI_FLASH_WINBOND
 	select HAVE_SPD_IN_CBFS
-	select MAINBOARD_HAS_LPC_TPM
+	select MAINBOARD_HAS_LPC_TPM if !PSP_FTPM
+	select MAINBOARD_HAS_CRB_TPM if PSP_FTPM
 	select SEABIOS_ADD_SERCON_PORT_FILE if PAYLOAD_SEABIOS
 	select PCIEXP_ASPM
 	select PCIEXP_CLK_PM
@@ -142,7 +143,7 @@ config RO_REGION_ONLY
 
 config AGESA_USE_1_0_0_4_HEADER
 	bool
-	default y
+	default n
 	help
 	  Due to a bug in AGESA 1.0.0.A affecting boards without UMA, it is
 	  impossible to use the newest blob. Using an older 1.0.0.4 blob

@@ -98,6 +98,13 @@ struct smm_req_buffer {
 	uint64_t psp_mbox_smm_flag_address;
 } __packed;
 
+#define PSP_CAP_TPM (1 << 0)
+
+struct mbox_caps_buffer {
+	struct mbox_buffer_header header;
+	u32 caps;
+} __attribute__((packed, aligned(32)));
+
 struct mbox_cmd_smm_info_buffer {
 	struct mbox_buffer_header header;
 	struct smm_req_buffer req;
@@ -114,7 +121,7 @@ struct mbox_cmd_late_spl_buffer {
 } __attribute__((packed, aligned(32)));
 
 #define PSP_INIT_TIMEOUT 10000 /* 10 seconds */
-#define PSP_CMD_TIMEOUT 1000 /* 1 second */
+#define PSP_CMD_TIMEOUT 5000 /* 1 second */
 
 void psp_print_cmd_status(int cmd_status, struct mbox_buffer_header *header);
 

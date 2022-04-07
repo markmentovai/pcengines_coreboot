@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <amdblocks/biosram.h>
+#include <device/pci_ops.h>
+#include <cpu/x86/mtrr.h>
 
 #include "Porting.h"
 #include "AGESA.h"
@@ -35,6 +37,8 @@ void platform_AfterInitPost(struct sysinfo *cb, AMD_POST_PARAMS *Post)
 		backup_top_of_low_cacheable(Post->MemConfig.UmaBase << 16);
 	else
 		backup_top_of_low_cacheable(Post->MemConfig.Sub4GCacheTop);
+
+	display_mtrrs();
 }
 
 void platform_BeforeInitEnv(struct sysinfo *cb, AMD_ENV_PARAMS *Env)
@@ -49,7 +53,6 @@ void platform_AfterInitEnv(struct sysinfo *cb, AMD_ENV_PARAMS *Env)
 void platform_BeforeInitMid(struct sysinfo *cb, AMD_MID_PARAMS *Mid)
 {
 	amd_initcpuio();
-
 	/* 0 iGpuVgaAdapter, 1 iGpuVgaNonAdapter; */
 	Mid->GnbMidConfiguration.iGpuVgaMode = 0;
 	Mid->GnbMidConfiguration.GnbIoapicAddress = IO_APIC2_ADDR;

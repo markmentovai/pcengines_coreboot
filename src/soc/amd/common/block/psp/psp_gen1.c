@@ -110,16 +110,20 @@ int send_psp_command(u32 command, void *buffer)
 	if (wait_initialized(mbox))
 		return -PSPSTS_INIT_TIMEOUT;
 
-	if (wait_command(mbox))
+	if (wait_command(mbox)) {
+		printk(BIOS_WARNING, "PSP: Not ready to accept commands\n");
 		return -PSPSTS_CMD_TIMEOUT;
+	}
 
 	/* set address of command-response buffer and write command register */
 	wr_mbox_cmd_resp(mbox, buffer);
 	wr_mbox_cmd(mbox, command);
 
 	/* PSP clears command register when complete */
-	if (wait_command(mbox))
+	if (wait_command(mbox)) {
+		printk(BIOS_WARNING, "PSP: Command completion timeout. MBOX STS %08x\n", rd_mbox_sts(mbox));
 		return -PSPSTS_CMD_TIMEOUT;
+	}
 
 	/* check delivery status */
 	if (rd_mbox_sts(mbox) & (PSPV1_STATUS_ERROR | PSPV1_STATUS_TERMINATED))

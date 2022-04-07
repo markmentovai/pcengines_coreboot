@@ -90,6 +90,14 @@ config AMD_PUBKEY_FILE
 	string "AMD public Key"
 	default "3rdparty/blobs/southbridge/amd/avalon/PSP/AmdPubKey.bin" if CPU_AMD_PI_00730F01
 
+config PSP_FTPM
+	depends on HUDSON_PSP
+	bool "Enable PSP fTPM"
+	default n
+	help
+	  Say yes to enable PSP fTPM. coreboot will include necessary PSP
+	  blobs, calls and drivers for AMD PSP.
+
 config HUDSON_SATA_MODE
 	int "SATA Mode"
 	default 2

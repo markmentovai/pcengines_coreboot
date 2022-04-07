@@ -12,6 +12,12 @@
 #define _SOC_DEV(slot, func)	PCI_DEV(0, slot, func)
 #endif
 
+/* PSP */
+#define PSP_DEV			0x8
+#define PSP_FUNC		0
+#define PSP_DEVFN		PCI_DEVFN(PSP_DEV, PSP_FUNC)
+#define SOC_PSP_DEV		_SOC_DEV(PSP_DEV, PSP_FUNC)
+
 /* LPC BUS */
 #define PCU_DEV			0x14
 #define LPC_FUNC		3

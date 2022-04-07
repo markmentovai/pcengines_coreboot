@@ -2,11 +2,8 @@
 /* This is a driver for a Command Response Buffer Interface */
 
 /* CRB driver */
-/* address of locality 0 (CRB) */
-#define TPM_CRB_BASE_ADDRESS        CONFIG_CRB_TPM_BASE_ADDRESS
-
 #define CRB_REG(LOCTY, REG)                                 \
-	(void *)(uintptr_t)(CONFIG_CRB_TPM_BASE_ADDRESS + (LOCTY << 12) + REG)
+	(void *)(uintptr_t)(crb_base + (LOCTY << 12) + REG)
 
 /* hardware registers */
 #define CRB_REG_LOC_STATE		0x00
@@ -58,6 +55,8 @@ struct tpm2_info {
 };
 
 int tpm2_init(void);
+void tpm2_set_crb_base(uint32_t base_addr);
+uint32_t tpm2_get_crb_base(void);
 void tpm2_get_info(struct tpm2_info *tpm2_info);
 size_t tpm2_process_command(const void *tpm2_command, size_t command_size,
 			    void *tpm2_response, size_t max_response);

@@ -34,20 +34,37 @@ static struct control_area {
 } control_area;
 
 static uint8_t cur_loc = 0;
+static uint32_t crb_base = CONFIG_CRB_TPM_BASE_ADDRESS;
+
+static inline uint32_t read_crb32(uint8_t reg)
+{
+	uint32_t val = read32(CRB_REG(cur_loc, reg));
+	if (CONFIG(DEBUG_TPM))
+		printk(BIOS_SPEW, "TPM CRB: reading reg 0x%02x returned: %08x\n", reg, val);
+	return val;
+}
+
+static inline uint64_t read_crb64(uint8_t reg)
+{
+	uint64_t val = read64(CRB_REG(cur_loc, reg));
+	if (CONFIG(DEBUG_TPM))
+		printk(BIOS_SPEW, "TPM CRB: reading reg 0x%02x returned: %16llx\n", reg, val);
+	return val;
+}
 
 /* Read Control Area Structure back  */
 static void crb_readControlArea(void)
 {
-	control_area.request = read32(CRB_REG(cur_loc, CRB_REG_REQUEST));
-	control_area.status = read32(CRB_REG(cur_loc, CRB_REG_STATUS));
-	control_area.cancel = read32(CRB_REG(cur_loc, CRB_REG_CANCEL));
-	control_area.interrupt_control = read64(CRB_REG(cur_loc, CRB_REG_INT_CTRL));
-	control_area.command_size = read32(CRB_REG(cur_loc, CRB_REG_CMD_SIZE));
+	control_area.request = read_crb32(CRB_REG_REQUEST);
+	control_area.status = read_crb32(CRB_REG_STATUS);
+	control_area.cancel = read_crb32(CRB_REG_CANCEL);
+	control_area.interrupt_control = read_crb64(CRB_REG_INT_CTRL);
+	control_area.command_size = read_crb32(CRB_REG_CMD_SIZE);
 	control_area.command_bfr =
-		(void *)(uintptr_t)read64(CRB_REG(cur_loc, CRB_REG_CMD_ADDR));
-	control_area.response_size = read32(CRB_REG(cur_loc, CRB_REG_RESP_SIZE));
+		(void *)(uintptr_t)read_crb64(CRB_REG_CMD_ADDR);
+	control_area.response_size = read_crb32(CRB_REG_RESP_SIZE);
 	control_area.response_bfr =
-		(void *)(uintptr_t)read64(CRB_REG(cur_loc, CRB_REG_RESP_ADDR));
+		(void *)(uintptr_t)read_crb64(CRB_REG_RESP_ADDR);
 }
 
 /* Wait for Reg to be expected Value  */
@@ -82,7 +99,7 @@ static int crb_wait_for_reg32(const void *addr, uint32_t timeoutMs, uint32_t mas
  */
 static int crb_probe(void)
 {
-	uint64_t tpmStatus = read64(CRB_REG(cur_loc, CRB_REG_INTF_ID));
+	uint64_t tpmStatus = read_crb64(CRB_REG_INTF_ID);
 	printk(BIOS_SPEW, "Interface ID Reg. %llx\n", tpmStatus);
 
 	if ((tpmStatus & CRB_INTF_REG_CAP_CRB) == 0) {
@@ -207,7 +224,11 @@ size_t tpm2_process_command(const void *tpm2_command, size_t command_size, void 
 		return -1;
 	}
 
-	cur_loc = crb_activate_locality();
+	/* PSP fTPM does not support localities */
+	if (CONFIG(PSP_FTPM)) 
+		cur_loc = 0;
+	else
+		cur_loc = crb_activate_locality();
 
 	// Check if CMD bit is cleared.
 	rc = crb_wait_for_reg32(CRB_REG(0, CRB_REG_START), 250, CRB_REG_START_START, 0x0);
@@ -258,16 +279,39 @@ size_t tpm2_process_command(const void *tpm2_command, size_t command_size, void 
 }
 
 /*
- * tp2_get_info
+ * tpm2_get_info
  *
  * Returns information about the TPM
  *
  */
 void tpm2_get_info(struct tpm2_info *tpm2_info)
 {
-	uint64_t interfaceReg = read64(CRB_REG(cur_loc, CRB_REG_INTF_ID));
+	uint64_t interfaceReg = read_crb64(CRB_REG_INTF_ID);
 
 	tpm2_info->vendor_id = (interfaceReg >> 48) & 0xFFFF;
 	tpm2_info->device_id = (interfaceReg >> 32) & 0xFFFF;
 	tpm2_info->revision = (interfaceReg >> 24) & 0xFF;
+}
+
+/*
+ * tpm2_set_crb_base
+ *
+ * Updates the CRB base address for the driver if a non-standard base address
+ * is used. Can be used for AMD fTPM for example.
+ *
+ */
+void tpm2_set_crb_base(uint32_t base_addr)
+{
+	crb_base = base_addr;
+}
+
+/*
+ * tpm2_get_crb_base
+ *
+ * Return the CRB base address. Used by ACPI code to generate TPM2 ACPI table.
+ *
+ */
+uint32_t tpm2_get_crb_base(void)
+{
+	return crb_base;
 }

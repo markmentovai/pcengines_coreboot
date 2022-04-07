@@ -25,6 +25,7 @@
 #include <cpu/cpu.h>
 #include <device/mmio.h>
 #include <device/pci.h>
+#include <drivers/crb/tpm.h>
 #include <pc80/mc146818rtc.h>
 #include <string.h>
 #include <types.h>
@@ -408,9 +409,19 @@ static void acpi_create_tpm2(acpi_tpm2_t *tpm2)
 	/* Hard to detect for coreboot. Just set it to 0 */
 	tpm2->platform_class = 0;
 	if (CONFIG(CRB_TPM)) {
-		/* Must be set to 7 for CRB Support */
-		tpm2->control_area = CONFIG_CRB_TPM_BASE_ADDRESS + 0x40;
-		tpm2->start_method = 7;
+		if (CONFIG(PSP_FTPM)) {
+			/*
+			 * PSP fTPM has different offset to control area 
+			 * and uses ACPI start method.
+			 */
+			tpm2->control_area = tpm2_get_crb_base() + 0x10;
+			tpm2->start_method = 2;
+		} else {
+
+			/* Must be set to 7 for CRB Support */
+			tpm2->control_area = CONFIG_CRB_TPM_BASE_ADDRESS + 0x40;
+			tpm2->start_method = 7;
+		}
 	} else {
 		/* Must be set to 0 for FIFO interface support */
 		tpm2->control_area = 0;
