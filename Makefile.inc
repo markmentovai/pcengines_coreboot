@@ -81,8 +81,9 @@ PHONY+= clean-abuild coreboot check-style build_complete
 # root source directories of coreboot
 subdirs-y := src/lib src/commonlib/ src/console src/device src/acpi src/superio/common
 subdirs-y += src/ec/acpi $(wildcard src/ec/*/*) $(wildcard src/southbridge/*/*)
-subdirs-y += $(wildcard src/soc/*) $(wildcard src/soc/*/*) $(wildcard src/northbridge/*/*)
-subdirs-y += $(wildcard src/superio/*) $(wildcard src/superio/*/*)
+subdirs-y += $(wildcard src/soc/*) $(wildcard src/soc/*/common) $(filter-out $(wildcard src/soc/*/common),$(wildcard src/soc/*/*))
+subdirs-y += $(wildcard src/northbridge/*/*)
+subdirs-y += $(filter-out src/superio/common,$(wildcard src/superio/*)) $(wildcard src/superio/*/*)
 subdirs-y += $(wildcard src/drivers/*) $(wildcard src/drivers/*/*) $(wildcard src/drivers/*/*/*)
 subdirs-y += src/cpu src/vendorcode
 subdirs-y += util/cbfstool util/sconfig util/nvramtool util/pgtblgen util/amdfwtool
@@ -260,9 +261,6 @@ endef
 # ResourceTemplate is the correct code.
 # As it's valid ASL, disable the warning.
 EMPTY_RESOURCE_TEMPLATE_WARNING = 3150
-# Redundant offset remarks are not useful in any way and are masking useful
-# ones that might indicate an issue so it is better to hide them.
-REDUNDANT_OFFSET_REMARK = 2158
 # IASL compiler check for usage of _CRS, _DIS, _PRS, and _SRS objects:
 #	1) If _PRS is present, must have _CRS and _SRS
 #	2) If _SRS is present, must have _PRS (_PRS requires _CRS and _SRS)
@@ -279,8 +277,8 @@ ifeq ($(CONFIG_IGNORE_IASL_MISSING_DEPENDENCY),y)
 build_complete::
 	printf "*** WARNING: The ASL code for this platform is incomplete.  Please fix it. ***\n"
 	printf "*** If _PRS is present, must have _CRS and _SRS ***\n"
-	printf "*** If _SRS is present, must have _PRS, _CRS, and _SRS ***\n"
-	printf "*** If _DIS is present, must have _SRS, _PRS, _CRS, and _SRS ***\n"
+	printf "*** If _SRS is present, must have _PRS and _CRS ***\n"
+	printf "*** If _DIS is present, must have _SRS, _PRS and _CRS ***\n"
 endif
 
 IGNORED_IASL_WARNINGS = $(addprefix -vw , $(IASL_WARNINGS_LIST))
@@ -674,19 +672,6 @@ decompressor-y += $(CONFIG_MEMLAYOUT_LD_FILE)
 # Clean up rules
 clean-abuild:
 	rm -rf coreboot-builds
-
-clean-for-update-target: clean-payloads
-	rm -f $(obj)/ramstage?* $(obj)/coreboot.romstage $(obj)/coreboot.pre* $(obj)/coreboot.bootblock $(obj)/coreboot.a
-	rm -rf $(obj)/bootblock?* $(obj)/romstage?* $(obj)/location.*
-	rm -f $(obj)/option_table.* $(obj)/crt0.S $(obj)/ldscript
-	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/static.c $(obj)/mainboard/$(MAINBOARDDIR)/config.py $(obj)/mainboard/$(MAINBOARDDIR)/static.dot
-	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/crt0.s $(obj)/mainboard/$(MAINBOARDDIR)/crt0.disasm
-	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/romstage.inc
-	rm -f $(obj)/mainboard/$(MAINBOARDDIR)/bootblock.* $(obj)/dsdt.*
-	rm -f $(obj)/cpu/x86/smm/smm_bin.c $(obj)/cpu/x86/smm/smm.* $(obj)/cpu/x86/smm/smm
-
-clean-target:
-	rm -f $(obj)/coreboot*
 
 #######################################################################
 # Development utilities
@@ -1114,6 +1099,10 @@ $(obj)/fmap.fmap: $(obj)/fmap.fmd $(FMAPTOOL)
 ifeq ($(CONFIG_INTEL_ADD_TOP_SWAP_BOOTBLOCK),y)
 TS_OPTIONS := -j $(CONFIG_INTEL_TOP_SWAP_BOOTBLOCK_SIZE)
 endif
+
+# coreboot.pre doesn't follow the standard Make conventions. It gets modified
+# by multiple rules, and thus we can't compute the dependencies correctly.
+$(shell rm -f $(obj)/coreboot.pre)
 
 ifneq ($(CONFIG_UPDATE_IMAGE),y)
 $(obj)/coreboot.pre: $(objcbfs)/bootblock.bin $$(prebuilt-files) $(CBFSTOOL) $(obj)/fmap.fmap $(obj)/fmap.desc

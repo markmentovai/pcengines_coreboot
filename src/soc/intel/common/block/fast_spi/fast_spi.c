@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <device/pci_def.h>
 #include <device/pci_ops.h>
+#include <console/console.h>
 #include <commonlib/helpers.h>
 #include <cpu/x86/mtrr.h>
 #include <fast_spi_def.h>
@@ -170,6 +171,23 @@ void fast_spi_pr_dlock(void)
 }
 
 /*
+ * Set FAST_SPIBAR + VSCC0 (0xC4) register VCL (bit 30).
+ */
+void fast_spi_vscc0_lock(void)
+{
+	void *spibar = fast_spi_get_bar();
+
+	/*
+	 * SPI Flash Programming Guide Section 5.5.2 describes Vendor Component Lock (VCL).
+	 * It is recommended to set the VCL bit. VCL applies to both VSCC0 and VSCC1.
+	 * Without this bit being set, it is possible to modify Host/GbE VSCC register(s),
+	 * which might results in undesired host and integrated GbE Serial Flash
+	 * functionality.
+	 */
+	setbits32(spibar + SPIBAR_SFDP0_VSCC0, SPIBAR_VSCC0_VCL);
+}
+
+/*
  * Set FAST_SPIBAR Soft Reset Data Register value.
  */
 void fast_spi_set_strap_msg_data(uint32_t soft_reset_data)
@@ -194,6 +212,18 @@ void fast_spi_set_strap_msg_data(uint32_t soft_reset_data)
 	ssl = read32(spibar + SPIBAR_RESET_LOCK);
 	ssl |= SPIBAR_RESET_LOCK_ENABLE;
 	write32(spibar + SPIBAR_RESET_LOCK, ssl);
+}
+
+static void fast_spi_enable_cache_range(unsigned int base, unsigned int size)
+{
+	const int type = MTRR_TYPE_WRPROT;
+	int mtrr = get_free_var_mtrr();
+	if (mtrr == -1) {
+		printk(BIOS_WARNING, "ROM caching failed due to no free MTRR available!\n");
+		return;
+	}
+
+	set_var_mtrr(mtrr, base, size, type);
 }
 
 /*
@@ -240,19 +270,11 @@ static void fast_spi_cache_ext_bios_window(void)
 {
 	size_t ext_bios_size;
 	uintptr_t ext_bios_base;
-	const int type = MTRR_TYPE_WRPROT;
 
 	if (!fast_spi_ext_bios_cache_range(&ext_bios_base, &ext_bios_size))
 		return;
 
-	if (ENV_PAYLOAD_LOADER) {
-		mtrr_use_temp_range(ext_bios_base, ext_bios_size, type);
-	} else {
-		int mtrr = get_free_var_mtrr();
-		if (mtrr == -1)
-			return;
-		set_var_mtrr(mtrr, ext_bios_base, ext_bios_size, type);
-	}
+	fast_spi_enable_cache_range(ext_bios_base, ext_bios_size);
 }
 
 void fast_spi_cache_ext_bios_postcar(struct postcar_frame *pcf)
@@ -271,7 +293,6 @@ void fast_spi_cache_bios_region(void)
 {
 	size_t bios_size;
 	uint32_t alignment;
-	const int type = MTRR_TYPE_WRPROT;
 	uintptr_t base;
 
 	/* Only the IFD BIOS region is memory mapped (at top of 4G) */
@@ -290,16 +311,7 @@ void fast_spi_cache_bios_region(void)
 	bios_size = ALIGN_UP(bios_size, alignment);
 	base = 4ULL*GiB - bios_size;
 
-	if (ENV_PAYLOAD_LOADER) {
-		mtrr_use_temp_range(base, bios_size, type);
-	} else {
-		int mtrr = get_free_var_mtrr();
-
-		if (mtrr == -1)
-			return;
-
-		set_var_mtrr(mtrr, base, bios_size, type);
-	}
+	fast_spi_enable_cache_range(base, bios_size);
 
 	/* Check if caching is needed for extended bios region if supported */
 	fast_spi_cache_ext_bios_window();
@@ -432,4 +444,12 @@ void fast_spi_disable_wp(void)
 	bios_cntl = pci_read_config8(dev, SPI_BIOS_CONTROL);
 	bios_cntl |= SPI_BIOS_CONTROL_WPD;
 	pci_write_config8(dev, SPI_BIOS_CONTROL, bios_cntl);
+}
+
+void fast_spi_clear_outstanding_status(void)
+{
+	void *spibar = fast_spi_get_bar();
+
+	/* Make sure all W1C status bits get cleared. */
+	write32(spibar + SPIBAR_HSFSTS_CTL, SPIBAR_HSFSTS_W1C_BITS);
 }

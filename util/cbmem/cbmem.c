@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -597,14 +598,72 @@ static int compare_timestamp_entries(const void *a, const void *b)
 	return 0;
 }
 
+static int find_matching_end(struct timestamp_table *sorted_tst_p, uint32_t start, uint32_t end)
+{
+	uint32_t id = sorted_tst_p->entries[start].entry_id;
+	uint32_t possible_match = 0;
+
+	for (uint32_t i = 0; i < ARRAY_SIZE(timestamp_ids); ++i) {
+		if (timestamp_ids[i].id == id) {
+			possible_match = timestamp_ids[i].id_end;
+			break;
+		}
+	}
+
+	/* No match found or timestamp not defined in IDs table */
+	if (!possible_match)
+		return -1;
+
+	for (uint32_t i = start + 1; i < end; i++)
+		if (sorted_tst_p->entries[i].entry_id == possible_match)
+			return i;
+
+	return -1;
+}
+
+static const char *get_timestamp_name(const uint32_t id)
+{
+	for (uint32_t i = 0; i < ARRAY_SIZE(timestamp_ids); i++)
+		if (timestamp_ids[i].id == id)
+			return timestamp_ids[i].enum_name;
+
+	return "UNKNOWN";
+}
+
+struct ts_range_stack {
+	const char *name;
+	const char *end_name;
+	uint32_t end;
+};
+
+static void print_with_path(struct ts_range_stack *range_stack, const int stacklvl,
+			    const uint64_t stamp, const char *last_part)
+{
+	for (int i = 1; i <= stacklvl; ++i) {
+		printf("%s -> %s", range_stack[i].name, range_stack[i].end_name);
+		if (i < stacklvl || last_part)
+			putchar(';');
+	}
+	if (last_part)
+		printf("%s", last_part);
+	printf(" %llu\n", (long long)arch_convert_raw_ts_entry(stamp));
+}
+
+enum timestamps_print_type {
+	TIMESTAMPS_PRINT_NONE,
+	TIMESTAMPS_PRINT_NORMAL,
+	TIMESTAMPS_PRINT_MACHINE_READABLE,
+	TIMESTAMPS_PRINT_STACKED,
+};
+
 /* dump the timestamp table */
-static void dump_timestamps(int mach_readable)
+static void dump_timestamps(enum timestamps_print_type output_type)
 {
 	const struct timestamp_table *tst_p;
 	struct timestamp_table *sorted_tst_p;
 	size_t size;
-	uint64_t prev_stamp;
-	uint64_t total_time;
+	uint64_t prev_stamp = 0;
+	uint64_t total_time = 0;
 	struct mapping timestamp_mapping;
 
 	if (timestamps.tag != LB_TAG_TIMESTAMPS) {
@@ -619,7 +678,7 @@ static void dump_timestamps(int mach_readable)
 
 	timestamp_set_tick_freq(tst_p->tick_freq_mhz);
 
-	if (!mach_readable)
+	if (output_type == TIMESTAMPS_PRINT_NORMAL)
 		printf("%d entries total:\n\n", tst_p->num_entries);
 	size += tst_p->num_entries * sizeof(tst_p->entries[0]);
 
@@ -656,24 +715,54 @@ static void dump_timestamps(int mach_readable)
 		prev_stamp = tst_p->base_time;
 	}
 
-	total_time = 0;
+	struct ts_range_stack range_stack[20];
+	range_stack[0].end = sorted_tst_p->num_entries;
+	int stacklvl = 0;
+
 	for (uint32_t i = 0; i < sorted_tst_p->num_entries; i++) {
 		uint64_t stamp;
 		const struct timestamp_entry *tse = &sorted_tst_p->entries[i];
 
 		/* Make all timestamps absolute. */
 		stamp = tse->entry_stamp + sorted_tst_p->base_time;
-		if (mach_readable)
-			total_time +=
-				timestamp_print_parseable_entry(tse->entry_id,
-							stamp, prev_stamp);
-		else
-			total_time += timestamp_print_entry(tse->entry_id,
-							stamp, prev_stamp);
+		if (output_type == TIMESTAMPS_PRINT_MACHINE_READABLE) {
+			timestamp_print_parseable_entry(tse->entry_id, stamp, prev_stamp);
+		} else if (output_type == TIMESTAMPS_PRINT_NORMAL) {
+			total_time += timestamp_print_entry(tse->entry_id, stamp, prev_stamp);
+		} else if (output_type == TIMESTAMPS_PRINT_STACKED) {
+			bool end_of_range = false;
+			/* Iterate over stacked entries to pop all ranges, which are closed by
+			   current element. For example, assuming two ranges: (TS_A, TS_C),
+			   (TS_B, TS_C) it will pop all of them instead of just last one. */
+			while (stacklvl > 0 && range_stack[stacklvl].end == i) {
+				end_of_range = true;
+				stacklvl--;
+			}
+
+			int match =
+				find_matching_end(sorted_tst_p, i, range_stack[stacklvl].end);
+			if (match != -1) {
+				const uint64_t match_stamp =
+					sorted_tst_p->entries[match].entry_stamp
+					+ sorted_tst_p->base_time;
+				stacklvl++;
+				assert(stacklvl < (int)ARRAY_SIZE(range_stack));
+				range_stack[stacklvl].name = get_timestamp_name(tse->entry_id);
+				range_stack[stacklvl].end_name = get_timestamp_name(
+					sorted_tst_p->entries[match].entry_id);
+				range_stack[stacklvl].end = match;
+				print_with_path(range_stack, stacklvl, match_stamp - stamp,
+						NULL);
+			} else if (!end_of_range) {
+				print_with_path(range_stack, stacklvl, stamp - prev_stamp,
+						get_timestamp_name(tse->entry_id));
+			}
+			/* else: No match && end_of_range == true */
+		}
 		prev_stamp = stamp;
 	}
 
-	if (!mach_readable) {
+	if (output_type == TIMESTAMPS_PRINT_NORMAL) {
 		printf("\nTotal Time: ");
 		print_norm(total_time);
 		printf("\n");
@@ -1141,7 +1230,7 @@ static void dump_cbmem_hex(void)
 		return;
 	}
 
-	hexdump(unpack_lb64(cbmem.start), unpack_lb64(cbmem.size));
+	hexdump(cbmem.start, cbmem.size);
 }
 
 static void rawdump(uint64_t base, uint64_t size)
@@ -1386,6 +1475,7 @@ static void print_usage(const char *name, int exit_code)
 	     "   -r | --rawdump ID:                print rawdump of specific ID (in hex) of cbtable\n"
 	     "   -t | --timestamps:                print timestamp information\n"
 	     "   -T | --parseable-timestamps:      print parseable timestamps\n"
+	     "   -S | --stacked-timestamps:        print stacked timestamps (e.g. for flame graph tools)\n"
 	     "   -L | --tcpa-log                   print TCPA log\n"
 	     "   -d | --drtm-log                   print DRTM TPM log\n"
 	     "   -V | --verbose:                   verbose (debugging) output\n"
@@ -1521,10 +1611,10 @@ int main(int argc, char** argv)
 	int print_list = 0;
 	int print_hexdump = 0;
 	int print_rawdump = 0;
-	int print_timestamps = 0;
 	int print_tcpa_log = 0;
 	int print_drtm_log = 0;
 	int machine_readable_timestamps = 0;
+	enum timestamps_print_type timestamp_type = TIMESTAMPS_PRINT_NONE;
 	enum console_print_type console_type = CONSOLE_PRINT_FULL;
 	unsigned int rawdump_id = 0;
 	int max_loglevel = BIOS_NEVER;
@@ -1544,6 +1634,7 @@ int main(int argc, char** argv)
 		{"drtm-log", 0, 0, 'd'},
 		{"timestamps", 0, 0, 't'},
 		{"parseable-timestamps", 0, 0, 'T'},
+		{"stacked-timestamps", 0, 0, 'S'},
 		{"hexdump", 0, 0, 'x'},
 		{"rawdump", required_argument, 0, 'r'},
 		{"verbose", 0, 0, 'V'},
@@ -1607,12 +1698,15 @@ int main(int argc, char** argv)
 			rawdump_id = strtoul(optarg, NULL, 16);
 			break;
 		case 't':
-			print_timestamps = 1;
+			timestamp_type = TIMESTAMPS_PRINT_NORMAL;
 			print_defaults = 0;
 			break;
 		case 'T':
-			print_timestamps = 1;
-			machine_readable_timestamps = 1;
+			timestamp_type = TIMESTAMPS_PRINT_MACHINE_READABLE;
+			print_defaults = 0;
+			break;
+		case 'S':
+			timestamp_type = TIMESTAMPS_PRINT_STACKED;
 			print_defaults = 0;
 			break;
 		case 'V':
@@ -1727,8 +1821,11 @@ int main(int argc, char** argv)
 	if (print_rawdump)
 		dump_cbmem_raw(rawdump_id);
 
-	if (print_defaults || print_timestamps)
-		dump_timestamps(machine_readable_timestamps);
+	if (print_defaults)
+		timestamp_type = TIMESTAMPS_PRINT_NORMAL;
+
+	if (timestamp_type != TIMESTAMPS_PRINT_NONE)
+		dump_timestamps(timestamp_type);
 
 	if (print_tcpa_log)
 		dump_tcpa_log();

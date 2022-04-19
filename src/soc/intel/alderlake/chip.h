@@ -441,6 +441,13 @@ struct soc_intel_alderlake_config {
 	uint8_t dmi_power_optimize_disable;
 
 	/*
+	 * Used to communicate the power delivery design capability of the board. This
+	 * value is an enum of the available power delivery segments that are defined in
+	 * the Platform Design Guide.
+	 */
+	uint8_t vr_power_delivery_design;
+
+	/*
 	 * Enable(1)/Disable(0) CPU Replacement check.
 	 * Default 0. Setting this to 1 to check CPU replacement.
 	 */
@@ -566,6 +573,13 @@ struct soc_intel_alderlake_config {
 	 * Default 0. Set this to 1 in order to disable C state demotion.
 	 */
 	bool disable_c1_state_auto_demotion;
+
+	/*
+	 * Enable or Disable PCH USB2 Phy power gating.
+	 * Default 0. Set this to 1 in order to disable PCH USB2 Phy Power gating.
+	 * Workaround for Intel TA# 723158 to prevent possible display flicker.
+	 */
+	bool usb2_phy_sus_pg_disable;
 };
 
 typedef struct soc_intel_alderlake_config config_t;
