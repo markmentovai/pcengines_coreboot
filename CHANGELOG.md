@@ -13,7 +13,7 @@ Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 ****
 ## [Unreleased]
 
-## [v4.16.0.3] - 2022-04-22
+## [v4.16.0.3] - 2022-04-21
 ### Changed
 - Rebased with official coreboot repository commit 2c4b426557
 
