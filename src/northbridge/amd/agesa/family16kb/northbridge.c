@@ -469,9 +469,9 @@ static unsigned long agesa_write_acpi_tables(const struct device *device,
 	/* HEST */
 	current = ALIGN(current, 8);
 	hest = (acpi_hest_t *)current;
-	acpi_write_hest((void *)current, acpi_fill_hest);
-	acpi_add_table(rsdp, (void *)current);
-	current += ((acpi_header_t *)current)->length;
+	acpi_write_hest(hest, acpi_fill_hest);
+	acpi_add_table(rsdp, hest);
+	current += hest->header.length;
 
 	current   = ALIGN(current, 8);
 	printk(BIOS_DEBUG, "ACPI:    * IVRS at %lx\n", current);
@@ -680,7 +680,6 @@ static void domain_set_resources(struct device *dev)
 	struct bus *link;
 #if CONFIG_HW_MEM_HOLE_SIZEK != 0
 	struct hw_mem_hole_info mem_hole;
-	u32 reset_memhole = 1;
 #endif
 
 	pci_tolm = 0xffffffffUL;
@@ -709,10 +708,8 @@ static void domain_set_resources(struct device *dev)
 	mem_hole = get_hw_mem_hole_info();
 
 	// Use hole_basek as mmio_basek, and we don't need to reset hole anymore
-	if ((mem_hole.node_id !=  -1) && (mmio_basek > mem_hole.hole_startk)) {
+	if ((mem_hole.node_id !=  -1) && (mmio_basek > mem_hole.hole_startk))
 		mmio_basek = mem_hole.hole_startk;
-		reset_memhole = 0;
-	}
 #endif
 
 	idx = 0x10;

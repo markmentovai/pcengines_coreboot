@@ -480,7 +480,7 @@ const struct pad_config gpio_table[] = {
 	PAD_NC(GPIO_183, DN_20K),
 	/* GPIO_184:	Not Connected		*/
 	PAD_NC(GPIO_184, DN_20K),
-	/* GPIO_187:	WLAN_RST_N_R		*/
+	/* GPIO_185:	WLAN_RST_N_R		*/
 	_PAD_CFG_STRUCT(GPIO_185, PAD_FUNC(GPIO) | PAD_RESET(DEEP) |
 		PAD_TRIG(OFF) | PAD_BUF(TX_RX_DISABLE), PAD_IOSSTATE(IGNORE)),
 	/* GPIO_186:	Not Connected		*/

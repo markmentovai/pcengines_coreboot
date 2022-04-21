@@ -260,6 +260,9 @@ amd_fw_entry amd_psp_fw_table[] = {
 	{ .type = AMD_FW_SPL, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_FW_DMCU_ERAM, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_FW_DMCU_ISR, .level = PSP_LVL2 | PSP_LVL2_AB },
+	{ .type = AMD_FW_MSMU, .level = PSP_LVL2 | PSP_LVL2_AB },
+	{ .type = AMD_FW_DMCUB, .level = PSP_LVL2 | PSP_LVL2_AB },
+	{ .type = AMD_FW_SPIROM_CFG, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_RPMC_NVRAM, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_FW_PSP_BOOTLOADER_AB, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_ABL0, .level = PSP_BOTH | PSP_LVL2_AB },
@@ -418,6 +421,15 @@ static void *new_psp_dir(context *ctx, int multi)
 	return ptr;
 }
 
+static void *new_ish_dir(context *ctx)
+{
+	void *ptr;
+	ctx->current = ALIGN(ctx->current, TABLE_ALIGNMENT);
+	ptr = BUFF_CURRENT(*ctx);
+	ctx->current += TABLE_ALIGNMENT;
+	return ptr;
+}
+
 #if PSP_COMBO
 static void *new_combo_dir(context *ctx)
 {
@@ -546,6 +558,7 @@ enum platform {
 	PLATFORM_CEZANNE,
 	PLATFORM_MENDOCINO,
 	PLATFORM_LUCIENNE,
+	PLATFORM_SABRINA,
 };
 
 static uint32_t get_psp_id(enum platform soc_id)
@@ -564,6 +577,7 @@ static uint32_t get_psp_id(enum platform soc_id)
 		psp_id = 0xBC0C0140;
 		break;
 	case PLATFORM_MENDOCINO:
+	case PLATFORM_SABRINA:
 		psp_id = 0xBC0D0900;
 		break;
 	case PLATFORM_STONEYRIDGE:
@@ -669,7 +683,8 @@ static void free_bdt_firmware_filenames(amd_bios_entry *fw_table)
 }
 
 static void integrate_psp_ab(context *ctx, psp_directory_table *pspdir,
-		psp_directory_table *pspdir2, amd_fw_type ab)
+		psp_directory_table *pspdir2, ish_directory_table *ish,
+		amd_fw_type ab, enum platform soc_id)
 {
 	uint32_t count;
 	uint32_t current_table_save;
@@ -681,11 +696,28 @@ static void integrate_psp_ab(context *ctx, psp_directory_table *pspdir,
 	pspdir->entries[count].type = (uint8_t)ab;
 	pspdir->entries[count].subprog = 0;
 	pspdir->entries[count].rsvd = 0;
-	pspdir->entries[count].addr = BUFF_TO_RUN_MODE(*ctx, pspdir2, ADDRESS_MODE_1_REL_BIOS);
-	pspdir->entries[count].address_mode = SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
-	pspdir->entries[count].size = pspdir2->header.num_entries *
+	if (ish != NULL) {
+		ish->pl2_location = BUFF_TO_RUN_MODE(*ctx, pspdir2, ADDRESS_MODE_1_REL_BIOS);
+		ish->boot_priority = ab == AMD_FW_RECOVERYAB_A ? 0xFFFFFFFF : 1;
+		ish->update_retry_count = 2;
+		ish->glitch_retry_count = 0;
+		ish->psp_id = get_psp_id(soc_id);
+		ish->checksum = fletcher32(&ish->boot_priority,
+				sizeof(ish_directory_table) - sizeof(uint32_t));
+		pspdir->entries[count].addr =
+				BUFF_TO_RUN_MODE(*ctx, ish, ADDRESS_MODE_1_REL_BIOS);
+		pspdir->entries[count].address_mode =
+				SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
+		pspdir->entries[count].size = TABLE_ALIGNMENT;
+	} else {
+		pspdir->entries[count].addr =
+				BUFF_TO_RUN_MODE(*ctx, pspdir2, ADDRESS_MODE_1_REL_BIOS);
+		pspdir->entries[count].address_mode =
+				SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
+		pspdir->entries[count].size = pspdir2->header.num_entries *
 				sizeof(psp_directory_entry) +
 				sizeof(psp_directory_header);
+	}
 
 	count++;
 	pspdir->header.num_entries = count;
@@ -698,6 +730,7 @@ static void integrate_psp_firmwares(context *ctx,
 					psp_directory_table *pspdir2_b,
 					amd_fw_entry *fw_table,
 					uint32_t cookie,
+					enum platform soc_id,
 					amd_cb_config *cb_config)
 {
 	ssize_t bytes;
@@ -705,6 +738,7 @@ static void integrate_psp_firmwares(context *ctx,
 	int level;
 	uint32_t current_table_save;
 	bool recovery_ab = cb_config->recovery_ab;
+	ish_directory_table *ish_a_dir = NULL, *ish_b_dir = NULL;
 
 	/* This function can create a primary table, a secondary table, or a
 	 * flattened table which contains all applicable types.  These if-else
@@ -812,10 +846,21 @@ static void integrate_psp_firmwares(context *ctx,
 	}
 
 	if (recovery_ab && (pspdir2 != NULL)) {
+		if (cb_config->need_ish) {	/* Need ISH */
+			ish_a_dir = new_ish_dir(ctx);
+			if (pspdir2_b != NULL)
+				ish_b_dir = new_ish_dir(ctx);
+		}
 		pspdir->header.num_entries = count;
-		integrate_psp_ab(ctx, pspdir, pspdir2, AMD_FW_RECOVERYAB_A);
+		integrate_psp_ab(ctx, pspdir, pspdir2, ish_a_dir,
+			AMD_FW_RECOVERYAB_A, soc_id);
 		if (pspdir2_b != NULL)
-			integrate_psp_ab(ctx, pspdir, pspdir2_b, AMD_FW_RECOVERYAB_B);
+			integrate_psp_ab(ctx, pspdir, pspdir2_b, ish_b_dir,
+				AMD_FW_RECOVERYAB_B, soc_id);
+		else
+			integrate_psp_ab(ctx, pspdir, pspdir2, ish_b_dir,
+				AMD_FW_RECOVERYAB_B, soc_id);
+
 		count = pspdir->header.num_entries;
 	} else if (pspdir2 != NULL) {
 		assert_fw_entry(count, MAX_PSP_ENTRIES, ctx);
@@ -1161,6 +1206,7 @@ enum {
 	AMDFW_OPT_GEC,
 	AMDFW_OPT_COMBO,
 	AMDFW_OPT_RECOVERY_AB,
+	AMDFW_OPT_RECOVERY_AB_SINGLE_COPY,
 	AMDFW_OPT_MULTILEVEL,
 	AMDFW_OPT_NVRAM,
 
@@ -1209,6 +1255,7 @@ static struct option long_options[] = {
 	/* PSP Directory Table items */
 	{"combo-capable",          no_argument, 0, AMDFW_OPT_COMBO },
 	{"recovery-ab",            no_argument, 0, AMDFW_OPT_RECOVERY_AB },
+	{"recovery-ab-single-copy", no_argument, 0, AMDFW_OPT_RECOVERY_AB_SINGLE_COPY },
 	{"multilevel",             no_argument, 0, AMDFW_OPT_MULTILEVEL },
 	{"nvram",            required_argument, 0, AMDFW_OPT_NVRAM },
 	{"soft-fuse",        required_argument, 0, AMDFW_OPT_FUSE },
@@ -1332,14 +1379,25 @@ static void register_fw_addr(amd_bios_type type, char *src_str,
 	}
 }
 
-static int set_efs_table(uint8_t soc_id, embedded_firmware *amd_romsig,
-			 uint8_t efs_spi_readmode, uint8_t efs_spi_speed,
-			 uint8_t efs_spi_micron_flag)
+static int set_efs_table(uint8_t soc_id, amd_cb_config *cb_config,
+			 embedded_firmware *amd_romsig, uint8_t efs_spi_readmode,
+			 uint8_t efs_spi_speed, uint8_t efs_spi_micron_flag)
 {
 	if ((efs_spi_readmode == 0xFF) || (efs_spi_speed == 0xFF)) {
 		fprintf(stderr, "Error: EFS read mode and SPI speed must be set\n");
 		return 1;
 	}
+
+	/* amd_romsig->efs_gen introduced after RAVEN/PICASSO.
+	 * Leave as 0xffffffff for first gen */
+	if (cb_config->second_gen) {
+		amd_romsig->efs_gen.gen = EFS_SECOND_GEN;
+		amd_romsig->efs_gen.reserved = 0;
+	} else {
+		amd_romsig->efs_gen.gen = EFS_BEFORE_SECOND_GEN;
+		amd_romsig->efs_gen.reserved = ~0;
+	}
+
 	switch (soc_id) {
 	case PLATFORM_STONEYRIDGE:
 		amd_romsig->spi_readmode_f15_mod_60_6f = efs_spi_readmode;
@@ -1347,8 +1405,6 @@ static int set_efs_table(uint8_t soc_id, embedded_firmware *amd_romsig,
 		break;
 	case PLATFORM_RAVEN:
 	case PLATFORM_PICASSO:
-		/* amd_romsig->efs_gen introduced after RAVEN/PICASSO.
-		 * Leave as 0xffffffff for first gen */
 		amd_romsig->spi_readmode_f17_mod_00_2f = efs_spi_readmode;
 		amd_romsig->spi_fastspeed_f17_mod_00_2f = efs_spi_speed;
 		switch (efs_spi_micron_flag) {
@@ -1367,7 +1423,7 @@ static int set_efs_table(uint8_t soc_id, embedded_firmware *amd_romsig,
 	case PLATFORM_LUCIENNE:
 	case PLATFORM_CEZANNE:
 	case PLATFORM_MENDOCINO:
-		amd_romsig->efs_gen.gen = EFS_SECOND_GEN;
+	case PLATFORM_SABRINA:
 		amd_romsig->spi_readmode_f17_mod_30_3f = efs_spi_readmode;
 		amd_romsig->spi_fastspeed_f17_mod_30_3f = efs_spi_speed;
 		switch (efs_spi_micron_flag) {
@@ -1409,9 +1465,38 @@ static int identify_platform(char *soc_name)
 		return PLATFORM_RENOIR;
 	else if (!strcasecmp(soc_name, "Lucienne"))
 		return PLATFORM_LUCIENNE;
+	else if (!strcasecmp(soc_name, "Sabrina"))
+		return PLATFORM_SABRINA;
 	else
 		return PLATFORM_UNKNOWN;
 
+}
+
+static bool needs_ish(enum platform platform_type)
+{
+	if (platform_type == PLATFORM_SABRINA)
+		return true;
+	else
+		return false;
+}
+
+static bool is_second_gen(enum platform platform_type)
+{
+	switch (platform_type) {
+	case PLATFORM_STONEYRIDGE:
+	case PLATFORM_RAVEN:
+	case PLATFORM_PICASSO:
+		return false;
+	case PLATFORM_RENOIR:
+	case PLATFORM_LUCIENNE:
+	case PLATFORM_CEZANNE:
+	case PLATFORM_SABRINA:
+		return true;
+	case PLATFORM_UNKNOWN:
+	default:
+		fprintf(stderr, "Error: Invalid SOC name.\n\n");
+		return false;
+	}
 }
 
 int main(int argc, char **argv)
@@ -1452,6 +1537,8 @@ int main(int argc, char **argv)
 	cb_config.s0i3 = false;
 	cb_config.multi_level = false;
 	cb_config.recovery_ab = false;
+	cb_config.need_ish = false;
+	cb_config.recovery_ab_single_copy = false;
 
 	while (1) {
 		int optindex = 0;
@@ -1479,6 +1566,10 @@ int main(int argc, char **argv)
 			break;
 		case AMDFW_OPT_RECOVERY_AB:
 			cb_config.recovery_ab = true;
+			break;
+		case AMDFW_OPT_RECOVERY_AB_SINGLE_COPY:
+			cb_config.recovery_ab = true;
+			cb_config.recovery_ab_single_copy = true;
 			break;
 		case AMDFW_OPT_MULTILEVEL:
 			cb_config.multi_level = true;
@@ -1644,6 +1735,17 @@ int main(int argc, char **argv)
 		}
 	}
 
+	cb_config.second_gen = is_second_gen(soc_id);
+
+	if (needs_ish(soc_id))
+		cb_config.need_ish = true;
+
+	if (cb_config.need_ish)
+		cb_config.recovery_ab = true;
+
+	if (cb_config.recovery_ab)
+		cb_config.multi_level = true;
+
 	if (config) {
 		config_handle = fopen(config, "r");
 		if (config_handle == NULL) {
@@ -1682,10 +1784,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Error: ROM Size (%dKB) must be at least %dKB.\n\n",
 			ctx.rom_size / 1024, MIN_ROM_KB);
 		retval = 1;
-	}
-
-	if (cb_config.recovery_ab) {
-		cb_config.multi_level = true;
 	}
 
 	if (retval) {
@@ -1747,7 +1845,7 @@ int main(int argc, char **argv)
 	amd_romsig->xhci_entry = 0;
 
 	if (soc_id != PLATFORM_UNKNOWN) {
-		retval = set_efs_table(soc_id, amd_romsig, efs_spi_readmode,
+		retval = set_efs_table(soc_id, &cb_config, amd_romsig, efs_spi_readmode,
 					efs_spi_speed, efs_spi_micron_flag);
 		if (retval) {
 			fprintf(stderr, "ERROR: Failed to initialize EFS table!\n");
@@ -1757,7 +1855,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "WARNING: No SOC name specified.\n");
 	}
 
-	if (amd_romsig->efs_gen.gen == EFS_SECOND_GEN)
+	if (cb_config.need_ish)
+		ctx.address_mode = ADDRESS_MODE_2_REL_TAB;
+	else if (cb_config.second_gen)
 		ctx.address_mode = ADDRESS_MODE_1_REL_BIOS;
 	else
 		ctx.address_mode = ADDRESS_MODE_0_PHY;
@@ -1774,25 +1874,29 @@ int main(int argc, char **argv)
 		/* Do 2nd PSP directory followed by 1st */
 		pspdir2 = new_psp_dir(&ctx, cb_config.multi_level);
 		integrate_psp_firmwares(&ctx, pspdir2, NULL, NULL,
-					amd_psp_fw_table, PSPL2_COOKIE, &cb_config);
-		if (cb_config.recovery_ab) {
-			/* B is same as above directories for A */
-			/* Skip creating pspdir2_b here to save flash space. Related
-			 * biosdir2_b will be skipped automatically. */
+					amd_psp_fw_table, PSPL2_COOKIE, soc_id, &cb_config);
+		if (cb_config.recovery_ab && !cb_config.recovery_ab_single_copy) {
+			/* Create a copy of PSP Directory 2 in the backup slot B.
+			   Related biosdir2_b copy will be created later. */
 			pspdir2_b = new_psp_dir(&ctx, cb_config.multi_level);
 			integrate_psp_firmwares(&ctx, pspdir2_b, NULL, NULL,
-					amd_psp_fw_table, PSPL2_COOKIE, &cb_config);
+					amd_psp_fw_table, PSPL2_COOKIE, soc_id, &cb_config);
 		} else {
+			/*
+			 * Either the platform is using only one slot or B is same as above
+			 * directories for A. Skip creating pspdir2_b here to save flash space.
+			 * Related biosdir2_b will be skipped automatically.
+			 */
 			pspdir2_b = NULL; /* More explicitly */
 		}
 		pspdir = new_psp_dir(&ctx, cb_config.multi_level);
 		integrate_psp_firmwares(&ctx, pspdir, pspdir2, pspdir2_b,
-						amd_psp_fw_table, PSP_COOKIE, &cb_config);
+					amd_psp_fw_table, PSP_COOKIE, soc_id, &cb_config);
 	} else {
 		/* flat: PSP 1 cookie and no pointer to 2nd table */
 		pspdir = new_psp_dir(&ctx, cb_config.multi_level);
 		integrate_psp_firmwares(&ctx, pspdir, NULL, NULL,
-						amd_psp_fw_table, PSP_COOKIE, &cb_config);
+					amd_psp_fw_table, PSP_COOKIE, soc_id, &cb_config);
 	}
 
 	if (comboable)
@@ -1853,6 +1957,7 @@ int main(int argc, char **argv)
 				amd_romsig->bios3_entry = BUFF_TO_RUN(ctx, biosdir);
 			break;
 		case PLATFORM_MENDOCINO:
+		case PLATFORM_SABRINA:
 			break;
 		case PLATFORM_STONEYRIDGE:
 		case PLATFORM_RAVEN:

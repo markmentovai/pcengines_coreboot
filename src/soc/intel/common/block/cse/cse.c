@@ -1012,11 +1012,11 @@ void cse_set_to_d0i3(void)
 void heci_set_to_d0i3(void)
 {
 	for (int i = 0; i < CONFIG_MAX_HECI_DEVICES; i++) {
-		pci_devfn_t dev = PCI_DEV(0, PCI_SLOT(PCH_DEV_SLOT_CSE), PCI_FUNC(i));
-		if (!is_cse_devfn_visible(dev))
+		pci_devfn_t devfn = PCI_DEVFN(PCH_DEV_SLOT_CSE, i);
+		if (!is_cse_devfn_visible(devfn))
 			continue;
 
-		set_cse_device_state(dev, DEV_IDLE);
+		set_cse_device_state(devfn, DEV_IDLE);
 	}
 }
 
@@ -1212,7 +1212,8 @@ struct cse_notify_phase_data {
  */
 static void cse_final_ready_to_boot(void)
 {
-	cse_send_end_of_post();
+	if (CONFIG(SOC_INTEL_CSE_SET_EOP))
+		cse_send_end_of_post();
 
 	cse_control_global_reset_lock();
 
@@ -1253,7 +1254,7 @@ static void cse_final(struct device *dev)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(notify_data); i++) {
 		if (!notify_data[i].skip)
-			return notify_data[i].notify_func();
+			notify_data[i].notify_func();
 	}
 }
 

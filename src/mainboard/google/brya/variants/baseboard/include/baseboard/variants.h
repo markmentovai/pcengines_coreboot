@@ -15,7 +15,6 @@
 const struct pad_config *variant_gpio_table(size_t *num);
 const struct pad_config *variant_gpio_override_table(size_t *num);
 const struct pad_config *variant_early_gpio_table(size_t *num);
-const struct cros_gpio *variant_cros_gpios(size_t *num);
 const struct pad_config *variant_romstage_gpio_table(size_t *num);
 
 const struct mb_cfg *variant_memory_params(void);
@@ -30,10 +29,12 @@ enum s0ix_entry {
 	S0IX_ENTRY,
 };
 
-void variant_generate_s0ix_hook(enum s0ix_entry);
+void variant_generate_s0ix_hook(enum s0ix_entry entry);
 
 /* Modify devictree settings during ramstage */
 void variant_devtree_update(void);
+
+void variant_update_descriptor(void);
 
 struct cpu_power_limits {
 	uint16_t mchid;
@@ -80,5 +81,8 @@ void variant_update_psys_power_limits(const struct cpu_power_limits *limits,
 					const struct system_power_limits *sys_limits,
 					size_t num_entries,
 					const struct psys_config *config);
+
+void variant_init(void);
+void variant_finalize(void);
 
 #endif /*__BASEBOARD_VARIANTS_H__ */

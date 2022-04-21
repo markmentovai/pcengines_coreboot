@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
-#include <bootmode.h>
 #include <cbfs.h>
 #include <cbmem.h>
 #include <commonlib/bsd/mem_chip_info.h>
@@ -134,6 +133,12 @@ static void add_mem_chip_info(int unused)
 {
 	struct mem_chip_info *mc;
 	size_t size;
+
+	if (!CONFIG(USE_CBMEM_DRAM_INFO)) {
+		printk(BIOS_DEBUG,
+		       "DRAM-K: CBMEM DRAM info is unsupported (USE_CBMEM_DRAM_INFO)\n");
+		return;
+	}
 
 	size = sizeof(*mc) + sizeof(struct mem_chip_channel) * CHANNEL_MAX;
 	mc = cbmem_add(CBMEM_ID_MEM_CHIP_INFO, size);

@@ -101,7 +101,8 @@ static const struct pad_config override_gpio_table[] = {
 	/* D10 : ISH_SPI_CLK ==> USB_C2_LSX_RX_STRAP */
 	/* D11 : ISH_SPI_MISO ==> USB_C3_LSX_TX */
 	PAD_CFG_NF_LOCK(GPP_D11, NONE, NF4, LOCK_CONFIG),
-	/* D12 : ISH_SPI_MOSI ==> GPP_D12_STRAP */
+	/* D12 : ISH_SPI_MOSI ==> USB_C3_LSX_RX */
+	PAD_CFG_NF_LOCK(GPP_D12, NONE, NF4, LOCK_CONFIG),
 	/* D13 : ISH_UART0_RXD ==> NC */
 	PAD_NC_LOCK(GPP_D13, NONE, LOCK_CONFIG),
 	/* D14 : ISH_UART0_TXD ==> NC */
@@ -186,7 +187,8 @@ static const struct pad_config override_gpio_table[] = {
 	PAD_NC(GPP_F20, NONE),
 	/* F21 : EXT_PWR_GATE2# ==> NC */
 	PAD_NC(GPP_F21, NONE),
-	/* F22 : NC */
+	/* F22 : NC ==> MIC_SW */
+	PAD_CFG_GPI_GPIO_DRIVER(GPP_F22, NONE, DEEP),
 	/* F23 : NC */
 
 	/* H0  : GPPH0_BOOT_STRAP1 */

@@ -7,6 +7,7 @@
 #include <device/pci.h>
 #include <device/pci_ids.h>
 #include <fsp/api.h>
+#include <fsp/fsp_debug_event.h>
 #include <fsp/ppi/mp_service_ppi.h>
 #include <fsp/util.h>
 #include <option.h>
@@ -405,6 +406,7 @@ static void fill_fsps_igd_params(FSP_S_CONFIG *s_cfg,
 	/* Check if IGD is present and fill Graphics init param accordingly */
 	s_cfg->PeiGraphicsPeimInit = CONFIG(RUN_FSP_GOP) && is_devfn_enabled(SA_DEVFN_IGD);
 	s_cfg->LidStatus = CONFIG(RUN_FSP_GOP);
+	s_cfg->PavpEnable = CONFIG(PAVP);
 }
 
 static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
@@ -498,6 +500,8 @@ static void fill_fsps_xhci_params(FSP_S_CONFIG *s_cfg,
 		if (config->tcss_ports[i].enable)
 			s_cfg->CpuUsb3OverCurrentPin[i] = config->tcss_ports[i].ocpin;
 	}
+
+	s_cfg->PmcUsb2PhySusPgEnable = !config->usb2_phy_sus_pg_disable;
 }
 
 static void fill_fsps_xdci_params(FSP_S_CONFIG *s_cfg,
@@ -509,6 +513,10 @@ static void fill_fsps_xdci_params(FSP_S_CONFIG *s_cfg,
 static void fill_fsps_uart_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_alderlake_config *config)
 {
+	if (CONFIG(FSP_USES_CB_DEBUG_EVENT_HANDLER) && CONFIG(CONSOLE_SERIAL) &&
+			 CONFIG(FSP_ENABLE_SERIAL_DEBUG))
+		s_cfg->FspEventHandler = (UINT32)((FSP_EVENT_HANDLER *)
+				fsp_debug_event_handler);
 	/* PCH UART selection for FSP Debug */
 	s_cfg->SerialIoDebugUartNumber = CONFIG_UART_FOR_CONSOLE;
 	ASSERT(ARRAY_SIZE(s_cfg->SerialIoUartAutoFlow) > CONFIG_UART_FOR_CONSOLE);
@@ -634,6 +642,11 @@ static void fill_fsps_storage_params(FSP_S_CONFIG *s_cfg,
 	if (s_cfg->ScsEmmcEnabled)
 		s_cfg->ScsEmmcHs400Enabled = config->emmc_enable_hs400_mode;
 #endif
+
+	/* UFS Configuration */
+	s_cfg->UfsEnable[0] = 0; /* UFS Controller 0 is fuse disabled */
+	s_cfg->UfsEnable[1] = is_devfn_enabled(PCH_DEVFN_UFS);
+
 	/* Enable Hybrid storage auto detection */
 	s_cfg->HybridStorageMode = config->hybrid_storage_mode;
 }
@@ -745,6 +758,8 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 	}
 
 	s_cfg->C1StateAutoDemotion = !config->disable_c1_state_auto_demotion;
+
+	s_cfg->VrPowerDeliveryDesign = config->vr_power_delivery_design;
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,
