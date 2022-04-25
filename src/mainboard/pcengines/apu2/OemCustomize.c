@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <AGESA.h>
+#include <delay.h>
 #include <northbridge/amd/agesa/state_machine.h>
 #include "bios_knobs.h"
 #include <smp/node.h>
@@ -462,6 +463,9 @@ void board_BeforeInitEarly(struct sysinfo *cb, AMD_EARLY_PARAMS *InitEarly)
 			printk(BIOS_WARNING, "Watchdog is enabled, state = 0x%x, time = %d\n", *ptr, *(ptr + 1));
 		}
 	}
+
+	/* Wait 1s for the PCIe devices to settle before proceeding to AmdInitEarly */
+	delay(1);
 }
 
 void board_BeforeInitPost(struct sysinfo *cb, AMD_POST_PARAMS *Post)
