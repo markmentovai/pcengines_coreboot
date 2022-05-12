@@ -11,9 +11,24 @@ chip northbridge/amd/agesa/family14/root_complex
 		chip northbridge/amd/agesa/family14
 			device pci 0.0 on end # Root Complex
 			device pci 1.0 off end # Internal Graphics P2P bridge 0x980[2456]
-			device pci 4.0 on end # PCIE P2P bridge on-board NIC 3
-			device pci 5.0 on end # PCIE P2P bridge on-board NIC 2
-			device pci 6.0 on end # PCIE P2P bridge on-board NIC 1
+			device pci 4.0 on # PCIE P2P bridge on-board NIC 3
+				chip drivers/net
+					register "customized_leds" = "0x0fa5"
+					device pci 00.0 on end
+				end
+			end
+			device pci 5.0 on # PCIE P2P bridge on-board NIC 2
+				chip drivers/net
+					register "customized_leds" = "0x0fa5"
+					device pci 00.0 on end
+				end
+			end
+			device pci 6.0 on # PCIE P2P bridge on-board NIC 1
+				chip drivers/net
+					register "customized_leds" = "0x0fa5"
+					device pci 00.0 on end
+				end
+			end
 			device pci 7.0 on end # PCIE P2P bridge miniPCIe slot 1
 			device pci 8.0 on end # NB/SB Link P2P bridge
 		end # agesa northbridge

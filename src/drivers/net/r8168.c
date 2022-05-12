@@ -307,6 +307,9 @@ static void r8168_set_customized_led(struct device *dev, u16 io_base)
 		printk(BIOS_DEBUG, "r8125: read back LED2 setting as 0x%x\n",
 			inw(io_base + CMD_LEDSEL2));
 	} else {
+		/* Disable register protection */
+		outb(CFG_9346_UNLOCK, io_base + CFG_9346);
+
 		/* Read the customized LED setting from devicetree */
 		printk(BIOS_DEBUG, "r8168: Customized LED 0x%x\n", config->customized_leds);
 
@@ -325,10 +328,19 @@ static void r8168_set_customized_led(struct device *dev, u16 io_base)
 		 * FC		Bit12		Bit13		Bit14		Bit15
 		 */
 
+		/* Enable customized LED mode */
+		outb(io_base + 0x50, inb(io_base + 0x50) | 0x40);
+
+		printk(BIOS_DEBUG, "r8168: current LED setting is 0x%x\n",
+			inw(io_base + CMD_LED0_LED1));
+
 		/* Set customized LED registers */
-		outw(config->customized_leds, io_base + CMD_LED0_LED1);
+		outw(config->customized_leds, io_base+ CMD_LED0_LED1);
 		printk(BIOS_DEBUG, "r8168: read back LED setting as 0x%x\n",
 			inw(io_base + CMD_LED0_LED1));
+
+		/* Lock config regs */
+		outb(CFG_9346_LOCK, io_base + CFG_9346);
 	}
 }
 
