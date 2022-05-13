@@ -361,7 +361,8 @@ static void r8168_init(struct device *dev)
 
 	/* Program MAC address based on CBFS "macaddress" containing
 	 * a string AA:BB:CC:DD:EE:FF */
-	program_mac_address(dev, io_base);
+	if (CONFIG(RT8168_SET_MAC_ADDRESS))
+		program_mac_address(dev, io_base);
 
 	/* Program customized LED mode */
 	if (CONFIG(RT8168_SET_LED_MODE))

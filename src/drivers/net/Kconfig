@@ -6,7 +6,7 @@ config REALTEK_8168_RESET
 
 config REALTEK_8168_MACADDRESS
 	string "Realtek rt8168 mac address"
-	depends on REALTEK_8168_RESET && !RT8168_GET_MAC_FROM_VPD
+	depends on RT8168_SET_MAC_ADDRESS && !RT8168_GET_MAC_FROM_VPD
 	default "00:e0:4c:00:c0:b0"
 	help
 	  This is a string to set the mac address on a Realtek rt8168 card.
@@ -17,7 +17,7 @@ config REALTEK_8168_MACADDRESS
 config RT8168_GET_MAC_FROM_VPD
 	bool
 	default n
-	select REALTEK_8168_RESET
+	select RT8168_SET_MAC_ADDRESS
 
 config RT8168_SUPPORT_LEGACY_VPD_MAC
 	bool
@@ -26,6 +26,14 @@ config RT8168_SUPPORT_LEGACY_VPD_MAC
 	  Previously VPD expected that device_indexes set to zero were
 	  special cased. Selecting this Kconfig restores the legacy
 	  VPD format and behaviour. If unsure, you likely do not need this!
+
+config RT8168_SET_MAC_ADDRESS
+	bool
+	default n
+	depends on REALTEK_8168_RESET
+	help
+	  This programs the MAC address of the NIC. It will also override the
+	  MAC stored in the EEPROM.
 
 config RT8168_SET_LED_MODE
 	bool
