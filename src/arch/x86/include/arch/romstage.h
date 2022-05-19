@@ -16,17 +16,9 @@ void mainboard_romstage_entry(void);
  */
 
 struct postcar_frame {
-	uintptr_t stack;
 	int skip_common_mtrr;
-	struct var_mtrr_context ctx;
+	struct var_mtrr_context *mtrr;
 };
-
-/*
- * Initialize postcar_frame object allocating stack from cbmem,
- * with stack_size == 0, default 4 KiB is allocated.
- * Returns 0 on success, < 0 on error.
- */
-int postcar_frame_init(struct postcar_frame *pcf, size_t stack_size);
 
 /*
  * Add variable MTRR covering the provided range with MTRR type.
@@ -51,18 +43,7 @@ void fill_postcar_frame(struct postcar_frame *pcf);
  * prepare_and_run_postcar() determines the stack to use after
  * cache-as-ram is torn down as well as the MTRR settings to use.
  */
-void prepare_and_run_postcar(struct postcar_frame *pcf);
-
-/*
- * Load and run a program that takes control of execution that
- * tears down CAR and loads ramstage. The postcar_frame object
- * indicates how to set up the frame. If caching is enabled at
- * the time of the call it is up to the platform code to handle
- * coherency with dirty lines in the cache using some mechanism
- * such as platform_prog_run() because run_postcar_phase()
- * utilizes prog_run() internally.
- */
-void run_postcar_phase(struct postcar_frame *pcf);
+void prepare_and_run_postcar(void);
 
 /*
  * Systems without a native coreboot cache-as-ram teardown may implement

@@ -104,7 +104,7 @@ static enum cb_err start_transaction(int read_write, size_t bytes, unsigned int 
 	static int tpm_sync_needed;
 	static struct stopwatch wake_up_sw;
 
-	if (CONFIG(TPM_CR50)) {
+	if (CONFIG(TPM_GOOGLE)) {
 		/*
 		 * First Cr50 access in each coreboot stage where TPM is used will be
 		 * prepended by a wake up pulse on the CS line.
@@ -186,7 +186,7 @@ static enum cb_err start_transaction(int read_write, size_t bytes, unsigned int 
 	 */
 
 	header_resp.body[3] = 0;
-	if (CONFIG(TPM_CR50))
+	if (CONFIG(TPM_GOOGLE))
 		ret = spi_xfer(&spi_slave, header.body, sizeof(header.body), NULL, 0);
 	else
 		ret = spi_xfer(&spi_slave, header.body, sizeof(header.body),
@@ -419,6 +419,7 @@ static enum cb_err tpm2_claim_locality(void)
 /* Device/vendor ID values of the TPM devices this driver supports. */
 static const uint32_t supported_did_vids[] = {
 	0x00281ae0,  /* H1 based Cr50 security chip. */
+	0x504a6666,  /* H1D3C based Ti50 security chip. */
 	0x0000104a   /* ST33HTPH2E32 */
 };
 
@@ -496,15 +497,13 @@ int tpm2_init(struct spi_slave *spi_if)
 	printk(BIOS_INFO, "Connected to device vid:did:rid of %4.4x:%4.4x:%2.2x\n",
 	       tpm_info.vendor_id, tpm_info.device_id, tpm_info.revision);
 
-	/* Do some cr50-specific things here. */
-	if (CONFIG(TPM_CR50) && tpm_info.vendor_id == 0x1ae0) {
-		struct cr50_firmware_version ver;
-
+	/* Do some GSC-specific things here. */
+	if (CONFIG(TPM_GOOGLE)) {
 		if (tpm_first_access_this_boot()) {
 			/* This is called for the side-effect of printing the firmware version
 			   string */
-			cr50_get_firmware_version(&ver);
-			cr50_set_board_cfg();
+			cr50_get_firmware_version(NULL);
+                        cr50_set_board_cfg();
 		}
 	}
 	return 0;

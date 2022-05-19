@@ -15,7 +15,6 @@
 #include <drivers/tpm/tpm_ppi.h>
 #include <fmap.h>
 #include <fw_config.h>
-#include <stdlib.h>
 #include <cbfs.h>
 #include <cbmem.h>
 #include <bootmem.h>
@@ -23,6 +22,7 @@
 #include <inttypes.h>
 #include <spi_flash.h>
 #include <smmstore.h>
+#include <types.h>
 
 #if CONFIG(USE_OPTION_TABLE)
 #include <option_table.h>
@@ -37,9 +37,7 @@ static struct lb_header *lb_table_init(unsigned long addr)
 {
 	struct lb_header *header;
 
-	/* 16 byte align the address */
-	addr += 15;
-	addr &= ~15;
+	addr = ALIGN_UP(addr, 16);
 
 	header = (void *)addr;
 	header->signature[0] = 'L';

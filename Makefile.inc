@@ -270,7 +270,7 @@ EMPTY_RESOURCE_TEMPLATE_WARNING = 3150
 # For existing ASL code, ignore this warnings
 IASL_MISSING_DEPENDENCY = 3141
 
-IASL_WARNINGS_LIST = $(EMPTY_RESOURCE_TEMPLATE_WARNING) $(REDUNDANT_OFFSET_REMARK)
+IASL_WARNINGS_LIST = $(EMPTY_RESOURCE_TEMPLATE_WARNING)
 
 ifeq ($(CONFIG_IGNORE_IASL_MISSING_DEPENDENCY),y)
 	IASL_WARNINGS_LIST += $(IASL_MISSING_DEPENDENCY)
@@ -337,7 +337,7 @@ endef
 # arg1: C source file
 # arg2: binary file
 cbfs-files-processor-struct= \
-	$(eval $(2): $(1) $(obj)/build.h $(KCONFIG_AUTOHEADER); \
+	$(eval $(2): $(1) $(obj)/build.h $(obj)/fmap_config.h $(KCONFIG_AUTOHEADER); \
 		printf "    CC+STRIP   $(1)\n"; \
 		$(CC_ramstage) -MMD $(CPPFLAGS_ramstage) $(CFLAGS_ramstage) --param asan-globals=0 $$(ramstage-c-ccopts) -include $(KCONFIG_AUTOHEADER) -MT $(2) -o $(2).tmp -c $(1) && \
 		$(OBJCOPY_ramstage) -O binary --set-section-flags .bss*=alloc,contents,load $(2).tmp $(2); \
@@ -1105,33 +1105,8 @@ endif
 $(shell rm -f $(obj)/coreboot.pre)
 
 ifneq ($(CONFIG_UPDATE_IMAGE),y)
-$(obj)/coreboot.pre: $(objcbfs)/bootblock.bin $$(prebuilt-files) $(CBFSTOOL) $(obj)/fmap.fmap $(obj)/fmap.desc
+$(obj)/coreboot.pre: $$(prebuilt-files) $(CBFSTOOL) $(obj)/fmap.fmap $(obj)/fmap.desc
 	$(CBFSTOOL) $@.tmp create -M $(obj)/fmap.fmap -r $(shell cat $(obj)/fmap.desc)
-ifeq ($(CONFIG_ARCH_X86),y)
-	$(CBFSTOOL) $@.tmp add \
-		-f $(objcbfs)/bootblock.bin \
-		-n bootblock \
-		-t bootblock \
-		$(TXTIBB) \
-		-b -$(call file-size,$(objcbfs)/bootblock.bin) $(cbfs-autogen-attributes) \
-		$(TS_OPTIONS) \
-		$(CBFSTOOL_ADD_CMD_OPTIONS)
-else # ifeq ($(CONFIG_ARCH_X86),y)
-	$(CBFSTOOL) $@.tmp write -u \
-		-r BOOTBLOCK \
-		-f $(objcbfs)/bootblock.bin
-	# make space for the CBFS master header pointer. "ptr_" is just
-	# arbitrary 4 bytes that will be overwritten by add-master-header.
-	printf "ptr_" > $@.tmp.2
-	$(CBFSTOOL) $@.tmp add \
-		-f $@.tmp.2 \
-		-n "header pointer" \
-		-t "cbfs header" \
-		-b -4 \
-		$(CBFSTOOL_ADD_CMD_OPTIONS)
-	rm -f $@.tmp.2
-endif # ifeq ($(CONFIG_ARCH_X86),y)
-	$(CBFSTOOL) $@.tmp add-master-header $(TS_OPTIONS) $(CBFSTOOL_ADD_CMD_OPTIONS)
 	$(prebuild-files) true
 	mv $@.tmp $@
 else # ifneq ($(CONFIG_UPDATE_IMAGE),y)
@@ -1160,6 +1135,12 @@ endif
 add_intermediate = \
 	$(1): $(obj)/coreboot.pre $(2) | $(INTERMEDIATE) \
 	$(eval INTERMEDIATE+=$(1)) $(eval PHONY+=$(1))
+
+ifneq ($(CONFIG_ARCH_X86),y)
+$(call add_intermediate, add_bootblock, $(objcbfs)/bootblock.bin)
+	printf "    FMAP       writing BOOTBLOCK region\n"
+	$(CBFSTOOL) $< write -u -r BOOTBLOCK -f $(objcbfs)/bootblock.bin
+endif
 
 $(obj)/coreboot.rom: $(obj)/coreboot.pre $(CBFSTOOL) $(IFITTOOL) $$(INTERMEDIATE)
 	@printf "    CBFS       $(subst $(obj)/,,$(@))\n"

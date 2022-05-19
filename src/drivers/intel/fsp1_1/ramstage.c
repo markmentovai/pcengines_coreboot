@@ -2,7 +2,6 @@
 
 #include <bootmode.h>
 #include <bootsplash.h>
-#include <acpi/acpi.h>
 #include <console/console.h>
 #include <fsp/ramstage.h>
 #include <fsp/util.h>
@@ -11,7 +10,6 @@
 #include <stage_cache.h>
 #include <string.h>
 #include <timestamp.h>
-#include <cbmem.h>
 
 static void display_hob_info(FSP_INFO_HEADER *fsp_info_header)
 {

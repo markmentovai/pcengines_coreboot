@@ -19,7 +19,6 @@
 #include <Porting.h>
 #include <AGESA.h>
 #include <Topology.h>
-#include <cpu/x86/lapic.h>
 #include <cpu/amd/msr.h>
 #include <cpu/amd/mtrr.h>
 #include <acpi/acpigen.h>
@@ -910,11 +909,11 @@ static void domain_read_resources(struct device *dev)
 		printk(BIOS_DEBUG, "node %d: basek=%08llx, limitk=%08llx, sizek=%08llx,\n",
 				   i, basek, limitk, sizek);
 
-		/* see if we need a hole from 0xa0000 to 0xfffff */
-		if ((basek < (0xa0000 >> 10) && (sizek > (0x100000 >> 10)))) {
-			ram_resource(dev, (idx | i), basek, (0xa0000 >> 10) - basek);
+		/* See if we need a hole from 0xa0000 (640K) to 0xfffff (1024K) */
+		if (basek < 640 && sizek > 1024) {
+			ram_resource(dev, (idx | i), basek, 640 - basek);
 			idx += 0x10;
-			basek = 0x100000 >> 10;
+			basek = 1024;
 			sizek = limitk - basek;
 		}
 

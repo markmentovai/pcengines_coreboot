@@ -312,6 +312,7 @@ config ASAN
 	default n
 	select ASAN_IN_ROMSTAGE if HAVE_ASAN_IN_ROMSTAGE
 	select ASAN_IN_RAMSTAGE if HAVE_ASAN_IN_RAMSTAGE
+	depends on COMPILER_GCC
 	help
 	  Enable address sanitizer - runtime memory debugger,
 	  designed to find out-of-bounds accesses and use-after-scope bugs.
@@ -1326,6 +1327,12 @@ config BOOTBLOCK_CUSTOM
 	# To be selected by arch, SoC or mainboard if it does not want use the normal
 	# src/lib/bootblock.c#main() C entry point.
 	bool
+
+config BOOTBLOCK_IN_CBFS
+	bool
+	default y if ARCH_X86
+	help
+	  Select this on platforms that have a top aligned bootblock inside cbfs.
 
 config MEMLAYOUT_LD_FILE
 	string

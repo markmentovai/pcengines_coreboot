@@ -14,7 +14,6 @@ chip soc/intel/elkhartlake
 
 	# FSP configuration
 	register "SaGv" = "SaGv_Disabled"
-	register "SmbusEnable" = "1"
 
 	# Enable IBECC for the complete memory
 	register "ibecc" = "{
@@ -39,7 +38,7 @@ chip soc/intel/elkhartlake
 	register "usb3_ports[2]" = "USB3_PORT_EMPTY"	# UNUSED
 	register "usb3_ports[3]" = "USB3_PORT_EMPTY"	# UNUSED
 
-	# Skip the CPU repalcement check
+	# Skip the CPU replacement check
 	register "SkipCpuReplacementCheck" = "1"
 
 	# PCIe root ports related UPDs
@@ -101,8 +100,12 @@ chip soc/intel/elkhartlake
 	}"
 
 	# TSN GBE related UPDs
-	register "PchTsnGbeLinkSpeed" = "Tsn_2_5_Gbps"
+	register "PchTsnGbeLinkSpeed" = "Tsn_1_Gbps"
 	register "PchTsnGbeSgmiiEnable" = "1"
+	register "PseTsnGbeSgmiiEnable[0]" = "1"
+	register "PseTsnGbeSgmiiEnable[1]" = "1"
+	register "PseDmaOwn[0]" = "Host_Owned"
+	register "PseDmaOwn[1]" = "Host_Owned"
 
 	register "common_soc_config" = "{
 		.i2c[2] = {

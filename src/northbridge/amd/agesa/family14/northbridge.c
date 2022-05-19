@@ -551,13 +551,13 @@ static void domain_set_resources(struct device *dev)
 		printk(BIOS_DEBUG, "adsr: basek = %llx, limitk = %llx, sizek = %llx.\n",
 				   basek, limitk, sizek);
 
-		/* see if we need a hole from 0xa0000 to 0xbffff */
-		if ((basek < 640) && (sizek > 768)) {
+		/* See if we need a hole from 0xa0000 (640K) to 0xbffff (768K) */
+		if (basek < 640 && sizek > 768) {
 			printk(BIOS_DEBUG,"adsr - 0xa0000 to 0xbffff resource.\n");
 			ram_resource(dev, (idx | 0), basek, 640 - basek);
 			idx += 0x10;
 			basek = 768;
-			sizek = limitk - 768;
+			sizek = limitk - basek;
 		}
 
 		printk(BIOS_DEBUG,

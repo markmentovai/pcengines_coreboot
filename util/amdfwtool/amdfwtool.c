@@ -89,7 +89,6 @@
  *
  * TODO: Future work may require fully implementing the PSP_COMBO feature.
  */
-#define PSP_COMBO 0
 
 /*
  * Creates the OSI Fletcher checksum. See 8473-1, Appendix C, section C.3.
@@ -155,6 +154,7 @@ static void usage(void)
 	printf("--combo-capable                Place PSP directory pointer at Embedded\n");
 	printf("                               Firmware\n");
 	printf("                               offset able to support combo directory\n");
+	printf("--use-combo                    Use the COMBO layout\n");
 	printf("--multilevel                   Generate primary and secondary tables\n");
 	printf("--nvram <FILE>                 Add nvram binary\n");
 	printf("--soft-fuse                    Set soft fuse\n");
@@ -265,6 +265,7 @@ amd_fw_entry amd_psp_fw_table[] = {
 	{ .type = AMD_FW_SPIROM_CFG, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_RPMC_NVRAM, .level = PSP_LVL2 | PSP_LVL2_AB },
 	{ .type = AMD_FW_PSP_BOOTLOADER_AB, .level = PSP_LVL2 | PSP_LVL2_AB },
+	{ .type = AMD_TA_IKEK, .level = PSP_BOTH | PSP_LVL2_AB },
 	{ .type = AMD_ABL0, .level = PSP_BOTH | PSP_LVL2_AB },
 	{ .type = AMD_ABL1, .level = PSP_BOTH | PSP_LVL2_AB },
 	{ .type = AMD_ABL2, .level = PSP_BOTH | PSP_LVL2_AB },
@@ -357,18 +358,13 @@ typedef struct _context {
 	uint32_t current_table;
 } context;
 
-#define ADDRESS_MODE_0_PHY		0
-#define ADDRESS_MODE_1_REL_BIOS		1
-#define ADDRESS_MODE_2_REL_TAB		2
-#define ADDRESS_MODE_3_REL_SLOT		3
-
 #define RUN_BASE(ctx) (0xFFFFFFFF - (ctx).rom_size + 1)
 #define RUN_OFFSET_MODE(ctx, offset, mode) \
-		((mode) == ADDRESS_MODE_0_PHY ? RUN_BASE(ctx) + (offset) :	\
-		((mode) == ADDRESS_MODE_1_REL_BIOS ? (offset) :	\
-		((mode) == ADDRESS_MODE_2_REL_TAB ? (offset) - ctx.current_table : (offset))))
+		((mode) == AMD_ADDR_PHYSICAL ? RUN_BASE(ctx) + (offset) :	\
+		((mode) == AMD_ADDR_REL_BIOS ? (offset) :	\
+		((mode) == AMD_ADDR_REL_TAB ? (offset) - ctx.current_table : (offset))))
 #define RUN_OFFSET(ctx, offset) RUN_OFFSET_MODE((ctx), (offset), (ctx).address_mode)
-#define RUN_TO_OFFSET(ctx, run) ((ctx).address_mode == ADDRESS_MODE_0_PHY ?	\
+#define RUN_TO_OFFSET(ctx, run) ((ctx).address_mode == AMD_ADDR_PHYSICAL ?	\
 				(run) - RUN_BASE(ctx) : (run)) /* TODO: */
 #define RUN_CURRENT(ctx) RUN_OFFSET((ctx), (ctx).current)
 /* The mode in entry can not be higher than the header's.
@@ -384,7 +380,7 @@ typedef struct _context {
 /* Only set the address mode in entry if the table is mode 2. */
 #define SET_ADDR_MODE(table, mode) \
 		((table)->header.additional_info_fields.address_mode ==	\
-		ADDRESS_MODE_2_REL_TAB ? (mode) : 0)
+		AMD_ADDR_REL_TAB ? (mode) : 0)
 #define SET_ADDR_MODE_BY_TABLE(table) \
 		SET_ADDR_MODE((table), (table)->header.additional_info_fields.address_mode)
 
@@ -430,7 +426,6 @@ static void *new_ish_dir(context *ctx)
 	return ptr;
 }
 
-#if PSP_COMBO
 static void *new_combo_dir(context *ctx)
 {
 	void *ptr;
@@ -441,7 +436,6 @@ static void *new_combo_dir(context *ctx)
 			+ MAX_COMBO_ENTRIES * sizeof(psp_combo_entry);
 	return ptr;
 }
-#endif
 
 static void fill_dir_header(void *directory, uint32_t count, uint32_t cookie, context *ctx)
 {
@@ -492,8 +486,8 @@ static void fill_dir_header(void *directory, uint32_t count, uint32_t cookie, co
 					+ sizeof(dir->header.num_entries)
 					+ sizeof(dir->header.additional_info));
 		break;
-	case BDT1_COOKIE:
-	case BDT2_COOKIE:
+	case BHD_COOKIE:
+	case BHDL2_COOKIE:
 		table_size = ctx->current - ctx->current_table;
 		if ((table_size % TABLE_ALIGNMENT) != 0) {
 			fprintf(stderr, "The BIOS table size should be 4K aligned\n");
@@ -697,7 +691,7 @@ static void integrate_psp_ab(context *ctx, psp_directory_table *pspdir,
 	pspdir->entries[count].subprog = 0;
 	pspdir->entries[count].rsvd = 0;
 	if (ish != NULL) {
-		ish->pl2_location = BUFF_TO_RUN_MODE(*ctx, pspdir2, ADDRESS_MODE_1_REL_BIOS);
+		ish->pl2_location = BUFF_TO_RUN_MODE(*ctx, pspdir2, AMD_ADDR_REL_BIOS);
 		ish->boot_priority = ab == AMD_FW_RECOVERYAB_A ? 0xFFFFFFFF : 1;
 		ish->update_retry_count = 2;
 		ish->glitch_retry_count = 0;
@@ -705,15 +699,15 @@ static void integrate_psp_ab(context *ctx, psp_directory_table *pspdir,
 		ish->checksum = fletcher32(&ish->boot_priority,
 				sizeof(ish_directory_table) - sizeof(uint32_t));
 		pspdir->entries[count].addr =
-				BUFF_TO_RUN_MODE(*ctx, ish, ADDRESS_MODE_1_REL_BIOS);
+				BUFF_TO_RUN_MODE(*ctx, ish, AMD_ADDR_REL_BIOS);
 		pspdir->entries[count].address_mode =
-				SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
+				SET_ADDR_MODE(pspdir, AMD_ADDR_REL_BIOS);
 		pspdir->entries[count].size = TABLE_ALIGNMENT;
 	} else {
 		pspdir->entries[count].addr =
-				BUFF_TO_RUN_MODE(*ctx, pspdir2, ADDRESS_MODE_1_REL_BIOS);
+				BUFF_TO_RUN_MODE(*ctx, pspdir2, AMD_ADDR_REL_BIOS);
 		pspdir->entries[count].address_mode =
-				SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
+				SET_ADDR_MODE(pspdir, AMD_ADDR_REL_BIOS);
 		pspdir->entries[count].size = pspdir2->header.num_entries *
 				sizeof(psp_directory_entry) +
 				sizeof(psp_directory_header);
@@ -815,9 +809,9 @@ static void integrate_psp_firmwares(context *ctx,
 			pspdir->entries[count].size = ALIGN(bytes,
 							ERASE_ALIGNMENT);
 			pspdir->entries[count].addr =
-				RUN_CURRENT_MODE(*ctx, ADDRESS_MODE_1_REL_BIOS);
+				RUN_CURRENT_MODE(*ctx, AMD_ADDR_REL_BIOS);
 			pspdir->entries[count].address_mode =
-				SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
+				SET_ADDR_MODE(pspdir, AMD_ADDR_REL_BIOS);
 
 			ctx->current = ALIGN(ctx->current + bytes,
 							BLOB_ERASE_ALIGNMENT);
@@ -872,9 +866,9 @@ static void integrate_psp_firmwares(context *ctx,
 					* sizeof(psp_directory_entry);
 
 		pspdir->entries[count].addr =
-				BUFF_TO_RUN_MODE(*ctx, pspdir2, ADDRESS_MODE_1_REL_BIOS);
+				BUFF_TO_RUN_MODE(*ctx, pspdir2, AMD_ADDR_REL_BIOS);
 		pspdir->entries[count].address_mode =
-				SET_ADDR_MODE(pspdir, ADDRESS_MODE_1_REL_BIOS);
+				SET_ADDR_MODE(pspdir, AMD_ADDR_REL_BIOS);
 		count++;
 	}
 
@@ -1005,7 +999,7 @@ static void integrate_bios_firmwares(context *ctx,
 	 */
 	if (!cb_config->multi_level)
 		level = BDT_BOTH;
-	else if (cookie == BDT2_COOKIE)
+	else if (cookie == BHDL2_COOKIE)
 		level = BDT_LVL2;
 	else if (biosdir2)
 		level = BDT_LVL1;
@@ -1093,14 +1087,14 @@ static void integrate_bios_firmwares(context *ctx,
 				/* If source is given, use that and its size */
 				biosdir->entries[count].source = fw_table[i].src;
 				biosdir->entries[count].address_mode =
-						SET_ADDR_MODE(biosdir, ADDRESS_MODE_1_REL_BIOS);
+						SET_ADDR_MODE(biosdir, AMD_ADDR_REL_BIOS);
 				biosdir->entries[count].size = fw_table[i].size;
 			} else {
 				/* Else reserve size bytes within amdfw.rom */
 				ctx->current = ALIGN(ctx->current, ERASE_ALIGNMENT);
 				biosdir->entries[count].source = RUN_CURRENT(*ctx);
 				biosdir->entries[count].address_mode =
-						SET_ADDR_MODE(biosdir, ADDRESS_MODE_1_REL_BIOS);
+						SET_ADDR_MODE(biosdir, AMD_ADDR_REL_BIOS);
 				biosdir->entries[count].size = ALIGN(
 						fw_table[i].size, ERASE_ALIGNMENT);
 				memset(BUFF_CURRENT(*ctx), 0xff,
@@ -1114,7 +1108,7 @@ static void integrate_bios_firmwares(context *ctx,
 			if (level == BDT_LVL1 && locate_bdt2_bios(biosdir2, &source, &size)) {
 				biosdir->entries[count].source = source;
 				biosdir->entries[count].address_mode =
-						SET_ADDR_MODE(biosdir, ADDRESS_MODE_1_REL_BIOS);
+						SET_ADDR_MODE(biosdir, AMD_ADDR_REL_BIOS);
 				biosdir->entries[count].size = size;
 				break;
 			}
@@ -1122,7 +1116,7 @@ static void integrate_bios_firmwares(context *ctx,
 			/* level 2, or level 1 and no copy found in level 2 */
 			biosdir->entries[count].source = fw_table[i].src;
 			biosdir->entries[count].address_mode =
-						SET_ADDR_MODE(biosdir, ADDRESS_MODE_1_REL_BIOS);
+						SET_ADDR_MODE(biosdir, AMD_ADDR_REL_BIOS);
 			biosdir->entries[count].dest = fw_table[i].dest;
 			biosdir->entries[count].size = fw_table[i].size;
 
@@ -1137,9 +1131,9 @@ static void integrate_bios_firmwares(context *ctx,
 			}
 
 			biosdir->entries[count].source =
-				RUN_CURRENT_MODE(*ctx, ADDRESS_MODE_1_REL_BIOS);
+				RUN_CURRENT_MODE(*ctx, AMD_ADDR_REL_BIOS);
 			biosdir->entries[count].address_mode =
-				SET_ADDR_MODE(biosdir, ADDRESS_MODE_1_REL_BIOS);
+				SET_ADDR_MODE(biosdir, AMD_ADDR_REL_BIOS);
 
 			ctx->current = ALIGN(ctx->current + bytes, 0x100U);
 			break;
@@ -1181,7 +1175,7 @@ static void integrate_bios_firmwares(context *ctx,
 		biosdir->entries[count].source =
 					BUFF_TO_RUN(*ctx, biosdir2);
 		biosdir->entries[count].address_mode =
-					SET_ADDR_MODE(biosdir, ADDRESS_MODE_1_REL_BIOS);
+					SET_ADDR_MODE(biosdir, AMD_ADDR_REL_BIOS);
 		biosdir->entries[count].subprog = 0;
 		biosdir->entries[count].inst = 0;
 		biosdir->entries[count].copy = 0;
@@ -1207,6 +1201,7 @@ enum {
 	AMDFW_OPT_COMBO,
 	AMDFW_OPT_RECOVERY_AB,
 	AMDFW_OPT_RECOVERY_AB_SINGLE_COPY,
+	AMDFW_OPT_USE_COMBO,
 	AMDFW_OPT_MULTILEVEL,
 	AMDFW_OPT_NVRAM,
 
@@ -1256,6 +1251,7 @@ static struct option long_options[] = {
 	{"combo-capable",          no_argument, 0, AMDFW_OPT_COMBO },
 	{"recovery-ab",            no_argument, 0, AMDFW_OPT_RECOVERY_AB },
 	{"recovery-ab-single-copy", no_argument, 0, AMDFW_OPT_RECOVERY_AB_SINGLE_COPY },
+	{"use-combo",              no_argument, 0, AMDFW_OPT_USE_COMBO },
 	{"multilevel",             no_argument, 0, AMDFW_OPT_MULTILEVEL },
 	{"nvram",            required_argument, 0, AMDFW_OPT_NVRAM },
 	{"soft-fuse",        required_argument, 0, AMDFW_OPT_FUSE },
@@ -1539,6 +1535,7 @@ int main(int argc, char **argv)
 	cb_config.recovery_ab = false;
 	cb_config.need_ish = false;
 	cb_config.recovery_ab_single_copy = false;
+	cb_config.use_combo = false;
 
 	while (1) {
 		int optindex = 0;
@@ -1570,6 +1567,9 @@ int main(int argc, char **argv)
 		case AMDFW_OPT_RECOVERY_AB_SINGLE_COPY:
 			cb_config.recovery_ab = true;
 			cb_config.recovery_ab_single_copy = true;
+			break;
+		case AMDFW_OPT_USE_COMBO:
+			cb_config.use_combo = true;
 			break;
 		case AMDFW_OPT_MULTILEVEL:
 			cb_config.multi_level = true;
@@ -1856,13 +1856,13 @@ int main(int argc, char **argv)
 	}
 
 	if (cb_config.need_ish)
-		ctx.address_mode = ADDRESS_MODE_2_REL_TAB;
+		ctx.address_mode = AMD_ADDR_REL_TAB;
 	else if (cb_config.second_gen)
-		ctx.address_mode = ADDRESS_MODE_1_REL_BIOS;
+		ctx.address_mode = AMD_ADDR_REL_BIOS;
 	else
-		ctx.address_mode = ADDRESS_MODE_0_PHY;
+		ctx.address_mode = AMD_ADDR_PHYSICAL;
 	printf("    AMDFWTOOL  Using firmware directory location of %s address: 0x%08x\n",
-			ctx.address_mode == ADDRESS_MODE_0_PHY ? "absolute" : "relative",
+			ctx.address_mode == AMD_ADDR_PHYSICAL ? "absolute" : "relative",
 			RUN_CURRENT(ctx));
 
 	integrate_firmwares(&ctx, amd_romsig, amd_fw_table);
@@ -1904,17 +1904,17 @@ int main(int argc, char **argv)
 	else
 		amd_romsig->psp_directory = BUFF_TO_RUN(ctx, pspdir);
 
-#if PSP_COMBO
-	psp_combo_directory *combo_dir = new_combo_dir(&ctx);
-	amd_romsig->combo_psp_directory = BUFF_TO_RUN(ctx, combo_dir);
-	/* 0 -Compare PSP ID, 1 -Compare chip family ID */
-	combo_dir->entries[0].id_sel = 0;
-	combo_dir->entries[0].id = get_psp_id(soc_id);
-	combo_dir->entries[0].lvl2_addr = BUFF_TO_RUN(ctx, pspdir);
+	if (cb_config.use_combo) {
+		psp_combo_directory *combo_dir = new_combo_dir(&ctx);
+		amd_romsig->combo_psp_directory = BUFF_TO_RUN(ctx, combo_dir);
+		/* 0 -Compare PSP ID, 1 -Compare chip family ID */
+		combo_dir->entries[0].id_sel = 0;
+		combo_dir->entries[0].id = get_psp_id(soc_id);
+		combo_dir->entries[0].lvl2_addr = BUFF_TO_RUN(ctx, pspdir);
 
-	combo_dir->header.lookup = 1;
-	fill_dir_header(combo_dir, 1, PSP2_COOKIE, &ctx);
-#endif
+		combo_dir->header.lookup = 1;
+		fill_dir_header(combo_dir, 1, PSP2_COOKIE, &ctx);
+	}
 
 	if (have_bios_tables(amd_bios_table)) {
 		bios_directory_table *biosdir = NULL;
@@ -1926,12 +1926,12 @@ int main(int argc, char **argv)
 			biosdir2 = new_bios_dir(&ctx, cb_config.multi_level);
 
 			integrate_bios_firmwares(&ctx, biosdir2, NULL,
-						amd_bios_table, BDT2_COOKIE, &cb_config);
+						amd_bios_table, BHDL2_COOKIE, &cb_config);
 			if (cb_config.recovery_ab) {
 				if (pspdir2_b != NULL) {
 					biosdir2_b = new_bios_dir(&ctx, cb_config.multi_level);
 					integrate_bios_firmwares(&ctx, biosdir2_b, NULL,
-						amd_bios_table, BDT2_COOKIE, &cb_config);
+						amd_bios_table, BHDL2_COOKIE, &cb_config);
 				}
 				add_psp_firmware_entry(&ctx, pspdir2, biosdir2,
 					AMD_FW_BIOS_TABLE, TABLE_ALIGNMENT);
@@ -1941,13 +1941,13 @@ int main(int argc, char **argv)
 			} else {
 				biosdir = new_bios_dir(&ctx, cb_config.multi_level);
 				integrate_bios_firmwares(&ctx, biosdir, biosdir2,
-						amd_bios_table, BDT1_COOKIE, &cb_config);
+						amd_bios_table, BHD_COOKIE, &cb_config);
 			}
 		} else {
-			/* flat: BDT1 cookie and no pointer to 2nd table */
+			/* flat: BHD1 cookie and no pointer to 2nd table */
 			biosdir = new_bios_dir(&ctx, cb_config.multi_level);
 			integrate_bios_firmwares(&ctx, biosdir, NULL,
-						amd_bios_table, BDT1_COOKIE, &cb_config);
+						amd_bios_table, BHD_COOKIE, &cb_config);
 		}
 		switch (soc_id) {
 		case PLATFORM_RENOIR:

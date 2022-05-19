@@ -29,6 +29,10 @@
 #include <sys/sysctl.h>
 #endif
 
+#if defined(__i386__) || defined(__x86_64__)
+#include <x86intrin.h>
+#endif
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 typedef uint8_t u8;
@@ -57,6 +61,9 @@ static int verbose = 0;
 static int mem_fd;
 static struct mapping lbtable_mapping;
 
+/* TSC frequency from the LB_TAG_TSC_INFO record. 0 if not present. */
+static uint32_t tsc_freq_khz = 0;
+
 static void die(const char *msg)
 {
 	if (msg)
@@ -80,9 +87,9 @@ static inline size_t size_to_mib(size_t sz)
 }
 
 /* Return mapping of physical address requested. */
-static const void *mapping_virt(const struct mapping *mapping)
+static void *mapping_virt(const struct mapping *mapping)
 {
-	const char *v = mapping->virt;
+	char *v = mapping->virt;
 
 	if (v == NULL)
 		return NULL;
@@ -91,8 +98,8 @@ static const void *mapping_virt(const struct mapping *mapping)
 }
 
 /* Returns virtual address on success, NULL on error. mapping is filled in. */
-static const void *map_memory(struct mapping *mapping, unsigned long long phys,
-				size_t sz)
+static void *map_memory_with_prot(struct mapping *mapping,
+				  unsigned long long phys, size_t sz, int prot)
 {
 	void *v;
 	unsigned long long page_size;
@@ -114,7 +121,7 @@ static const void *map_memory(struct mapping *mapping, unsigned long long phys,
 			phys);
 	}
 
-	v = mmap(NULL, mapping->virt_size, PROT_READ, MAP_SHARED, mem_fd,
+	v = mmap(NULL, mapping->virt_size, prot, MAP_SHARED, mem_fd,
 			phys - mapping->offset);
 
 	if (v == MAP_FAILED) {
@@ -131,6 +138,14 @@ static const void *map_memory(struct mapping *mapping, unsigned long long phys,
 
 	return mapping_virt(mapping);
 }
+
+/* Convenience helper for the common case of read-only mappings. */
+static const void *map_memory(struct mapping *mapping, unsigned long long phys,
+			      size_t sz)
+{
+	return map_memory_with_prot(mapping, phys, sz, PROT_READ);
+}
+
 
 /* Returns 0 on success, < 0 on error. mapping is cleared if successful. */
 static int unmap_memory(struct mapping *mapping)
@@ -334,6 +349,10 @@ static int parse_cbtable_entries(const struct mapping *table_mapping)
 			    parse_cbmem_ref((struct lb_cbmem_ref *)lbr_p);
 			continue;
 		}
+		case LB_TAG_TSC_INFO:
+			debug("    Found TSC info.\n");
+			tsc_freq_khz = ((struct lb_tsc_info *)lbr_p)->freq_khz;
+			continue;
 		case LB_TAG_FORWARD: {
 			int ret;
 			/*
@@ -536,6 +555,24 @@ static void print_norm(u64 v)
 	}
 }
 
+static uint64_t timestamp_get(uint64_t table_tick_freq_mhz)
+{
+#if defined(__i386__) || defined(__x86_64__)
+	uint64_t tsc = __rdtsc();
+
+	/* No tick frequency specified means raw TSC values. */
+	if (!table_tick_freq_mhz)
+		return tsc;
+
+	if (tsc_freq_khz)
+		return tsc * table_tick_freq_mhz * 1000 / tsc_freq_khz;
+#else
+	(void)table_tick_freq_mhz;
+#endif
+	die("Don't know how to obtain timestamps on this platform.\n");
+	return 0;
+}
+
 static const char *timestamp_name(uint32_t id)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(timestamp_ids); i++) {
@@ -543,6 +580,15 @@ static const char *timestamp_name(uint32_t id)
 			return timestamp_ids[i].name;
 	}
 	return "<unknown>";
+}
+
+static uint32_t timestamp_enum_name_to_id(const char *name)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(timestamp_ids); i++) {
+		if (!strcmp(timestamp_ids[i].enum_name, name))
+			return timestamp_ids[i].id;
+	}
+	return 0;
 }
 
 static uint64_t timestamp_print_parseable_entry(uint32_t id, uint64_t stamp,
@@ -770,6 +816,38 @@ static void dump_timestamps(enum timestamps_print_type output_type)
 
 	unmap_memory(&timestamp_mapping);
 	free(sorted_tst_p);
+}
+
+/* add a timestamp entry */
+static void timestamp_add_now(uint32_t timestamp_id)
+{
+	struct timestamp_table *tst_p;
+	struct mapping timestamp_mapping;
+
+	if (timestamps.tag != LB_TAG_TIMESTAMPS) {
+		die("No timestamps found in coreboot table.\n");
+	}
+
+	tst_p = map_memory_with_prot(&timestamp_mapping, timestamps.cbmem_addr,
+				     timestamps.size, PROT_READ | PROT_WRITE);
+	if (!tst_p)
+		die("Unable to map timestamp table\n");
+
+	/*
+	 * Note that coreboot sizes the cbmem entry in the table according to
+	 * max_entries, so it's OK to just add more entries if there's room.
+	 */
+	if (tst_p->num_entries >= tst_p->max_entries) {
+		die("Not enough space to add timestamp.\n");
+	} else {
+		int64_t time =
+			timestamp_get(tst_p->tick_freq_mhz) - tst_p->base_time;
+		tst_p->entries[tst_p->num_entries].entry_id = timestamp_id;
+		tst_p->entries[tst_p->num_entries].entry_stamp = time;
+		tst_p->num_entries += 1;
+	}
+
+	unmap_memory(&timestamp_mapping);
 }
 
 /* dump the tcpa log table */
@@ -1461,9 +1539,9 @@ static void print_version(void)
 
 static void print_usage(const char *name, int exit_code)
 {
-	printf("usage: %s [-a:s:c12CltTLdxVvh?r:]\n", name);
+	printf("usage: %s [-A:s:c12B:CltTSa:LdxVvh?r:]\n", name);
 	printf("\n"
-	     "   -a | --addr address:              set base address\n"
+	     "   -A | --addr address:              set base address\n"
 	     "   -s | --size size:                 set table size. Change is applied only if address is also specified\n"
 	     "   -c | --console:                   print cbmem console\n"
 	     "   -1 | --oneboot:                   print cbmem console for last boot only\n"
@@ -1476,6 +1554,7 @@ static void print_usage(const char *name, int exit_code)
 	     "   -t | --timestamps:                print timestamp information\n"
 	     "   -T | --parseable-timestamps:      print parseable timestamps\n"
 	     "   -S | --stacked-timestamps:        print stacked timestamps (e.g. for flame graph tools)\n"
+	     "   -a | --add-timestamp ID:          append timestamp with ID\n"
 	     "   -L | --tcpa-log                   print TCPA log\n"
 	     "   -d | --drtm-log                   print DRTM TPM log\n"
 	     "   -V | --verbose:                   verbose (debugging) output\n"
@@ -1619,10 +1698,11 @@ int main(int argc, char** argv)
 	unsigned int rawdump_id = 0;
 	int max_loglevel = BIOS_NEVER;
 	int print_unknown_logs = 1;
+	uint32_t timestamp_id = 0;
 
 	int opt, option_index = 0;
 	static struct option long_options[] = {
-		{"addr", 0, 0, 'a'},
+		{"addr", 0, 0, 'A'},
 		{"size", 0, 0, 's'},
 		{"console", 0, 0, 'c'},
 		{"oneboot", 0, 0, '1'},
@@ -1635,6 +1715,7 @@ int main(int argc, char** argv)
 		{"timestamps", 0, 0, 't'},
 		{"parseable-timestamps", 0, 0, 'T'},
 		{"stacked-timestamps", 0, 0, 'S'},
+		{"add-timestamp", required_argument, 0, 'a'},
 		{"hexdump", 0, 0, 'x'},
 		{"rawdump", required_argument, 0, 'r'},
 		{"verbose", 0, 0, 'V'},
@@ -1642,10 +1723,10 @@ int main(int argc, char** argv)
 		{"help", 0, 0, 'h'},
 		{0, 0, 0, 0}
 	};
-	while ((opt = getopt_long(argc, argv, "a:s:c12CltTLdxVvh?r:",
+	while ((opt = getopt_long(argc, argv, "A:s:c12B:CltTSa:LdxVvh?r:",
 				  long_options, &option_index)) != EOF) {
 		switch (opt) {
-		case 'a':
+		case 'A':
 			if (optarg) {
 				possible_base_addresses[0] = strtoull(optarg, NULL, 0);
 				address_specified = 1;
@@ -1709,6 +1790,13 @@ int main(int argc, char** argv)
 			timestamp_type = TIMESTAMPS_PRINT_STACKED;
 			print_defaults = 0;
 			break;
+		case 'a':
+			print_defaults = 0;
+			timestamp_id = timestamp_enum_name_to_id(optarg);
+			/* Parse numeric value if name is unknown */
+			if (timestamp_id == 0)
+				timestamp_id = strtoul(optarg, NULL, 0);
+			break;
 		case 'V':
 			verbose = 1;
 			break;
@@ -1731,7 +1819,7 @@ int main(int argc, char** argv)
 		print_usage(argv[0], 1);
 	}
 
-	mem_fd = open("/dev/mem", O_RDONLY, 0);
+	mem_fd = open("/dev/mem", timestamp_id ? O_RDWR : O_RDONLY, 0);
 	if (mem_fd < 0) {
 		fprintf(stderr, "Failed to gain memory access: %s\n",
 			strerror(errno));
@@ -1820,6 +1908,9 @@ int main(int argc, char** argv)
 
 	if (print_rawdump)
 		dump_cbmem_raw(rawdump_id);
+
+	if (timestamp_id)
+		timestamp_add_now(timestamp_id);
 
 	if (print_defaults)
 		timestamp_type = TIMESTAMPS_PRINT_NORMAL;

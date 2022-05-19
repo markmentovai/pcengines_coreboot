@@ -1,36 +1,35 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <console/console.h>
-#include <intelblocks/dmi.h>
 #include <intelblocks/gpmr.h>
+#include <intelblocks/ioc.h>
 #include <intelblocks/pcr.h>
 #include <soc/pcr_ids.h>
-
-#define MAX_GPMR_REGS				3
-
-#define GPMR_OFFSET(x)				(0x277c + (x) * 8)
-#define  DMI_PCR_GPMR_LIMIT_MASK		0xffff0000
-#define  DMI_PCR_GPMR_BASE_SHIFT		16
-#define  DMI_PCR_GPMR_BASE_MASK			0xffff
-
-#define GPMR_DID_OFFSET(x)			(0x2780 + (x) * 8)
-#define  DMI_PCR_GPMR_EN			BIT(31)
 
 /* GPMR Register read given offset */
 uint32_t gpmr_read32(uint16_t offset)
 {
-	return pcr_read32(PID_DMI, offset);
+	if (CONFIG(SOC_INTEL_COMMON_BLOCK_IOC))
+		return ioc_reg_read32(offset);
+	else
+		return pcr_read32(PID_DMI, offset);
 }
 
 /* GPMR Register write given offset and val */
 void gpmr_write32(uint16_t offset, uint32_t val)
 {
-	return pcr_write32(PID_DMI, offset, val);
+	if (CONFIG(SOC_INTEL_COMMON_BLOCK_IOC))
+		return ioc_reg_write32(offset, val);
+	else
+		return pcr_write32(PID_DMI, offset, val);
 }
 
 void gpmr_or32(uint16_t offset, uint32_t ordata)
 {
-	return pcr_or32(PID_DMI, offset, ordata);
+	if (CONFIG(SOC_INTEL_COMMON_BLOCK_IOC))
+		return ioc_reg_or32(offset, ordata);
+	else
+		return pcr_or32(PID_DMI, offset, ordata);
 }
 
 /* Check for available free gpmr */
@@ -41,7 +40,7 @@ static int get_available_gpmr(void)
 
 	for (i = 0; i < MAX_GPMR_REGS; i++) {
 		val = gpmr_read32(GPMR_DID_OFFSET(i));
-		if (!(val & DMI_PCR_GPMR_EN))
+		if (!(val & GPMR_EN))
 			return i;
 	}
 	printk(BIOS_ERR, "%s: No available free gpmr found\n", __func__);
@@ -49,12 +48,12 @@ static int get_available_gpmr(void)
 }
 
 /* Configure GPMR for the given base and size of extended BIOS Region */
-enum cb_err dmi_enable_gpmr(uint32_t base, uint32_t size, uint32_t dest_id)
+enum cb_err enable_gpmr(uint32_t base, uint32_t size, uint32_t dest_id)
 {
 	int gpmr_num;
 	uint32_t limit;
 
-	if (base & ~(DMI_PCR_GPMR_BASE_MASK << DMI_PCR_GPMR_BASE_SHIFT)) {
+	if (base & ~(GPMR_BASE_MASK << GPMR_BASE_SHIFT)) {
 		printk(BIOS_ERR, "base is not 64-KiB aligned!\n");
 		return CB_ERR;
 	}
@@ -66,7 +65,7 @@ enum cb_err dmi_enable_gpmr(uint32_t base, uint32_t size, uint32_t dest_id)
 		return CB_ERR;
 	}
 
-	if ((limit & ~DMI_PCR_GPMR_LIMIT_MASK) != 0xffff) {
+	if ((limit & ~GPMR_LIMIT_MASK) != 0xffff) {
 		printk(BIOS_ERR, "limit does not end on a 64-KiB boundary!\n");
 		return CB_ERR;
 	}
@@ -77,11 +76,11 @@ enum cb_err dmi_enable_gpmr(uint32_t base, uint32_t size, uint32_t dest_id)
 		return CB_ERR;
 
 	/* Program Range for the given decode window */
-	gpmr_write32(GPMR_OFFSET(gpmr_num), (limit & DMI_PCR_GPMR_LIMIT_MASK) |
-		((base >> DMI_PCR_GPMR_BASE_SHIFT) & DMI_PCR_GPMR_BASE_MASK));
+	gpmr_write32(GPMR_OFFSET(gpmr_num), (limit & GPMR_LIMIT_MASK) |
+		((base >> GPMR_BASE_SHIFT) & GPMR_BASE_MASK));
 
 	/* Program source decode enable bit and the Destination ID */
-	gpmr_write32(GPMR_DID_OFFSET(gpmr_num), dest_id | DMI_PCR_GPMR_EN);
+	gpmr_write32(GPMR_DID_OFFSET(gpmr_num), dest_id | GPMR_EN);
 
 	return CB_SUCCESS;
 }

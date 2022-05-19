@@ -28,7 +28,6 @@ config CPU_SPECIFIC_OPTIONS
 	select BOOT_DEVICE_SUPPORTS_WRITES
 	# CPU specific options
 	select CPU_INTEL_COMMON
-	select CPU_INTEL_FIRMWARE_INTERFACE_TABLE
 	select CPU_SUPPORTS_PM_TIMER_EMULATION
 	select PCR_COMMON_IOSF_1_0
 	select SSE2
@@ -82,7 +81,7 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_BLOCK_GPIO_ITSS_POL_CFG
 	select SOC_INTEL_COMMON_BLOCK_GPIO_IOSTANDBY
 	select SOC_INTEL_COMMON_BLOCK_GRAPHICS
-	select SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PCR if DISABLE_HECI1_AT_PRE_BOOT
+	select SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PCR
 	select SOC_INTEL_COMMON_BLOCK_ITSS
 	select SOC_INTEL_COMMON_BLOCK_I2C
 	select SOC_INTEL_COMMON_BLOCK_LPC
@@ -150,10 +149,10 @@ config VBOOT
 config TPM_ON_FAST_SPI
 	bool
 	default n
-	depends on MAINBOARD_HAS_LPC_TPM
+	depends on MEMORY_MAPPED_TPM
 	help
-	 TPM part is conntected on Fast SPI interface, but the LPC MMIO
-	 TPM transactions are decoded and serialized over the SPI interface.
+	  TPM part is conntected on Fast SPI interface and is mapped to the
+	  linear address space.
 
 config PCR_BASE_ADDRESS
 	hex
@@ -348,25 +347,6 @@ config CONSOLE_UART_BASE_ADDRESS
 	default 0xddffc000
 	depends on INTEL_LPSS_UART_FOR_CONSOLE
 
-config APL_SKIP_SET_POWER_LIMITS
-	bool
-	default n
-	help
-	  Some Apollo Lake mainboards do not need the Running Average Power
-	  Limits (RAPL) algorithm for a constant power management.
-	  Set this config option to skip the RAPL configuration.
-
-config APL_SET_MIN_CLOCK_RATIO
-	bool
-	depends on !APL_SKIP_SET_POWER_LIMITS
-	default n
-	help
-	  If the power budget of the mainboard is limited, it can be useful to
-	  limit the CPU power dissipation at the cost of performance by setting
-	  the lowest possible CPU clock. Enable this option if you need smallest
-	  possible CPU clock. This setting can be overruled by the OS if it has an
-	  p-state driver which can adjust the clock to its need.
-
 # M and N divisor values for clock frequency configuration.
 # These values get us a 1.836 MHz clock (ideally we want 1.843 MHz)
 config SOC_INTEL_COMMON_LPSS_UART_CLK_M_VAL
@@ -413,5 +393,9 @@ config INTEL_GMA_BCLM_OFFSET
 
 config INTEL_GMA_BCLM_WIDTH
 	default 32
+
+config BOOTBLOCK_IN_CBFS
+	bool
+	default n
 
 endif

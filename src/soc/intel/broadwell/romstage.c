@@ -2,8 +2,6 @@
 
 #include <acpi/acpi.h>
 #include <arch/romstage.h>
-#include <cbmem.h>
-#include <cf9_reset.h>
 #include <console/console.h>
 #include <cpu/intel/haswell/haswell.h>
 #include <elog.h>
