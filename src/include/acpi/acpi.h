@@ -636,6 +636,15 @@ typedef struct acpi_madt_ioapic {
 	u32 gsi_base;			/* Global system interrupt base */
 } __packed acpi_madt_ioapic_t;
 
+#define MP_IRQ_POLARITY_DEFAULT		0x0
+#define MP_IRQ_POLARITY_HIGH		0x1
+#define MP_IRQ_POLARITY_LOW		0x3
+#define MP_IRQ_POLARITY_MASK		0x3
+#define MP_IRQ_TRIGGER_DEFAULT		0x0
+#define MP_IRQ_TRIGGER_EDGE		0x4
+#define MP_IRQ_TRIGGER_LEVEL		0xc
+#define MP_IRQ_TRIGGER_MASK		0xc
+
 /* MADT: Interrupt Source Override Structure */
 typedef struct acpi_madt_irqoverride {
 	u8 type;			/* Type (2) */
@@ -1277,6 +1286,8 @@ unsigned long acpi_fill_ivrs_ioapic(acpi_ivrs_t *ivrs, unsigned long current);
 void acpi_create_ssdt_generator(acpi_header_t *ssdt, const char *oem_table_id);
 void acpi_write_bert(acpi_bert_t *bert, uintptr_t region, size_t length);
 void acpi_create_fadt(acpi_fadt_t *fadt, acpi_facs_t *facs, void *dsdt);
+
+void soc_lpi_get_constraints(void *unused);
 
 void acpi_fill_fadt(acpi_fadt_t *fadt);
 void arch_fill_fadt(acpi_fadt_t *fadt);

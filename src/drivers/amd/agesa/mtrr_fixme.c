@@ -9,6 +9,7 @@
 #include <cpu/x86/msr.h>
 #include <cpu/x86/mtrr.h>
 #include <northbridge/amd/agesa/agesa_helper.h>
+#include <romstage_handoff.h>
 
 static void set_range_uc(u32 base, u32 size)
 {
@@ -51,14 +52,15 @@ void fixup_cbmem_to_UC(int s3resume)
 	set_range_uc(top_of_ram - 8 * MiB, 4 * MiB);
 }
 
-void recover_postcar_frame(struct postcar_frame *pcf, int s3resume)
+static void recover_postcar_frame(struct postcar_frame *pcf)
 {
 	msr_t base, mask;
 	int i;
+	int s3resume = romstage_handoff_is_resume();
 
 	/* Replicate non-UC MTRRs as left behind by AGESA.
 	 */
-	for (i = 0; i < pcf->ctx.max_var_mtrrs; i++) {
+	for (i = 0; i < pcf->mtrr->max_var_mtrrs; i++) {
 		mask = rdmsr(MTRR_PHYS_MASK(i));
 		base = rdmsr(MTRR_PHYS_BASE(i));
 		u32 size = ~(mask.lo & ~0xfff) + 1;
@@ -85,4 +87,10 @@ void recover_postcar_frame(struct postcar_frame *pcf, int s3resume)
 		postcar_frame_add_mtrr(pcf, top_of_ram - 8*MiB, 4*MiB,
 			MTRR_TYPE_WRBACK);
 	}
+}
+
+void fill_postcar_frame(struct postcar_frame *pcf)
+{
+	pcf->skip_common_mtrr = 1;
+	recover_postcar_frame(pcf);
 }

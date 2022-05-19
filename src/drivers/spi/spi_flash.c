@@ -192,23 +192,29 @@ int spi_flash_cmd_poll_bit(const struct spi_flash *flash, unsigned long timeout,
 {
 	const struct spi_slave *spi = &flash->spi;
 	int ret;
+	int attempt = 0;
 	u8 status;
-	struct mono_time current, end;
+	struct stopwatch sw;
 
-	timer_monotonic_get(&current);
-	end = current;
-	mono_time_add_msecs(&end, timeout);
-
+	stopwatch_init_msecs_expire(&sw, timeout);
 	do {
+		attempt++;
+
 		ret = do_spi_flash_cmd(spi, &cmd, 1, &status, 1);
-		if (ret)
+		if (ret) {
+			printk(BIOS_WARNING,
+			       "SF: SPI command failed on attempt %d with rc %d\n", attempt,
+			       ret);
 			return -1;
+		}
+
 		if ((status & poll_bit) == 0)
 			return 0;
-		timer_monotonic_get(&current);
-	} while (!mono_time_after(&current, &end));
+	} while (!stopwatch_expired(&sw));
 
-	printk(BIOS_DEBUG, "SF: timeout at %ld msec\n",timeout);
+	printk(BIOS_WARNING, "SF: timeout at %ld msec after %d attempts\n",
+	       stopwatch_duration_msecs(&sw), attempt);
+
 	return -1;
 }
 

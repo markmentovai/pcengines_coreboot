@@ -33,7 +33,6 @@ static void ap_romstage_main(void);
 
 static void romstage_main(void)
 {
-	struct postcar_frame pcf;
 	struct sysinfo romstage_state;
 	struct sysinfo *cb = &romstage_state;
 	int cbmem_initted = 0;
@@ -78,10 +77,7 @@ static void romstage_main(void)
 
 	romstage_handoff_init(cb->s3resume);
 
-	postcar_frame_init(&pcf, HIGH_ROMSTAGE_STACK_SIZE);
-	recover_postcar_frame(&pcf, cb->s3resume);
-
-	run_postcar_phase(&pcf);
+	prepare_and_run_postcar();
 	/* We do not return. */
 }
 

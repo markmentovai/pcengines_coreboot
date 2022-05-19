@@ -58,6 +58,7 @@ typedef enum _amd_fw_type {
 	AMD_FW_SPIROM_CFG = 0x5c,
 	AMD_FW_DMCUB = 0x71,
 	AMD_FW_PSP_BOOTLOADER_AB = 0x73,
+	AMD_TA_IKEK = 0x8d,
 	AMD_FW_IMC = 0x200,	/* Large enough to be larger than the top BHD entry type. */
 	AMD_FW_GEC,
 	AMD_FW_XHCI,
@@ -81,6 +82,13 @@ typedef enum _amd_bios_type {
 	AMD_BIOS_INVALID,
 	AMD_BIOS_SKIP
 } amd_bios_type;
+
+typedef enum _amd_addr_mode {
+	AMD_ADDR_PHYSICAL = 0,	/* Physical address */
+	AMD_ADDR_REL_BIOS,	/* Relative to beginning of image */
+	AMD_ADDR_REL_TAB,	/* Relative to table */
+	AMD_ADDR_REL_SLOT,	/* Relative to slot */
+} amd_addr_mode;
 
 struct second_gen_efs { /* todo: expand for Server products */
 	int gen:1; /* Client products only use bit 0 */
@@ -252,8 +260,8 @@ typedef struct _ish_directory_table {
 #define PSP_COOKIE 0x50535024		/* 'PSP$' */
 #define PSPL2_COOKIE 0x324c5024		/* '2LP$' */
 #define PSP2_COOKIE 0x50535032		/* 'PSP2' */
-#define BDT1_COOKIE 0x44484224		/* 'DHB$ */
-#define BDT2_COOKIE 0x324c4224		/* '2LB$ */
+#define BHD_COOKIE 0x44484224		/* 'DHB$ */
+#define BHDL2_COOKIE 0x324c4224		/* '2LB$ */
 
 #define PSP_LVL1 (1 << 0)
 #define PSP_LVL2 (1 << 1)
@@ -281,6 +289,7 @@ typedef struct _amd_cb_config {
 	bool recovery_ab;
 	bool recovery_ab_single_copy;
 	bool need_ish;
+	bool use_combo;
 } amd_cb_config;
 
 void register_fw_fuse(char *str);
@@ -291,5 +300,6 @@ uint8_t process_config(FILE *config, amd_cb_config *cb_config, uint8_t print_dep
 #define LINE_EOF (1)
 #define LINE_TOO_LONG (2)
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #endif	/* _AMD_FW_TOOL_H_ */

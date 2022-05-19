@@ -24,7 +24,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* WLAN_AUX_RST_L */
 	PAD_GPO(GPIO_7, HIGH),
 	/* EN_PWR_WWAN_X */
-	PAD_GPO(GPIO_8, HIGH),
+	PAD_GPO(GPIO_8, LOW),
 	/* EN_PP3300_WLAN */
 	PAD_GPO(GPIO_9, HIGH),
 	/* BT_DISABLE */
@@ -56,7 +56,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* PCIE_RST0_L */
 	PAD_NFO(GPIO_26, PCIE_RST0_L, HIGH),
 	/* SD_AUX_RESET_L  */
-	PAD_GPO(GPIO_27, HIGH),
+	PAD_NFO(GPIO_27, PCIE_RST1_L, HIGH),
 	/* GPIO_28: Not available */
 	/* TCHSCR_INT_ODL */
 	PAD_GPI(GPIO_29, PULL_NONE),
@@ -195,6 +195,8 @@ static const struct soc_amd_gpio pcie_gpio_table[] = {
 	PAD_GPO(GPIO_7, HIGH),
 	/* PCIE_RST0_L */
 	PAD_NFO(GPIO_26, PCIE_RST0_L, HIGH),
+	/* SD_AUX_RESET_L  */
+	PAD_NFO(GPIO_27, PCIE_RST1_L, HIGH),
 };
 
 __weak void variant_pcie_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)

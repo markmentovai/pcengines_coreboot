@@ -8,6 +8,15 @@ and those providing after-market firmware to extend the usefulness of devices.
 
 ## Hardware shipping with coreboot
 
+### NovaCustom laptops
+
+[NovaCustom](https://configurelaptop.eu/) sells configurable laptops with
+[Dasharo](https://dasharo.com/) coreboot based firmware on board, maintained by
+[3mdeb](https://3mdeb.com/). NovaCustom offers full GNU/Linux and Microsoft
+Windows compatibility. NovaCustom ensures security updates via fwupd for 5 years
+and the firmware is equipped with important security features such as measured
+boot, verified boot, TPM integration and UEFI Secure Boot.
+
 ### ChromeOS Devices
 
 All ChromeOS devices ([Chromebooks](https://chromebookdb.com/), Chromeboxes,
@@ -53,6 +62,15 @@ with a neutralized Intel Management Engine (ME) and SeaBIOS as the payload.
 provides ready-made firmware images for supported devices: those which can be
 built entirely from source code. Their copy of the coreboot repository is
 therefore stripped of all devices that require binary components to boot.
+
+
+### Dasharo
+
+[Dasharo](https://dasharo.com/) is an open-source based firmware distribution
+focusing on clean and simple code, long-term maintenance, transparent
+validation, privacy-respecting implementation, liberty for the owners, and
+trustworthiness for all.
+
 
 ### MrChromebox
 

@@ -147,7 +147,7 @@ static void nvme_detach_device(struct storage_dev *dev)
 	if (delete_admin_queues(nvme))
 		printf("NVME ERROR: Failed to delete admin queues\n");
 
-	write32(nvme->config + 0x1c, 0);
+	write32(nvme->config + 0x14, 0);
 
 	int status, timeout = (read64(nvme->config) >> 24 & 0xff) * 500;
 	do {
@@ -321,7 +321,7 @@ static void nvme_init(pcidev_t dev)
 
 	void *pci_bar0 = phys_to_virt(pci_read_config32(dev, 0x10) & ~0x3ff);
 
-	if (!(((read64(pci_bar0) >> 37) & 0xff) == 0x01)) {
+	if (!(read64(pci_bar0) >> 37 & 0x01)) {
 		printf("NVMe ERROR: PCIe device does not support the NVMe command set\n");
 		return;
 	}
@@ -341,39 +341,39 @@ static void nvme_init(pcidev_t dev)
 
 	if (!nvme->prp_list) {
 		printf("NVMe ERROR: Failed to allocate buffer for PRP list\n");
-		goto abort;
+		goto _free_abort;
 	}
 
 	const uint32_t cc = NVME_CC_EN | NVME_CC_CSS | NVME_CC_MPS | NVME_CC_AMS | NVME_CC_SHN
 			| NVME_CC_IOSQES | NVME_CC_IOCQES;
 
-	write32(nvme->config + 0x1c, 0);
+	write32(nvme->config + 0x14, 0);
 
 	int status, timeout = (read64(nvme->config) >> 24 & 0xff) * 500;
 	do {
 		status = read32(nvme->config + 0x1c) & 0x3;
 		if (status == 0x2) {
 			printf("NVMe ERROR: Failed to disable controller. FATAL ERROR\n");
-			goto abort;
+			goto _free_abort;
 		}
 		if (timeout < 0) {
 			printf("NVMe ERROR: Failed to disable controller. Timeout.\n");
-			goto abort;
+			goto _free_abort;
 		}
 		timeout -= 10;
 		mdelay(10);
 	} while (status != 0x0);
 	if (create_admin_queues(nvme))
-		goto abort;
+		goto _free_abort;
 	write32(nvme->config + 0x14, cc);
 
 	timeout = (read64(nvme->config) >> 24 & 0xff) * 500;
 	do {
 		status = read32(nvme->config + 0x1c) & 0x3;
 		if (status == 0x2)
-			goto abort;
+			goto _delete_admin_abort;
 		if (timeout < 0)
-			goto abort;
+			goto _delete_admin_abort;
 		timeout -= 10;
 		mdelay(10);
 	} while (status != 0x1);
@@ -381,20 +381,21 @@ static void nvme_init(pcidev_t dev)
 	uint16_t command = pci_read_config16(dev, PCI_COMMAND);
 	pci_write_config16(dev, PCI_COMMAND, command | PCI_COMMAND_MASTER);
 	if (create_io_completion_queue(nvme))
-		goto abort;
+		goto _delete_admin_abort;
 	if (create_io_submission_queue(nvme))
-		goto abort;
+		goto _delete_completion_abort;
 	storage_attach_device((storage_dev_t *)nvme);
 	printf("NVMe init done.\n");
 	return;
 
-abort:
-	printf("NVMe init failed.\n");
-	delete_io_submission_queue(nvme);
+_delete_completion_abort:
 	delete_io_completion_queue(nvme);
+_delete_admin_abort:
 	delete_admin_queues(nvme);
+_free_abort:
 	free(nvme->prp_list);
 	free(nvme);
+	printf("NVMe init failed.\n");
 }
 
 void nvme_initialize(struct pci_dev *dev)

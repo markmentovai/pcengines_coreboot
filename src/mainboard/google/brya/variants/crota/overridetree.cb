@@ -19,6 +19,9 @@ end
 
 chip soc/intel/alderlake
 
+	register "max_dram_speed_mts" = "4800"
+	register "cnvi_bt_audio_offload" = "1"
+
 	# Acoustic settings
 	register "acoustic_noise_mitigation" = "1"
 	register "slow_slew_rate[VR_DOMAIN_IA]" = "SLEW_FAST_4"
@@ -82,9 +85,11 @@ chip soc/intel/alderlake
 		end
 		device ref pcie_rp3 on
 			chip soc/intel/common/block/pcie/rtd3
-				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_B3)"
-				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_E20)"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_LOW(GPP_B4)"
+				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_D11)"
 				register "srcclk_pin" = "1"
+				register "reset_delay_ms" = "50"
+				register "enable_delay_ms" = "20"
 				device generic 0 alias emmc_rtd3 on end
 			end
 			# Enable PCIe-to-eMMC bridge PCIE 3 using clk 1
@@ -94,6 +99,7 @@ chip soc/intel/alderlake
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end	#PCIE3 BH799BB
+		device ref pcie_rp9 off end
 		device ref tcss_dma0 on
 			chip drivers/intel/usb4/retimer
 				register "dfp[0].power_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_E4)"
@@ -118,17 +124,17 @@ chip soc/intel/alderlake
 			end
 		end	#PCIE8 SD card
 		device ref pcie4_0 on
-			# Enable CPU PCIE RP 1 using CLK 1
+			# Enable CPU PCIE RP 1 using CLK 0
 			register "cpu_pcie_rp[CPU_RP(1)]" = "{
-				.clk_req = 1,
-				.clk_src = 1,
+				.clk_req = 0,
+				.clk_src = 0,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
 		device ref i2c0 on
 			chip drivers/i2c/cs42l42
 				register "irq" = "ACPI_IRQ_LEVEL_LOW(GPP_A23_IRQ)"
-				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B13)"
+				register "reset_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_B15)"
 				register "ts_inv" = "true"
 				register "ts_dbnc_rise" = "RISE_DEB_1000_MS"
 				register "ts_dbnc_fall" = "FALL_DEB_0_MS"
@@ -152,7 +158,7 @@ chip soc/intel/alderlake
 		end
 		device ref i2c3 on
 			chip drivers/i2c/hid
-				register "generic.hid" = ""ELAN9050""
+				register "generic.hid" = ""ELAN900C""
 				register "generic.desc" = ""ELAN Touchscreen""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_C7_IRQ)"
 				register "generic.probed" = "1"
@@ -169,7 +175,7 @@ chip soc/intel/alderlake
 				register "generic.has_power_resource" = "1"
 				register "generic.disable_gpio_export_in_crs" = "1"
 				register "hid_desc_reg_offset" = "0x01"
-				device i2c 0x10 on end
+				device i2c 0x16 on end
 			end
 		end
 		device ref i2c5 on
@@ -182,12 +188,12 @@ chip soc/intel/alderlake
 				device i2c 15 on end
 			end
 			chip drivers/i2c/hid
-				register "generic.hid" = ""GXTP7288""
+				register "generic.hid" = ""GXTP7863""
 				register "generic.desc" = ""Goodix Touchpad""
 				register "generic.irq" = "ACPI_IRQ_LEVEL_LOW(GPP_F14_IRQ)"
 				register "generic.wake" = "GPE0_DW2_14"
 				register "generic.probed" = "1"
-				register "hid_desc_reg_offset" = "0x01"
+				register "hid_desc_reg_offset" = "0x20"
 				device i2c 2c on end
 			end
 		end

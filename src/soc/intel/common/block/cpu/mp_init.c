@@ -76,6 +76,7 @@ static const struct cpu_device_id cpu_table[] = {
 	{ X86_VENDOR_INTEL, CPUID_ALDERLAKE_Q0 },
 	{ X86_VENDOR_INTEL, CPUID_ALDERLAKE_R0 },
 	{ X86_VENDOR_INTEL, CPUID_ALDERLAKE_N_A0 },
+	{ X86_VENDOR_INTEL, CPUID_RAPTORLAKE_P_J0 },
 	{ 0, 0 },
 };
 
@@ -169,7 +170,8 @@ static void wrapper_x86_setup_mtrrs(void *unused)
 /* Ensure to re-program all MTRRs based on DRAM resource settings */
 static void post_cpus_init(void *unused)
 {
-	if (mp_run_on_all_cpus(&wrapper_x86_setup_mtrrs, NULL) != CB_SUCCESS)
+	/* Ensure all APs finish the task and continue */
+	if (mp_run_on_all_cpus_synchronously(&wrapper_x86_setup_mtrrs, NULL) != CB_SUCCESS)
 		printk(BIOS_ERR, "MTRR programming failure\n");
 
 	post_cpus_add_romcache();

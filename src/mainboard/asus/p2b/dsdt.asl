@@ -22,11 +22,7 @@ DefinitionBlock (
 	#include <acpi/dsdt_top.asl>
 	/* \_SB scope defining the main processor is generated in SSDT. */
 
-	OperationRegion(X80, SystemIO, 0x80, 1)
-	Field(X80, ByteAcc, NoLock, Preserve)
-	{
-		P80, 8
-	}
+	#include <arch/x86/acpi/post.asl>
 
 	/*
 	 * Intel 82371EB (PIIX4E) datasheet, section 7.2.3, page 142
@@ -77,7 +73,7 @@ DefinitionBlock (
 		/* Arms SMI for device 12 */
 		TO12 = 1
 		/* Put out a POST code */
-		P80 = Arg0 | 0xF0
+		DBG0 = Arg0 | 0xF0
 	}
 
 	Method (\_WAK, 1, NotSerialized)

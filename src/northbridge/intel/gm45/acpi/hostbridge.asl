@@ -83,9 +83,10 @@ Device (MCHC)
 
 Name (MCRS, ResourceTemplate()
 {
-	/* Bus Numbers */
+	/* Bus Numbers. Highest bus gets updated later */
 	WordBusNumber (ResourceProducer, MinFixed, MaxFixed, PosDecode,
-			0x0000, 0x0000, 0x00ff, 0x0000, 0x0100,,, PB00)
+			0x0000, 0x0000, 0x0000, 0x0000,
+			CONFIG_ECAM_MMCONF_BUS_NUMBER,,, PB00)
 
 	/* IO Region 0 */
 	DWordIO (ResourceProducer, MinFixed, MaxFixed, PosDecode, EntireRange,
@@ -188,6 +189,12 @@ Name (MCRS, ResourceTemplate()
 			0x00000000, 0x00000000, 0xfebfffff, 0x00000000,
 			IO_APIC_ADDR,,, PM01)
 
+	/* PCI Memory Region above 4G TOUUD -> 1 << cpu_addr_bits */
+	QWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed,
+			Cacheable, ReadWrite,
+			0x00000000, 0x00000000, 0x00000000, 0x00000000,
+			0x00000000,,, PM02)
+
 	/* TPM Area (0xfed40000-0xfed44fff) */
 	DWordMemory (ResourceProducer, PosDecode, MinFixed, MaxFixed,
 			Cacheable, ReadWrite,
@@ -195,9 +202,17 @@ Name (MCRS, ResourceTemplate()
 			0x00005000,,, TPMR)
 })
 
+External (A4GS, IntObj)
+External (A4GB, IntObj)
+
 /* Current Resource Settings */
 Method (_CRS, 0, Serialized)
 {
+	/* Set highest PCI bus */
+	 CreateWordField(MCRS, ^PB00._MAX, BMAX)
+	 CreateWordField(MCRS, ^PB00._LEN, BLEN)
+	 BMAX = BLEN - 1
+
 	/* Find PCI resource area in MCRS */
 	CreateDwordField(MCRS, ^PM01._MIN, PMIN)
 	CreateDwordField(MCRS, ^PM01._MAX, PMAX)
@@ -210,6 +225,16 @@ Method (_CRS, 0, Serialized)
 	 */
 	PMIN = ^MCHC.TLUD << 20
 	PLEN = PMAX - PMIN + 1
+
+	if (A4GS != 0) {
+		CreateQwordField(MCRS, ^PM02._MIN, MMIN)
+		CreateQwordField(MCRS, ^PM02._MAX, MMAX)
+		CreateQwordField(MCRS, ^PM02._LEN, MLEN)
+		/* Set 64bit MMIO resource base and length */
+		MLEN = A4GS
+		MMIN = A4GB
+		MMAX = MMIN + MLEN - 1
+	}
 
 	Return (MCRS)
 }

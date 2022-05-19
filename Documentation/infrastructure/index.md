@@ -1,6 +1,11 @@
-# coreboot infrastructure
+# Project infrastructure & services
 
-This section contains documentation about coreboot infrastructure
+This section contains documentation about our infrastructure
+
+## Services
+
+* [Project services](services.md)
+
 
 ## Jenkins builders and builds
 * [Setting up Jenkins build machines](builders.md)

@@ -78,6 +78,7 @@ endef
 ifeq ($(CONFIG_ARCH_BOOTBLOCK_X86_32)$(CONFIG_ARCH_BOOTBLOCK_X86_64),y)
 
 bootblock-y += boot.c
+bootblock-$(CONFIG_DEBUG_HW_BREAKPOINTS_IN_ALL_STAGES) += breakpoint.c
 bootblock-y += post.c
 bootblock-y += cpu_common.c
 bootblock-$(CONFIG_IDT_IN_EVERY_STAGE) += exception.c
@@ -87,6 +88,7 @@ bootblock-y += memset.c
 bootblock-y += memmove.c
 bootblock-$(CONFIG_COLLECT_TIMESTAMPS_TSC) += timestamp.c
 bootblock-$(CONFIG_X86_TOP4G_BOOTMEDIA_MAP) += mmap_boot.c
+bootblock-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS_IN_ALL_STAGES) += null_breakpoint.c
 bootblock-$(CONFIG_BOOTBLOCK_NORMAL) += bootblock_normal.c
 bootblock-y += gdt_init.S
 bootblock-y += id.S
@@ -98,6 +100,17 @@ ifeq ($(CONFIG_ARCH_BOOTBLOCK_X86_32),y)
 $(eval $(call early_x86_stage,bootblock,elf32-i386))
 else
 $(eval $(call early_x86_stage,bootblock,elf64-x86-64))
+endif
+
+ifneq ($(CONFIG_UPDATE_IMAGE),y)
+ifeq ($(CONFIG_BOOTBLOCK_IN_CBFS),y)
+$(call add_intermediate, add_bootblock, $(objcbfs)/bootblock.bin)
+	@printf "    CBFS       $(subst $(obj)/,,$(@))\n"
+	$(CBFSTOOL) $< add -f $(objcbfs)/bootblock.bin  -n bootblock -t bootblock $(TXTIBB) -b -$(call file-size,$(objcbfs)/bootblock.bin) \
+	$(cbfs-autogen-attributes) $(TS_OPTIONS) $(CBFSTOOL_ADD_CMD_OPTIONS)
+else # Make sure the bootblock gets build, if only for buildtesting
+$(call add_intermediate, gen_bootblock, $(objcbfs)/bootblock.bin)
+endif
 endif
 
 $(call src-to-obj,bootblock,$(dir)/walkcbfs.S): $(obj)/fmap_config.h
@@ -113,6 +126,7 @@ ifeq ($(CONFIG_ARCH_VERSTAGE_X86_32)$(CONFIG_ARCH_VERSTAGE_X86_64),y)
 
 verstage-$(CONFIG_VBOOT_SEPARATE_VERSTAGE) += assembly_entry.S
 verstage-y += boot.c
+verstage-$(CONFIG_DEBUG_HW_BREAKPOINTS_IN_ALL_STAGES) += breakpoint.c
 verstage-y += post.c
 verstage-$(CONFIG_VBOOT_SEPARATE_VERSTAGE) += gdt_init.S
 verstage-$(CONFIG_IDT_IN_EVERY_STAGE) += exception.c
@@ -124,6 +138,7 @@ verstage-y += memset.c
 verstage-y += memcpy.c
 verstage-y += memmove.c
 verstage-$(CONFIG_X86_TOP4G_BOOTMEDIA_MAP) += mmap_boot.c
+verstage-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS_IN_ALL_STAGES) += null_breakpoint.c
 # If verstage is a separate stage it means there's no need
 # for a chipset-specific car_stage_entry() so use the generic one
 # which just calls verstage().
@@ -149,6 +164,7 @@ ifeq ($(CONFIG_ARCH_ROMSTAGE_X86_32)$(CONFIG_ARCH_ROMSTAGE_X86_64),y)
 
 romstage-y += assembly_entry.S
 romstage-y += boot.c
+romstage-$(CONFIG_DEBUG_HW_BREAKPOINTS_IN_ALL_STAGES) += breakpoint.c
 romstage-y += post.c
 romstage-y += gdt_init.S
 romstage-y += cpu_common.c
@@ -158,6 +174,7 @@ romstage-y += memcpy.c
 romstage-y += memmove.c
 romstage-y += memset.c
 romstage-$(CONFIG_X86_TOP4G_BOOTMEDIA_MAP) += mmap_boot.c
+romstage-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS_IN_ALL_STAGES) += null_breakpoint.c
 romstage-y += postcar_loader.c
 romstage-$(CONFIG_COLLECT_TIMESTAMPS_TSC) += timestamp.c
 romstage-$(CONFIG_HAVE_CF9_RESET) += cf9_reset.c
@@ -190,6 +207,7 @@ endif
 postcar-generic-ccopts += -D__POSTCAR__
 
 postcar-y += boot.c
+postcar-$(CONFIG_DEBUG_HW_BREAKPOINTS_IN_ALL_STAGES) += breakpoint.c
 postcar-y += post.c
 postcar-y += gdt_init.S
 postcar-y += cpu_common.c
@@ -200,6 +218,7 @@ postcar-y += memcpy.c
 postcar-y += memmove.c
 postcar-y += memset.c
 postcar-$(CONFIG_X86_TOP4G_BOOTMEDIA_MAP) += mmap_boot.c
+postcar-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS_IN_ALL_STAGES) += null_breakpoint.c
 postcar-y += postcar.c
 postcar-$(CONFIG_COLLECT_TIMESTAMPS_TSC) += timestamp.c
 postcar-$(CONFIG_HAVE_CF9_RESET) += cf9_reset.c
@@ -234,6 +253,7 @@ ramstage-y += c_start.S
 ramstage-y += c_exit.S
 ramstage-y += cpu.c
 ramstage-y += cpu_common.c
+ramstage-$(CONFIG_DEBUG_HW_BREAKPOINTS) += breakpoint.c
 ramstage-y += ebda.c
 ramstage-y += exception.c
 ramstage-y += idt.S
@@ -243,6 +263,7 @@ ramstage-y += memmove.c
 ramstage-y += memset.c
 ramstage-$(CONFIG_X86_TOP4G_BOOTMEDIA_MAP) += mmap_boot.c
 ramstage-$(CONFIG_GENERATE_MP_TABLE) += mpspec.c
+ramstage-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS) += null_breakpoint.c
 ramstage-$(CONFIG_GENERATE_PIRQ_TABLE) += pirq_routing.c
 ramstage-y += rdrand.c
 ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios.c
@@ -297,11 +318,13 @@ $(objgenerated)/ramstage.o: $$(ramstage-objs) $(COMPILER_RT_ramstage) $$(ramstag
 
 endif # CONFIG_ARCH_RAMSTAGE_X86_32 / CONFIG_ARCH_RAMSTAGE_X86_64
 
+smm-$(CONFIG_DEBUG_HW_BREAKPOINTS_IN_ALL_STAGES) += breakpoint.c
 smm-$(CONFIG_IDT_IN_EVERY_STAGE) += exception.c
 smm-$(CONFIG_IDT_IN_EVERY_STAGE) += idt.S
 smm-y += memcpy.c
 smm-y += memmove.c
 smm-y += memset.c
 smm-$(CONFIG_X86_TOP4G_BOOTMEDIA_MAP) += mmap_boot.c
+smm-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS_IN_ALL_STAGES) += null_breakpoint.c
 
 smm-srcs += $(wildcard src/mainboard/$(MAINBOARDDIR)/smihandler.c)

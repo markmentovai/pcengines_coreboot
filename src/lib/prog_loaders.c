@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-
-#include <stdlib.h>
 #include <cbfs.h>
 #include <cbmem.h>
 #include <console/console.h>
@@ -89,11 +87,10 @@ void run_ramstage(void)
 	struct prog ramstage =
 		PROG_INIT(PROG_RAMSTAGE, CONFIG_CBFS_PREFIX "/ramstage");
 
+	/* Call "end of romstage" here if postcar stage doesn't exist */
 	if (ENV_POSTCAR)
 		timestamp_add_now(TS_POSTCAR_END);
-
-	/* Call "end of romstage" here if postcar stage doesn't exist */
-	if (ENV_ROMSTAGE)
+	else
 		timestamp_add_now(TS_ROMSTAGE_END);
 
 	/*

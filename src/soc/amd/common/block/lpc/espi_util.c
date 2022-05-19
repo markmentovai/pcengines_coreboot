@@ -72,22 +72,22 @@ static inline uint32_t espi_decode_mmio_range_en_bit(unsigned int idx)
 
 static inline unsigned int espi_io_range_base_reg(unsigned int idx)
 {
-	return ESPI_IO_RANGE_BASE(idx);
+	return ESPI_IO_RANGE_BASE_REG(ESPI_IO_BASE_REG0, idx);
 }
 
 static inline unsigned int espi_io_range_size_reg(unsigned int idx)
 {
-	return ESPI_IO_RANGE_SIZE(idx);
+	return ESPI_IO_RANGE_SIZE_REG(ESPI_IO_SIZE0, idx);
 }
 
 static inline unsigned int espi_mmio_range_base_reg(unsigned int idx)
 {
-	return ESPI_MMIO_RANGE_BASE(idx);
+	return ESPI_MMIO_RANGE_BASE_REG(ESPI_MMIO_BASE_REG0, idx);
 }
 
 static inline unsigned int espi_mmio_range_size_reg(unsigned int idx)
 {
-	return ESPI_MMIO_RANGE_SIZE(idx);
+	return ESPI_MMIO_RANGE_SIZE_REG(ESPI_MMIO_SIZE_REG0, idx);
 }
 
 static void espi_enable_decode(uint32_t decode_en)
@@ -936,7 +936,7 @@ static void espi_setup_subtractive_decode(const struct espi_config *mb_cfg)
 
 enum cb_err espi_setup(void)
 {
-	uint32_t slave_caps;
+	uint32_t slave_caps, ctrl;
 	const struct espi_config *cfg = espi_get_config();
 
 	printk(BIOS_SPEW, "Initializing ESPI.\n");
@@ -1035,8 +1035,13 @@ enum cb_err espi_setup(void)
 	/* Enable subtractive decode if configured */
 	espi_setup_subtractive_decode(cfg);
 
-	espi_write32(ESPI_GLOBAL_CONTROL_1,
-		     espi_read32(ESPI_GLOBAL_CONTROL_1) | ESPI_BUS_MASTER_EN);
+	ctrl = espi_read32(ESPI_GLOBAL_CONTROL_1);
+	ctrl |= ESPI_BUS_MASTER_EN;
+
+	if (CONFIG(SOC_AMD_COMMON_BLOCK_HAS_ESPI_ALERT_ENABLE))
+		ctrl |= ESPI_ALERT_ENABLE;
+
+	espi_write32(ESPI_GLOBAL_CONTROL_1, ctrl);
 
 	printk(BIOS_SPEW, "Finished initializing ESPI.\n");
 

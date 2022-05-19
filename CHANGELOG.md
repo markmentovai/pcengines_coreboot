@@ -13,6 +13,12 @@ Please use [pce-fw-builder](https://github.com/pcengines/pce-fw-builder)
 ****
 ## [Unreleased]
 
+## [v4.16.0.4] - 2022-05-19
+### Changed
+- Rebased with official coreboot repository commit 9686ac2261
+- [updated sortbootorder to v4.6.23](https://github.com/pcengines/sortbootorder/blob/master/CHANGELOG.md#v4623---2022-05-19)
+- [updated SeaBIOS to rel-1.16.0.1](https://github.com/pcengines/seabios/blob/apu_support/CHANGELOG.md#rel-11601---2022-05-19)
+
 ## [v4.16.0.3] - 2022-04-21
 ### Changed
 - Rebased with official coreboot repository commit 2c4b426557
@@ -571,8 +577,9 @@ redundant code which was similar for APU2/3/5 boards.
 - turn off D4 and D5 leds on boot
 - enable power on after power failure
 
-[Unreleased]: https://github.com/pcengines/coreboot/compare/v4.16.0.3...develop
-[v4.16.0.2]: https://github.com/pcengines/coreboot/compare/v4.16.0.2...v4.16.0.3
+[Unreleased]: https://github.com/pcengines/coreboot/compare/v4.16.0.4...develop
+[v4.16.0.4]: https://github.com/pcengines/coreboot/compare/v4.16.0.3...v4.16.0.4
+[v4.16.0.3]: https://github.com/pcengines/coreboot/compare/v4.16.0.2...v4.16.0.3
 [v4.16.0.2]: https://github.com/pcengines/coreboot/compare/v4.16.0.1...v4.16.0.2
 [v4.16.0.1]: https://github.com/pcengines/coreboot/compare/v4.15.0.3...v4.16.0.1
 [v4.15.0.3]: https://github.com/pcengines/coreboot/compare/v4.15.0.2...v4.15.0.3

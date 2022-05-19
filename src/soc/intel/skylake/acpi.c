@@ -8,7 +8,6 @@
 #include <arch/ioapic.h>
 #include <arch/smp/mpspec.h>
 #include <console/console.h>
-#include <cpu/intel/common/common.h>
 #include <intelblocks/acpi.h>
 #include <intelblocks/acpi_wake_source.h>
 #include <intelblocks/cpulib.h>
@@ -177,9 +176,6 @@ void soc_fill_gnvs(struct global_nvs *gnvs)
 	/* Set USB2/USB3 wake enable bitmaps. */
 	gnvs->u2we = config->usb2_wake_enable_bitmap;
 	gnvs->u3we = config->usb3_wake_enable_bitmap;
-
-	/* Fill in Above 4GB MMIO resource */
-	sa_fill_gnvs(gnvs);
 }
 
 static unsigned long soc_fill_dmar(unsigned long current)

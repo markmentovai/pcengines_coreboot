@@ -122,8 +122,9 @@ else
 	cp $(CONFIG_LBP2_FILE_NAME) $@
 endif
 
-files_added:: $(objcbfs)/lbp2.bin
-	$(CBFSTOOL) $(obj)/coreboot.rom write -r $(CONFIG_LBP2_FMAP_NAME) -f $< --fill-upward
+$(call add_intermediate, write_lbp2, $(objcbfs)/lbp2.bin)
+	@printf "    FMAP      writing lbp2 to %s\n" $(CONFIG_LBP2_FMAP_NAME)
+	$(CBFSTOOL) $< write -r $(CONFIG_LBP2_FMAP_NAME) -f $< --fill-upward
 endif
 
 # Bootblock on Apollolake platform lies in the IFWI region. In order to place
@@ -137,12 +138,23 @@ endif
 # b. Using cbfstool:
 #    1. Write ifwi.bin.tmp to coreboot.rom using CONFIG_IFWI_FMAP_NAME.
 ifeq ($(CONFIG_NEED_IFWI),y)
-files_added:: $(IFWITOOL)
+$(call add_intermediate, write_ifwi, $(objcbfs)/bootblock.bin $(IFWITOOL))
+	@printf "    IFWI       Embedding %s in %s\n" $(objcbfs)/bootblock.bin $(CONFIG_IFWI_FMAP_NAME)
 	$(IFWITOOL) $(CONFIG_IFWI_FILE_NAME) create -f $(objcbfs)/ifwi.bin.tmp
 	$(IFWITOOL) $(objcbfs)/ifwi.bin.tmp delete -n OBBP
 	$(IFWITOOL) $(objcbfs)/ifwi.bin.tmp replace -n IBBP -f $(objcbfs)/bootblock.bin -d -e IBBL
-	$(CBFSTOOL) $(obj)/coreboot.rom write -r $(CONFIG_IFWI_FMAP_NAME) -f $(objcbfs)/ifwi.bin.tmp --fill-upward
+	$(CBFSTOOL) $< write -r $(CONFIG_IFWI_FMAP_NAME) -f $(objcbfs)/ifwi.bin.tmp --fill-upward
 endif
+
+# When booting APL the IBBL loader places the microcode updates embedded
+# in the IFWI image and a matching FIT table in SRAM. After copying the
+# bootblock to SRAM, it updates the FIT pointer at 0xffffffc0 to point
+# to that table. Before releasing the x86 cores from reset, the regular FIT
+# mechanism does the updates. So coreboot does not need to generate a FIT
+# table + pointer, but reserving the pointer is still needed. Otherwise the
+# IBBL loader thrashes code there. So include fit.c so that the linker
+# reserves that pointer.
+bootblock-y += ../../../cpu/intel/fit/fit.c
 
 # DSP firmware settings files.
 ifeq ($(CONFIG_SOC_INTEL_GEMINILAKE),y)

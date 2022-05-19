@@ -11,6 +11,7 @@
 #include <intelblocks/irq.h>
 #include <intelblocks/itss.h>
 #include <intelblocks/pcie_rp.h>
+#include <intelblocks/systemagent.h>
 #include <intelblocks/xdci.h>
 #include <soc/intel/common/vbt.h>
 #include <soc/itss.h>
@@ -75,6 +76,7 @@ const char *soc_acpi_name(const struct device *dev)
 	case SA_DEVFN_TBT2:		return "TRP2";
 	case SA_DEVFN_TBT3:		return "TRP3";
 	case SA_DEVFN_IPU:		return "IPU0";
+	case SA_DEVFN_DPTF:		return "DPTF";
 	case PCH_DEVFN_ISH:		return "ISHB";
 	case PCH_DEVFN_XHCI:		return "XHCI";
 	case PCH_DEVFN_I2C0:		return "I2C0";
@@ -111,6 +113,9 @@ const char *soc_acpi_name(const struct device *dev)
 	case PCH_DEVFN_HDA:		return "HDAS";
 	case PCH_DEVFN_SMBUS:		return "SBUS";
 	case PCH_DEVFN_GBE:		return "GLAN";
+	case PCH_DEVFN_SRAM:		return "SRAM";
+	case PCH_DEVFN_SPI:		return "FSPI";
+	case PCH_DEVFN_CSE:		return "HEC1";
 #if CONFIG(SOC_INTEL_ALDERLAKE_PCH_N)
 	case PCH_DEVFN_EMMC:		return "EMMC";
 #endif
@@ -184,6 +189,7 @@ static struct device_operations pci_domain_ops = {
 	.scan_bus         = &pci_domain_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name        = &soc_acpi_name,
+	.acpi_fill_ssdt   = ssdt_set_above_4g_pci,
 #endif
 };
 
