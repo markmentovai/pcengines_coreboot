@@ -17,4 +17,4 @@ else
     export FIRMWARE="m"
 fi
 
-bash -cx "./check_hw_matrix.sh"
+bash -cx "./check_hw_matrix.sh ${RELEASE_DIR}/${PLATFORM}_${CI_COMMIT_REF_NAME}.rom"
