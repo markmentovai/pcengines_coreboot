@@ -145,6 +145,13 @@ etc/sercon-port-file := $(strip $(CONFIG_SEABIOS_SERCON_PORT_FILE))
 etc/sercon-port-type := raw
 endif
 
+ifeq ($(CONFIG_SEABIOS_NO_OPROMS),y)
+$(call add_intermediate, seabios_no_oproms, $(CBFSTOOL))
+	@printf "    SeaBIOS    Add pci-optionrom-exec file\n"
+	$(if $(CONFIG_UPDATE_IMAGE),-$(CBFSTOOL) $< remove -n etc/pci-optionrom-exec 2>/dev/null)
+	$(CBFSTOOL) $< add-int -i 0 -n etc/pci-optionrom-exec
+endif
+
 ifneq ($(CONFIG_SEABIOS_PS2_TIMEOUT),)
 ifneq ($(CONFIG_SEABIOS_PS2_TIMEOUT),0)
 $(call add_intermediate, seabios_ps2_timeout, $(CBFSTOOL))

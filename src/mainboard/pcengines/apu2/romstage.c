@@ -64,7 +64,7 @@ const struct soc_amd_gpio gpio_apu2[] = {
 	PAD_GPI(GPIO_32, PULL_NONE),
 };
 
-const struct soc_amd_gpio gpio_apu34[] = {
+const struct soc_amd_gpio gpio_apu347[] = {
 	PAD_GPI(GPIO_32, PULL_NONE),
 	PAD_GPO(GPIO_33, LOW),
 };
@@ -82,8 +82,8 @@ static void early_lpc_init(void)
 	if (CONFIG(BOARD_PCENGINES_APU2))
 		gpio_configure_pads(gpio_apu2, ARRAY_SIZE(gpio_apu2));
 
-	if (CONFIG(BOARD_PCENGINES_APU3) || CONFIG(BOARD_PCENGINES_APU4))
-		gpio_configure_pads(gpio_apu34, ARRAY_SIZE(gpio_apu34));
+	if (CONFIG(BOARD_PCENGINES_APU3) || CONFIG(BOARD_PCENGINES_APU4) || CONFIG(BOARD_PCENGINES_APU7))
+		gpio_configure_pads(gpio_apu347, ARRAY_SIZE(gpio_apu347));
 
 	if (CONFIG(BOARD_PCENGINES_APU5))
 		gpio_configure_pads(gpio_apu5, ARRAY_SIZE(gpio_apu5));
