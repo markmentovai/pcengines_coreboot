@@ -306,3 +306,34 @@ regression:apu6:
     CONFIG: apu6
     RTE_IP: $RTE_IP_APU6
     AUTOFILL: 1
+
+
+build:apu7:
+  <<: *build_rom_apu
+  variables:
+    PLATFORM: apu7
+
+sign:apu7:
+  <<: *sign_rom
+  variables:
+    PLATFORM: apu7
+
+publish:apu7:
+  <<: *publish_rom
+  variables:
+    PLATFORM: apu7
+
+check_hw_matrix:apu7:
+  <<: *check_hw_matrix
+  variables:
+    PLATFORM: apu7
+    CONFIG: apu7
+    RTE_IP: $RTE_IP_APU7
+
+regression:apu7:
+  <<: *run_regression
+  variables:
+    PLATFORM: apu7
+    CONFIG: apu7
+    RTE_IP: $RTE_IP_APU7
+    AUTOFILL: 1
